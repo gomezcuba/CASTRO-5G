@@ -67,27 +67,29 @@ def fitMmWaveChanDelForLocation(x0,y0,phi0,AoD,AoA):
     exdel=(l-l0)/c
     return (exdel,x,y)
 
-GEN_CHANS=True
+GEN_CHANS=False
 GEN_PLOT=True
-EST_CHANS=True
-EST_PLOT=True
-DIST_CHANS=True
-EST_LOCS=True
-
 Nstrongest=40
 Nmaxpaths=400
-Nsims=10
+Nsims=100
 
-Nd=8
-Na=8
-Nt=32
-Nxp=4
+EST_CHANS=False
+EST_PLOT=True
+Nd=64
+Na=64
+Nt=256
+Nxp=8
 Nrft=1
 Nrfr=4
-K=32
+K=256
 Ts=300/Nt#2.5
 Ds=Ts*Nt
 sigma2=.01
+
+DIST_CHANS=True
+EST_LOCS=True
+
+t_total_run_init=time.time()
 
 if GEN_CHANS:
     chgen = mp3g.ThreeGPPMultipathChannelModel()
@@ -198,6 +200,18 @@ else:
     AoD=data["AoD"]
     dels=data["dels"]
     coefs=data["coefs"]
+    
+    chgen = mp3g.ThreeGPPMultipathChannelModel()
+    chgen.bLargeBandwidthOption=True
+    
+    for nsim in range(Nsims):
+        Npaths=np.sum(np.abs(coefs[:,nsim])>0,axis=0)
+        lp=[]
+        for npath in range(Npaths): 
+            lp.append( ch.ParametricPath(coefs[npath,nsim],1e9*dels[npath,nsim],AoD[npath,nsim],AoA[npath,nsim],0,0,0) )
+            
+        chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])]=ch.MultipathChannel((0,0,10),(x0[nsim],y0[nsim],1.5),lp)
+    
 
 if GEN_PLOT:
     plt.plot(np.vstack((np.zeros_like(refPos[:,0,0]),refPos[:,0,0],x0[0]*np.ones_like(refPos[:,0,0]))),np.vstack((np.zeros_like(refPos[:,0,1]),refPos[:,0,1],y0[0]*np.ones_like(refPos[:,0,1]))),':xb')
@@ -243,7 +257,7 @@ if EST_CHANS:
         yp=pilgen.applyPilotChannel(hk,w,v,zp*np.sqrt(sigma2))
         Pfa=1e-10
         factor_Pfa=np.log(1/(1-(Pfa)**(1/(Nd*Na*Nt))))
-        ( hest, Isupp )=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr*factor_Pfa,nsim,v,w, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=10.0)
+        ( hest, Isupp )=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr*factor_Pfa,nsim,v,w, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=5.0,  accelDel = True)
         MSEOMP[nsim]=np.sum(np.abs(hest-hk)**2)/np.sum(np.abs(hk)**2)
     #    a_est = np.linalg.lstsq(Isupp.observations,yp.reshape(-1,1),rcond=None)[0]
         a_est = Isupp.coefs
@@ -359,83 +373,106 @@ if DIST_CHANS:
         ax.plot3D(xrad,yrad,delay*np.ones_like(xrad),':',color=p[-1].get_color())   
 
 if EST_LOCS:
-    loc=mploc.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
-#    t_start_b = time.time()
-#    phi0_b=np.zeros((1,Nsims))
-#    x0_b=np.zeros((1,Nsims))
-#    y0_b=np.zeros((1,Nsims))
-#    x_b=np.zeros((Nstrongest,Nsims))
-#    y_b=np.zeros((Nstrongest,Nsims))
-#    bar = Bar("bisec", max=Nsims)
-#    bar.check_tty = False
-#    for nsim in range(Nsims):    
-#        Nstimpaths=5#np.sum(np.abs(coef_est[:,nsim])**2>sigma2,axis=0)#np.where(np.cumsum(np.abs(coef_est[:,nsim])**2,axis=0)/np.sum(np.abs(coef_est[:,nsim])**2,axis=0)>.75)[0][0]#10#np.sum(coef_est[:,nsim]!=0)
-#        (phi0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],x_b[0:Nstimpaths,nsim],y_b[0:Nstimpaths,nsim])= loc.computeAllLocationsFromPaths(AoD_est[0:Nstimpaths,nsim],AoA_est[0:Nstimpaths,nsim],dels_est[0:Nstimpaths,nsim],method='fsolve')
-#        bar.next()
-#    bar.finish()
-#    error_bisec=np.sqrt(np.abs(x0-x0_b)**2+np.abs(y0-y0_b)**2)
-#    t_run_b = time.time() - t_start_b
     
-    plt.figure(3)
-#    plt.semilogx(np.sort(error_bisec).T,np.linspace(0,1,error_bisec.size),'b')
-    #
-    t_start_r= time.time()
-    phi0_r=np.zeros((Nstrongest-3,Nsims))
-    x0_r=np.zeros((Nstrongest-3,Nsims))
-    y0_r=np.zeros((Nstrongest-3,Nsims))
-    x_r=np.zeros((Nstrongest-3,Nstrongest,Nsims))
-    y_r=np.zeros((Nstrongest-3,Nstrongest,Nsims))
-    bar = Bar("froot", max=Nsims)
-    bar.check_tty = False
-    for nsim in range(Nsims):
-        NstimpathsMax=np.sum(np.abs(coef_est[:,nsim])**2>sigma2,axis=0)#np.where(np.cumsum(np.abs(coef_est[:,nsim])**2,axis=0)/np.sum(np.abs(coef_est[:,nsim])**2,axis=0)>.75)[0][0]#10#np.sum(coef_est[:,nsim]!=0)                
-        for Nstimpaths in range(3,NstimpathsMax):            
-#        Nstimpaths=np.sum(np.abs(coef_est[:,nsim])**2>sigma2,axis=0)#np.where(np.cumsum(np.abs(coef_est[:,nsim])**2,axis=0)/np.sum(np.abs(coef_est[:,nsim])**2,axis=0)>.75)[0][0]#10#np.sum(coef_est[:,nsim]!=0)
-            (phi0_r[Nstimpaths-3,nsim],x0_r[Nstimpaths-3,nsim],y0_r[Nstimpaths-3,nsim],x_r[Nstimpaths-3,0:Nstimpaths,nsim],y_r[Nstimpaths-3,0:Nstimpaths,nsim])= loc.computeAllLocationsFromPaths(AoD_est[0:Nstimpaths,nsim],AoA_est[0:Nstimpaths,nsim],dels_est[0:Nstimpaths,nsim],method='fsolve_linear')
-        bar.next()
-    bar.finish()
-    error_root=np.sqrt(np.abs(x0-x0_r)**2+np.abs(y0-y0_r)**2)
-    t_run_r = time.time() - t_start_r
-    plt.semilogx(np.sort(np.min(error_root,axis=0)),np.linspace(0,1,Nsims),'-.r')
-    plt.semilogx(np.sort(error_root[10,:]),np.linspace(0,1,Nsims),'--b')
+    configTable=[
+            #location method, user phi0 coarse hint initialization
+            ('bisec',False,':b'),
+            ('fsolve',False,':g'),
+            ('fsolve_linear',False,'--g'),
+            ('fsolve',True,':m'),
+            ('fsolve_linear',True,'--m'),
+            ('oracle',False,'r'),            
+    ]
+    Nconfigs=len(configTable)
+    NstimpathsMax=np.sum(np.abs(coef_est)**2>sigma2,axis=0)
+#    NstimpathsMax=np.zeros(Nsims,dtype=np.int)
+#    for nsim in range(Nsims):
+#        NstimpathsMax[nsim]=np.sum(np.abs(coef_est[:,nsim])**2>sigma2,axis=0)
+#        NstimpathsMax[nsim]=np.where(np.cumsum(np.abs(coef_est[:,nsim])**2,axis=0)/np.sum(np.abs(coef_est[:,nsim])**2,axis=0)>.75)[0][0]
+#        NstimpathsMax[nsim]=np.sum(coef_est[:,nsim]!=0)
+    loc=mploc.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
+    t_start_all=np.zeros(Nconfigs)
+    t_end_all=np.zeros(Nconfigs)
+    phi0_est=np.zeros((Nconfigs,Nstrongest-3,Nsims))
+    x0_est=np.zeros((Nconfigs,Nstrongest-3,Nsims))
+    y0_est=np.zeros((Nconfigs,Nstrongest-3,Nsims))
+    x_est=np.zeros((Nconfigs,Nstrongest-3,Nstrongest,Nsims))
+    y_est=np.zeros((Nconfigs,Nstrongest-3,Nstrongest,Nsims))
+    phi0_coarse=np.round(phi0*256/np.pi/2)*np.pi*2/256
+    for ncfg in range(Nconfigs):
+        cfg = configTable[ncfg]
+        t_start_all[ncfg]=time.time()
+        bar = Bar("%s %s"%(cfg[0:2]), max=Nsims)
+        bar.check_tty = False
+        for nsim in range(Nsims):
+            for Nstimpaths in range(3,NstimpathsMax[nsim]):
+                if cfg[0]=='oracle':
+                    phi0_est[ncfg,Nstimpaths-3,nsim]=phi0[nsim]
+                    (
+                            x0_est[ncfg,Nstimpaths-3,nsim],
+                            y0_est[ncfg,Nstimpaths-3,nsim],
+                            _,
+                            x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
+                            y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim]
+                    ) = loc.computeAllPathsLinear(
+                            AoD_est[0:Nstimpaths,nsim],
+                            AoA_est[0:Nstimpaths,nsim],
+                            dels_est[0:Nstimpaths,nsim],
+                            phi0[nsim])
+                else:
+                    if (cfg[0]!='fsolve_linear') or (nsim!=47):
+                        (
+                                phi0_est[ncfg,Nstimpaths-3,nsim],
+                                x0_est[ncfg,Nstimpaths-3,nsim],
+                                y0_est[ncfg,Nstimpaths-3,nsim],
+                                x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
+                                y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim]
+                        ) = loc.computeAllLocationsFromPaths(
+                                AoD_est[0:Nstimpaths,nsim],
+                                AoA_est[0:Nstimpaths,nsim],
+                                dels_est[0:Nstimpaths,nsim],
+                                method=cfg[0],
+                                hint_phi0= ( phi0_coarse[nsim] if (cfg[1]) else None ) )
+            bar.next()
+        bar.finish()
+        t_end_all[ncfg]=time.time()
         
-    t_start_o= time.time()
-    tau0_o=np.zeros((Nstrongest-3,Nsims))
-    x0_o=np.zeros((Nstrongest-3,Nsims))
-    y0_o=np.zeros((Nstrongest-3,Nsims))
-    x_o=np.zeros((Nstrongest-3,Nstrongest,Nsims))
-    y_o=np.zeros((Nstrongest-3,Nstrongest,Nsims))
-    bar = Bar("oracle", max=Nsims)
-    bar.check_tty = False
-    for nsim in range(Nsims):
-        NstimpathsMax=np.sum(np.abs(coef_est[:,nsim])**2>sigma2,axis=0)#np.where(np.cumsum(np.abs(coef_est[:,nsim])**2,axis=0)/np.sum(np.abs(coef_est[:,nsim])**2,axis=0)>.75)[0][0]#10#np.sum(coef_est[:,nsim]!=0)                
-        for Nstimpaths in range(3,NstimpathsMax):
-            (x0_o[Nstimpaths-3,nsim],y0_o[Nstimpaths-3,nsim],tau0_o[Nstimpaths-3,nsim],x_o[Nstimpaths-3,0:Nstimpaths,nsim],y_o[Nstimpaths-3,0:Nstimpaths,nsim])= loc.computeAllPathsLinear(AoD_est[0:Nstimpaths,nsim],AoA_est[0:Nstimpaths,nsim],dels_est[0:Nstimpaths,nsim],phi0[nsim])
-        bar.next()
-    bar.finish()
-    error_oracle=np.sqrt(np.abs(x0-x0_o)**2+np.abs(y0-y0_o)**2)
-    t_run_o = time.time() - t_start_o
-    plt.semilogx(np.sort(np.min(error_oracle,axis=0)),np.linspace(0,1,Nsims),':g')
-#    
+        
+    plt.figure(3)
+    error_dist=np.sqrt( (x0_est - x0)**2 + (y0_est - y0)**2 )
+    for ncfg in range(Nconfigs):
+        cfg = configTable[ncfg]
+        plt.semilogx(np.sort(np.min(error_dist[ncfg,:,:],axis=0)),np.linspace(0,1,Nsims),cfg[2])
+    
     x0_guess=np.random.rand(Nsims)*100
     y0_guess=np.random.rand(Nsims)*100-50
     
     error_guess=np.sqrt(np.abs(x0-x0_guess)**2+np.abs(y0-y0_guess))
     plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,error_guess.size),':k')
-    plt.legend(['3-path','root linear','oracle phi0 linear','random guess'])
-    plt.figure(4)
-#    plt.plot(np.vstack((x0,x0_b)),np.vstack((y0,y0_b)),':sb', mfc='none')
-    npathbest_r=np.argmin(error_root,axis=0)
-    npathbest_o=np.argmin(error_oracle,axis=0)
-    plt.plot(np.vstack((x0,x0_r[npathbest_r,range(Nsims)])),np.vstack((y0,y0_r[npathbest_r,range(Nsims)])),':xr')
-    plt.plot(np.vstack((x0,x0_o[npathbest_o,range(Nsims)])),np.vstack((y0,y0_o[npathbest_o,range(Nsims)])),':^g')
-    plt.plot(x0,y0,'ok')
-    plt.axis([0, 100, -50, 50])
-#    
-    plt.figure(9)
-    plt.loglog(np.abs(np.mod(phi0-phi0_r[np.argmin(error_root,axis=0),range(Nsims)]+np.pi,2*np.pi)-np.pi),np.min(error_root,axis=0),'o')
-    plt.axis([0,np.pi,0,150])
-
+    plt.legend(["%s %s"%(x[0].replace("_"," "),x[1]) for x in configTable]+['random guess'])
+#    plt.figure(4)
+##    plt.plot(np.vstack((x0,x0_b)),np.vstack((y0,y0_b)),':sb', mfc='none')
+#    npathbest_b=np.argmin(error_bisec,axis=0)
+#    npathbest_r=np.argmin(error_root,axis=0)
+#    npathbest_r2=np.argmin(error_root2,axis=0)
+#    npathbest_h=np.argmin(error_hint,axis=0)
+#    npathbest_o=np.argmin(error_oracle,axis=0)
+##    plt.plot(np.vstack((x0,x0_r[npathbest_r,range(Nsims)])),np.vstack((y0,y0_r[npathbest_r,range(Nsims)])),':xr')
+##    plt.plot(np.vstack((x0,x0_o[npathbest_o,range(Nsims)])),np.vstack((y0,y0_o[npathbest_o,range(Nsims)])),':^g')
+#    plt.plot(np.vstack((x0,x0_h[npathbest_h,range(Nsims)])),np.vstack((y0,y0_h[npathbest_h,range(Nsims)])),':pm')
+#    plt.plot(x0,y0,'ok')
+#    plt.axis([0, 100, -50, 50])
+##    
+#    plt.figure(9)
+#    plt.loglog(np.abs(np.mod(phi0-phi0_r[np.argmin(error_root,axis=0),range(Nsims)]+np.pi,2*np.pi)-np.pi),np.min(error_root,axis=0),'o')
+#    plt.axis([0,np.pi,0,150])
+#
+#    plt.figure(10)
+#    plt.plot(np.sum(np.abs(coef_est)**2>sigma2,axis=0),np.argmin(error_hint,axis=0),'ob')
+#    plt.plot(np.sum(np.abs(coef_est)**2>sigma2,axis=0),np.argmin(error_root,axis=0),'xg')
+#    plt.plot(np.sum(np.abs(coef_est)**2>sigma2,axis=0),np.argmin(error_root2,axis=0),'sk')
+#    plt.plot(np.sum(np.abs(coef_est)**2>sigma2,axis=0),np.argmin(error_bisec,axis=0),'^r')
+    
     #NAnglenoises=11
     #t_start_ba= time.time()
     #bar = Bar("angle error", max=Nsims*NAnglenoises)
@@ -467,3 +504,5 @@ if EST_LOCS:
     #ax.plot_surface(np.log10(np.sort(error_root,axis=1)),np.tile(np.log10(angleNoiseMSE),[Nsims,1]).T,np.tile(np.arange(Nsims)/Nsims,[NAnglenoises,1]))
     #fig=plt.figure(5)
     #plt.semilogx(np.sort(error_root,axis=1).T,np.tile(np.arange(Nsims)/Nsims,[NAnglenoises,1]).T)
+    
+print("Total run time %d seconds"%(time.time()-t_total_run_init))

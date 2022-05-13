@@ -98,6 +98,26 @@ error_root2=np.sqrt(np.abs(x0-x0_r2)**2+np.abs(y0-y0_r2))
 t_run_r2 = time.time() - t_start_r2
 plt.semilogx(np.sort(error_root2).T,np.linspace(0,1,error_root2.size),'-.g')
 
+
+#
+t_start_h= time.time()
+phi0_h=np.zeros((1,Nsims))
+x0_h=np.zeros((1,Nsims))
+y0_h=np.zeros((1,Nsims))
+x_h=np.zeros((Npath,Nsims))
+y_h=np.zeros((Npath,Nsims))
+bar = Bar("froot_linear hint", max=Nsims)
+bar.check_tty = False
+phi0_coarse=np.round(phi0*256/np.pi/2)*np.pi*2/256
+for nsim in range(Nsims):
+    (phi0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],x_h[:,nsim],y_h[:,nsim])= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve_linear',hint_phi0=phi0_coarse[:,nsim])
+    bar.next()
+bar.finish()
+error_rooth=np.sqrt(np.abs(x0-x0_h)**2+np.abs(y0-y0_h))
+t_run_h = time.time() - t_start_h
+plt.semilogx(np.sort(error_rooth).T,np.linspace(0,1,error_rooth.size),'xk')
+
+
 t_start_k= time.time()
 x0_k=np.zeros((1,Nsims))
 y0_k=np.zeros((1,Nsims))
@@ -137,7 +157,7 @@ plt.semilogx(np.sort(error_dumb).T,np.linspace(0,1,error_dumb.size),':k')
 
 plt.xlabel('Location error(m)')
 plt.ylabel('C.D.F.')
-plt.legend(['brute force $\hat\psi_o$ 3path','fzero $\psi_o$ 3path','fzero $\psi_o$ linear','$\psi_o$ known, 3path','$\psi_o$ known, linear','randomguess'])
+plt.legend(['brute force $\hat\psi_o$ 3path','fzero $\psi_o$ 3path','fzero $\psi_o$ linear','fzero $\psi_o$ linhint','$\psi_o$ known, 3path','$\psi_o$ known, linear','randomguess'])
 plt.savefig('cdflocgeosim.eps')
 
 

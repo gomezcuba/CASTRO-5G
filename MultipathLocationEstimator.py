@@ -100,16 +100,13 @@ class MultipathLocationEstimator:
             (x0all[gr],y0all[gr],tauEall[gr],_,_)=self.computeAllPathsLinear(AoD[indices[gr,:]],AoA[indices[gr,:]],dels[indices[gr,:]],x)
         return(np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1))
     
-    def solvePhi0ForAllPaths_linear(self,AoD,AoA,dels):
-        #coarse linear approximation for initialization
-        init_phi0=self.bisectPhi0ForAllPaths(AoD,AoA,dels,Npoint=1000,Niter=1,Ndiv=2)
+    def solvePhi0ForAllPaths_linear(self,AoD,AoA,dels,init_phi0):
         res=opt.root(self.feval_wrapper_AllPathsLinear_drop1,x0=init_phi0,args=(AoD,AoA,dels),method=self.RootMethod)
         if not res.success:
 #            print("Attempting to correct initialization problem")
             niter=0 
             while (not res.success) and (niter<1000):
                 res=opt.root(self.feval_wrapper_AllPathsLinear_drop1,x0=2*np.pi*np.random.rand(1),args=(AoD,AoA,dels),method=self.RootMethod)
-                success=res.success
                 niter+=1
 #            print("Final Niter %d"%niter)
         if res.success:
@@ -147,9 +144,7 @@ class MultipathLocationEstimator:
         (x0all,y0all,tauEall)=self.computePosFrom3PathsKnownPhi0(AoD,AoA,dels,np.asarray(x))
         return(np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1))
         
-    def solvePhi0ForAllPaths(self,AoD,AoA,dels):
-        #coarse linear approximation for initialization
-        init_phi0=self.bisectPhi0ForAllPaths(AoD,AoA,dels,Npoint=1000,Niter=1,Ndiv=2)
+    def solvePhi0ForAllPaths(self,AoD,AoA,dels,init_phi0):
         res=opt.root(self.feval_wrapper_3PathPosFun,x0=init_phi0,args=(AoD,AoA,dels),method=self.RootMethod)
         if not res.success:
 #            print("Attempting to correct initialization problem")
@@ -164,13 +159,18 @@ class MultipathLocationEstimator:
             print("ERROR: Phi0 root not found")
             return (np.array(0.0))
    
-    def computeAllLocationsFromPaths(self,AoD,AoA,dels,method='fsolve'):
+    def computeAllLocationsFromPaths(self,AoD,AoA,dels,method='fsolve',hint_phi0=None):        
+        if (hint_phi0==None):
+            #coarse linear approximation for initialization
+            init_phi0=self.bisectPhi0ForAllPaths(AoD,AoA,dels,Npoint=1000,Niter=1,Ndiv=2)
+        else:
+            init_phi0=hint_phi0
         if method=='fsolve':
-            phi0_est=self.solvePhi0ForAllPaths(AoD,AoA,dels)
+            phi0_est=self.solvePhi0ForAllPaths(AoD,AoA,dels,init_phi0)
         elif method=='bisec':
             phi0_est=self.bisectPhi0ForAllPaths(AoD,AoA,dels)
         elif method=='fsolve_linear':
-            phi0_est=self.solvePhi0ForAllPaths_linear(AoD,AoA,dels)
+            phi0_est=self.solvePhi0ForAllPaths_linear(AoD,AoA,dels,init_phi0)
         else:
             print("unsupported method")
             return(None)
