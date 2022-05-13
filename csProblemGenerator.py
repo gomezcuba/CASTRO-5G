@@ -23,7 +23,7 @@ class SimpleMultipathChannelModel:
     
 class csProblemGenerator:
     
-    def __init__(self,Nt=1, Nd=1, Na=1, Nrft=1, Nrfr=1, Nxp=1, Ts=1.0, pilotType = "Rectangular" ):
+    def __init__(self,Nt=1, Nd=1, Na=1, Nrft=1, Nrfr=1, Nxp=1, Ts=1.0, pilotType = "Rectangular" , chanModel = "simple"):
         self.Nt = Nt
         self.Nd = Nd
         self.Na = Na
@@ -31,10 +31,14 @@ class csProblemGenerator:
         self.Nrfr = Nrfr
         self.Nxp = Nxp
         self.Ts = Ts
-        self.pilGen = pil.MIMOPilotChannel("Rectangular")
-#        self.model = pg.ThreeGPPMultipathChannelModel()
-#        self.model.bLargeBandwidthOption=True
-        self.model=SimpleMultipathChannelModel(Nt,Na,Nd)
+        self.pilGen = pil.MIMOPilotChannel(pilotType)
+        if chanModel == "3GPP":
+            self.model = pg.ThreeGPPMultipathChannelModel()
+            self.model.bLargeBandwidthOption=True
+        elif chanModel == "simple":
+            self.model=SimpleMultipathChannelModel(Nt,Na,Nd)
+        else:
+            print("unknown channel model requeted: '%s' "%chanModel)
         
         self.lastReturnedProblem = -1
         self.listPreparedProblems = []
