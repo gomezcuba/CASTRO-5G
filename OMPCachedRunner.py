@@ -29,7 +29,7 @@ class OMPCachedRunner:
         Ddic=np.arange(-1.0,1.0,2.0/Nd/Xd)
         Adic=np.arange(-1.0,1.0,2.0/Na/Xa)
         outputDic=np.empty(shape=(Nt*Nd*Na,np.size(Tdic)*np.size(Ddic)*np.size(Adic)),dtype=np.cdouble)
-        ctr=0
+#        ctr=0
 #        for t in range(np.size(Tdic)):
 #            for d in  range(np.size(Ddic)):
 #                for a in  range(np.size(Adic)):
@@ -77,34 +77,82 @@ class OMPCachedRunner:
         return(observDic)
         
         
+    def create2DObsDicCol(self, vout,vp,wp ):
+        Ncols=np.shape(vout)[1]
+        K=np.shape(vp)[0]
+        Nxp=np.shape(vp)[1]
+        Nd=np.shape(vp)[2]
+#        Nrft=np.shape(vp)[3]
+        Nrfr=np.shape(wp)[2]
+        Na=np.shape(wp)[3]
+        vresult=np.empty(shape=(K*Nxp*Nrfr,Ncols),dtype=np.cdouble)
+        for c in range(Ncols):
+            vref=np.matmul( wp,  np.sum( np.matmul( vout[:,c].reshape(1,1,Na,Nd) ,vp) ,axis=3,keepdims=True) )
+#            vresult[:,c]= np.fft.ifft(vref,K,axis=0).reshape((K*Nxp*Nrfr,))*np.sqrt(Nt)
+            vresult[:,c]= vref.reshape((K*Nxp*Nrfr,))/np.sqrt(K)
+        return( vresult )
+        
+    def create2DObsDic(self, pilotsID,vp,wp,Xt,Xd,Xa):
+        Nt=np.shape(vp)[0]
+#        Nxp=np.shape(vp)[1]
+        Nd=np.shape(vp)[2]
+#        Nrft=np.shape(vp)[3]
+#        Nrfr=np.shape(wp)[2]
+        Na=np.shape(wp)[3]
+        if (Nt,Nd,Na,Xt,Xd,Xa) not in self.cachedDics:
+            paramDic=self.createDic(1,Nd,Na,1.0,Xd,Xa)
+        else:
+            paramDic = self.cachedDics[(1,Nd,Na,1.0,Xd,Xa)]
+        observDic=self.create2DObsDicCol( paramDic.outputs ,vp,wp)
+        self.cachedDics[(1,Nd,Na,1.0,Xd,Xa)].observations[pilotsID]=observDic
+        return(observDic)
+        
     def freeCacheOfPilot(self,pilotsID,Nt,Nd,Na,Xt,Xd,Xa):
         if (Nt,Nd,Na,Xt,Xd,Xa) in self.cachedDics:
             if pilotsID in self.cachedDics[(Nt,Nd,Na,Xt,Xd,Xa)].observations:
                 self.cachedDics[(Nt,Nd,Na,Xt,Xd,Xa)].observations.pop(pilotsID)  
                 
-    def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0):
+    def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0, accelDel = False):
+        if (Xt!=1.0):
+            accelDel = False
         Nt=np.shape(v)[0]
         Nxp=np.shape(vp)[1]
         Nd=np.shape(vp)[2]
 #        Nrft=np.shape(vp)[3]
         Nrfr=np.shape(wp)[2]
         Na=np.shape(wp)[3]
+#        if (accelDel): #use FFTs and only antenna dictionary
+#            vflat=np.fft.ifft(v,axis=0)
+#        else:
+#            vflat=v.reshape(Nt*Nxp*Nrfr,1)
         vflat=v.reshape(Nt*Nxp*Nrfr,1)
         r=vflat
         et=1j*np.zeros(np.shape(r))
     
-        if (Nt,Nd,Na,Xt,Xd,Xa) not in self.cachedDics:
-            dicParams=self.createDic(Nt,Nd,Na,Xt,Xd,Xa)
+        if (accelDel): #use FFTs and only antenna dictionary
+            if (1,Nd,Na,1.0,Xd,Xa) not in self.cachedDics:
+                dicParams=self.createDic(1,Nd,Na,1.0,Xd,Xa)
+            else:
+                dicParams = self.cachedDics[(1,Nd,Na,1.0,Xd,Xa)]
+            if pilotsID not in dicParams.observations:
+                observDic=self.create2DObsDic(pilotsID,vp,wp,1.0,Xd,Xa)
+            else:
+                observDic=dicParams.observations[pilotsID]
+            Tdic=np.arange(0.0,Nt)
+            Ddic=dicParams.AoDs
+            Adic=dicParams.AoAs
         else:
-            dicParams = self.cachedDics[(Nt,Nd,Na,Xt,Xd,Xa)]
-        if pilotsID not in dicParams.observations:
-            observDic=self.createObsDic(pilotsID,vp,wp,Xt,Xd,Xa)
-        else:
-            observDic=dicParams.observations[pilotsID]
-    
-        Tdic=dicParams.delays
-        Ddic=dicParams.AoDs
-        Adic=dicParams.AoAs
+            if (Nt,Nd,Na,Xt,Xd,Xa) not in self.cachedDics:
+                dicParams=self.createDic(Nt,Nd,Na,Xt,Xd,Xa)
+            else:
+                dicParams = self.cachedDics[(Nt,Nd,Na,Xt,Xd,Xa)]
+            if pilotsID not in dicParams.observations:
+                observDic=self.createObsDic(pilotsID,vp,wp,Xt,Xd,Xa)
+            else:
+                observDic=dicParams.observations[pilotsID]                
+            Tdic=dicParams.delays
+            Ddic=dicParams.AoDs
+            Adic=dicParams.AoAs
 #        outputDic=dicParams.outputs 
         observDicConj=observDic.transpose().conj()#cache this value for speed
     
@@ -119,9 +167,14 @@ class OMPCachedRunner:
             boolTable=np.array([ [(x%(2**(n+1)))//(2**n) for n in range(3)] for x in range(8)],dtype=np.double) #[0,0,0],[1,0,0],[0,1,0]...[1,1,1]
             muTableInit=boolTable-.5 #[-.5,-.5,-.5] ... [.5,.5,.5]
         while ((ctr<Nt*Nxp*Nrfr) and (np.sum(np.abs(r)**2)>xi)) or ctr==0:
-            c=np.matmul( observDicConj , r )
+            if (accelDel):
+                Call=(observDicConj*r.T).reshape(np.size(Ddic)*np.size(Adic),Nt,Nxp*Nrfr)
+                c=np.sum(np.fft.ifft(Call,Nt,axis=1)*Nt,axis=2).T.reshape(-1)
+#                c_aux=self.cachedDics[(Nt,Nd,Na,1.0,Xd,Xa)].observations[pilotsID].transpose().conj()@r
+#                print(np.all(np.isclose(c_aux.T,c)))
+            else:    
+                c=np.matmul( observDicConj , r )
             ind=np.argmax(np.abs(c))
-    
             t=int(np.floor(ind/np.size(Ddic)/np.size(Adic)))
             d=int(np.mod(np.floor(ind/np.size(Adic)),np.size(Ddic)))
             a=int(np.mod(ind,np.size(Adic)))
@@ -141,7 +194,12 @@ class OMPCachedRunner:
                 vall=self.createOutDicCols( [Tdic[t] + mu[0]/Xt] , [Ddic[d] -mu[2]*2.0/Nd/Xd] , [Adic[a] -mu[1]*2.0/Na/Xa] ,Nt,Nd,Na)
                 vref=self.createObsDicCols(vall,vp,wp)
                 if ( np.abs(c[ind]) < np.abs(np.sum(vref.conj()*r)) ):
+                    
+#                    if (accelDel):
+#                        Rsupp[:,ctr]    = (np.exp(2j*np.pi*np.arange(Nt)*Tdic[t]).reshape(Nt,1,1) * vref ).reshape(-1,1) 
+#                    else:                                       
                     Rsupp[:,ctr]    = vref.reshape((Nt*Nxp*Nrfr,))
+#                    Rsupp[:,ctr]    = vref.reshape((Nt*Nxp*Nrfr,))
                     delay_supp[ctr] = Tdic[t] + mu[0]/Xt
                     aod_supp[ctr]   = np.mod( Ddic[d] -mu[2]*2.0/Nd/Xd +1,2)-1
                     aoa_supp[ctr]   = np.mod( Adic[a] -mu[1]*2.0/Na/Xa +1,2)-1
@@ -151,7 +209,11 @@ class OMPCachedRunner:
 #                    Isupp.AoAs        .append( Adic[a] -mu[1]*2.0/Na/Xa )                
                 else:
                     # print("Autopatched correlation decrease")                    
-                    Rsupp[:,ctr]    = observDic[:,ind]
+                    if (accelDel):
+                        angle_ind = a+np.size(Adic)*d
+                        Rsupp[:,ctr]  = (np.exp(-2j*np.pi*np.arange(0,1,1/Nt)*Tdic[t]).reshape(Nt,1,1)*observDic[:,angle_ind].reshape(Nt,Nxp,Nrfr) ).reshape(-1)                    
+                    else:                    
+                        Rsupp[:,ctr]    = observDic[:,ind]
                     delay_supp[ctr] = Tdic[t]
                     aod_supp[ctr]   = Ddic[d]
                     aoa_supp[ctr]   = Adic[a]
@@ -160,17 +222,21 @@ class OMPCachedRunner:
 #                    Isupp.AoDs        .append( Ddic[d] )
 #                    Isupp.AoAs        .append( Adic[a] )
             else:      
-                Rsupp[:,ctr]    = observDic[:,ind]
+                if (accelDel):
+                    angle_ind = a+np.size(Adic)*d
+                    Rsupp[:,ctr]  = (np.exp(-2j*np.pi*np.arange(0,1,1/Nt)*Tdic[t]).reshape(Nt,1,1)*observDic[:,angle_ind].reshape(Nt,Nxp,Nrfr) ).reshape(-1)                    
+                else:            
+                    Rsupp[:,ctr]  = observDic[:,ind]        
                 delay_supp[ctr] = Tdic[t]
-                aod_supp[ctr]   = Ddic[d]
-                aoa_supp[ctr]   = Adic[a]
+                aod_supp[ctr] = Ddic[d]
+                aoa_supp[ctr] = Adic[a]
 #            et=np.matmul(Rsupp, np.linalg.lstsq(Rsupp,vflat,rcond=None)[0] )
             vflat_proj,_,_,_=np.linalg.lstsq(Rsupp[:,0:ctr+1],vflat,rcond=None)
 #            vflat_proj=self.lsqNumbaWrapper(Rsupp,vflat)
             et=np.matmul(Rsupp[:,0:ctr+1], vflat_proj )
             r=vflat-et
-            # print(np.sum(np.abs(r)**2))
-            # print('OMPBR ctr %d'%ctr)
+#            print(np.sum(np.abs(r)**2))
+            print('OMPBR %s ctr %d, |r|²= %f'%("accel" if (accelDel) else "normal",ctr,np.sum(np.abs(r)**2)))
             ctr=ctr+1
 #        print('OMPBR ctr %d'%ctr)        
         Isupp=OMPInfoSet(vflat_proj,delay_supp[0:ctr] , np.arcsin(np.clip( aod_supp[0:ctr], -1,1)) , np.arcsin(np.clip( aoa_supp[0:ctr], -1,1)) , Rsupp[:,0:ctr] , self.createOutDicCols( delay_supp[0:ctr] , aod_supp[0:ctr] , aoa_supp[0:ctr] , Nt,Nd,Na) )
