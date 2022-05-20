@@ -21,6 +21,8 @@ Nsims=100
 #random locations in a 40m square
 x=np.random.rand(Npath,Nsims)*100-50
 y=np.random.rand(Npath,Nsims)*100-50
+
+
 x0=np.random.rand(1,Nsims)*100-50
 y0=np.random.rand(1,Nsims)*100-50
 
@@ -46,6 +48,7 @@ del_error=(Tserr)*np.random.randn(Npath,Nsims) #delay estimation error
 dels = tau-tau0+clock_error+del_error
 
 loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
+
 
 t_start_b = time.time()
 phi0_b=np.zeros((1,Nsims))
