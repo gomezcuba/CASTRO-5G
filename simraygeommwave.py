@@ -552,23 +552,34 @@ if PLOT_LOCS:
     def useAllThreshold(coef_est,sigma2):
         return NpathsRetrieved
     
-    for method in methods:
+    lMethods=[(noiseThreshold,'b','Nth'),
+             (boostedNoiseThreshold,'c','Nbo'),
+             (percentTotPowerThreshold,'r','Ptp'),
+             (percentMaxPowerThreshold,'m','Pmp'),
+             (useAllThreshold,'k','All')
+            ]
+    Nmethods=len(lMethods)
+    for nmethod in range(Nmethods):
+        method=lMethods[nmethod]
         fig_ctr+=1
         plt.figure(fig_ctr)
-        npaths_method=noiseThreshold(coef_est,sigma2)
-        CovVsN_method=np.cov(npathbest,npaths_method-3)
-        CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]
+        npaths_method=method[0](coef_est,sigma2)
         plt.plot(npaths_method,npathbest.T,'x')
         plt.legend(["%s %s"%(x[0].replace("_"," "),x[1]) for x in configTable])
      
-    Npathcum=1-np.arange(1,1+Nstrongest,1)/Nt
-    NoBoostcum = -Npathcum*np.log(1-Npathcum)
+#    Npathcum=1-np.arange(1,1+Nstrongest,1)/Nt
+#    NoBoostcum = -Npathcum*np.log(1-Npathcum)
     
     fig_ctr+=1    
     plt.figure(fig_ctr)
-    for nmethod in methods:
-        Nbars=5
-        plt.bar(np.arange(Nconfigs)+method*1/(Nbars+1),noise_CorrN,1/(Nbars+1),color='b')
+    Nbars=Nmethods
+    for nmethod in range(Nmethods):
+        method=lMethods[nmethod]
+        npaths_method=method[0](coef_est,sigma2)
+        CovVsN_method=np.cov(npathbest,npaths_method-3)
+        CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]
+        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nbars+1),CorrN_method,1/(Nbars+1),color=method[1],label=method[2])
+    plt.legend()
     #NAnglenoises=11
     #t_start_ba= time.time()
     #bar = Bar("angle error", max=Nsims*NAnglenoises)
