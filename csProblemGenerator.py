@@ -38,7 +38,7 @@ class csProblemGenerator:
         elif chanModel == "simple":
             self.model=SimpleMultipathChannelModel(Nt,Na,Nd)
         else:
-            print("unknown channel model requeted: '%s' "%chanModel)
+            print("unknown channel model requested: '%s' "%chanModel)
         
         self.lastReturnedProblem = -1
         self.listPreparedProblems = []
@@ -58,7 +58,7 @@ class csProblemGenerator:
         #            zh=zAWGN((Nt,Na,Nd))
         zp=self.zAWGN((self.Nt,self.Nxp,self.Na,1))
         (wp,vp)=self.pilGen.generatePilots((self.Nt,self.Nxp,self.Nrfr,self.Na,self.Nd,self.Nrft))      
-        return(hk,zp,wp,vp)               
+        return(hk,zp,wp,vp)            
     def resetIterator(self):
         self.lastReturnedProblem=-1
     def getOrGenerateNext(self):
