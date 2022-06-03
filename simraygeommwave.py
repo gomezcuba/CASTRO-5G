@@ -67,21 +67,21 @@ def fitMmWaveChanDelForLocation(x0,y0,phi0,AoD,AoA):
     exdel=(l-l0)/c
     return (exdel,x,y)
 
-GEN_CHANS=False
-GEN_PLOT=False
+GEN_CHANS=True
+GEN_PLOT=True
 Nstrongest=40
 Nmaxpaths=400
-Nsims=100
+Nsims=10
 
-EST_CHANS=False
+EST_CHANS=True
 #EST_PLOT=False
-Nd=64
-Na=64
-Nt=256
-Nxp=8
+Nd=8
+Na=8
+Nt=64
+Nxp=2
 Nrft=1
 Nrfr=4
-K=256
+K=64
 Ts=300/Nt#2.5
 Ds=Ts*Nt
 sigma2=.01
@@ -89,8 +89,8 @@ sigma2=.01
 MATCH_CHANS=False
 #MATCH_PLOT=True
 
-EST_LOCS=False
-PLOT_LOCS=True
+EST_LOCS=True
+PLOT_LOCS=False
 
 t_total_run_init=time.time()
 fig_ctr=0
@@ -120,7 +120,7 @@ if GEN_CHANS:
     AoA=np.zeros((Nmaxpaths,Nsims))
     refPos=np.zeros((Nmaxpaths,Nsims,2))
     dels=np.zeros((Nmaxpaths,Nsims))
-    coefs=np.zeros((Nmaxpaths,Nsims),dtype=np.complex)
+    coefs=np.zeros((Nmaxpaths,Nsims),dtype=complex)
     for nsim in range(Nsims):    
         mpch = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
         amps = np.array([x.complexAmplitude[0] for x in mpch.channelPaths])
@@ -222,18 +222,25 @@ if GEN_PLOT:
     
     fig_ctr+=1
     plt.figure(fig_ctr)
-    plt.plot(np.vstack((np.zeros_like(refPos[:,0,0]),refPos[:,0,0],x0[0]*np.ones_like(refPos[:,0,0]))),np.vstack((np.zeros_like(refPos[:,0,1]),refPos[:,0,1],y0[0]*np.ones_like(refPos[:,0,1]))),':xb')
-    plt.plot(x0[0],y0[0],'or')
-    plt.plot(0,0,'sr')
+    pcatch = plt.plot(np.vstack((np.zeros_like(refPos[:,0,0]),refPos[:,0,0],x0[0]*np.ones_like(refPos[:,0,0]))),np.vstack((np.zeros_like(refPos[:,0,1]),refPos[:,0,1],y0[0]*np.ones_like(refPos[:,0,1]))),':xb',label='Front-of-array Paths (detected)')
+    plt.setp(pcatch[1:],label="_")
+    bfil=(coefs[:,0]==0)#((AoA[:,0])>np.pi/2)&((AoA[:,0])<3*np.pi/2)1
+    pcatch = plt.plot(np.vstack((np.zeros_like(refPos[bfil,0,0]),refPos[bfil,0,0],x0[0]*np.ones_like(refPos[bfil,0,0]))),np.vstack((np.zeros_like(refPos[bfil,0,1]),refPos[bfil,0,1],y0[0]*np.ones_like(refPos[bfil,0,1]))),':sk',label='Back-of-array paths (shielded)')
+    #print(((AoA-phi0)>np.pi)&((AoA-phi0)<3*np.pi))
+    plt.setp(pcatch[1:],label="_")
+    plt.plot(x0[0],y0[0],'or',label='Receiver')
+    plt.plot(0,0,'sr',label='Transmitter1')
     
-    plt.plot(x0[0]+np.sin(phi0[0])*5*np.array([-1,1]),y0[0]-np.cos(phi0[0])*5*np.array([-1,1]),'r-')
-    plt.plot(x0[0]+np.cos(phi0[0])*5*np.array([0,1]),y0[0]+np.sin(phi0[0])*5*np.array([0,1]),'g-')
+    plt.plot(x0[0]+np.sin(phi0[0])*5*np.array([-1,1]),y0[0]-np.cos(phi0[0])*5*np.array([-1,1]),'r-',label='Array Plane')
+    plt.plot(x0[0]+np.cos(phi0[0])*5*np.array([0,1]),y0[0]+np.sin(phi0[0])*5*np.array([0,1]),'g-',label='Array Face')
+    plt.plot([0.01,0.01],[-1,-1],'r-')
+    plt.plot([0,0],[0,1],'g-')
     
     plt.axis([0,120,-60,60])
     
-    bfil=(coefs[:,0]==0)#((AoA[:,0])>np.pi/2)&((AoA[:,0])<3*np.pi/2)
-    plt.plot(np.vstack((np.zeros_like(refPos[bfil,0,0]),refPos[bfil,0,0],x0[0]*np.ones_like(refPos[bfil,0,0]))),np.vstack((np.zeros_like(refPos[bfil,0,1]),refPos[bfil,0,1],y0[0]*np.ones_like(refPos[bfil,0,1]))),':sk')#print(((AoA-phi0)>np.pi)&((AoA-phi0)<3*np.pi))
-
+    plt.title('mmWave multipath environment')
+    plt.legend()
+    
 if EST_CHANS:
     #channel multipath estimation outputs with error
     
@@ -252,10 +259,16 @@ if EST_CHANS:
     AoD_est=np.zeros((Nstrongest,Nsims))
     AoA_est=np.zeros((Nstrongest,Nsims))
     dels_est=np.zeros((Nstrongest,Nsims))
-    coef_est=np.zeros((Nstrongest,Nsims),dtype=np.complex)
+    coef_est=np.zeros((Nstrongest,Nsims),dtype=complex)
+    wall=np.zeros((Nsims,K,Nxp,Nrfr,Na),dtype=complex)
+    vall=np.zeros((Nsims,K,Nxp,Nd,Nrft),dtype=complex)
+    zall=np.zeros((Nsims,K,Nxp,Na,1),dtype=complex)
+    hestall=np.zeros((Nsims,K,Na,Nd),dtype=complex)
+    hkall=np.zeros((Nsims,K,Na,Nd),dtype=complex)
+    IsuppAll=[]
+    MSEOMP=np.zeros(Nsims)
     bar = Bar("estchans", max=Nsims)
     bar.check_tty = False
-    MSEOMP=np.zeros(Nsims)
     for nsim in range(Nsims):    
         mpch=chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])]
         (w,v)=pilgen.generatePilots((K,Nxp,Nrfr,Na,Nd,Nrft),"UPhase")
@@ -284,6 +297,12 @@ if EST_CHANS:
             dels_est[0:Nelems,nsim]=np.array(Isupp.delays)[indStrongest]*Ts*1e-9
             coef_est[0:Nelems,nsim]=np.array(Isupp.coefs).reshape(-1)[indStrongest]/np.sqrt(Na*Nd*Nt)
         omprunner.freeCacheOfPilot(nsim,Nt,Nd,Na,Xt=1.0,Xd=1.0,Xa=1.0)
+        IsuppAll.append(Isupp)
+        wall[nsim,:]=w
+        zall[nsim,:]=zp
+        vall[nsim,:]=v
+        hkall[nsim,:]=hk
+        hestall[nsim,:]=hest
         bar.next()
     bar.finish()
     
@@ -304,13 +323,25 @@ if EST_CHANS:
              AoA_est=AoA_est,
              AoD_est=AoD_est,
              dels_est=dels_est,
-             coef_est=coef_est)
+             coef_est=coef_est,
+             IsuppAll=IsuppAll,
+             wall=wall,
+             zall=zall,
+             vall=vall,
+             hkall=hkall,
+             hestall=hestall)
 else:
     data=np.load('./mimoestimschans-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims))
     AoA_est=data["AoA_est"]
     AoD_est=data["AoD_est"]
     dels_est=data["dels_est"]
     coef_est=data["coef_est"]
+    IsuppAll=data["IsuppAll"]
+    wall=data["wall"]
+    zall=data["zall"]
+    vall=data["vall"]
+    hkall=data["hkall"]
+    hestall=data["hestall"]
 
 #REFINAMENTO
 #AoD_ref = sage(AOD_est)
@@ -331,7 +362,7 @@ if MATCH_CHANS:
     AoA_diff=np.zeros((Nstrongest,Nsims))
     AoD_diff=np.zeros((Nstrongest,Nsims))
     dels_diff=np.zeros((Nstrongest,Nsims))
-    coef_diff=np.zeros((Nstrongest,Nsims),dtype=np.complex)
+    coef_diff=np.zeros((Nstrongest,Nsims),dtype=complex)
     for nsim in range(Nsims):
         AoA_diff[:,nsim]=np.mod(AoA[pathMatchTable[nsim,:],nsim],2*np.pi)-np.mod(AoA_est[:,nsim],2*np.pi)
         AoD_diff[:,nsim]=np.mod(AoD[pathMatchTable[nsim,:],nsim],2*np.pi)-np.mod(AoD_est[:,nsim],2*np.pi)
@@ -710,6 +741,87 @@ Scheme %s error...
     plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,error_guess.size),':k')
     plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
     
+
+def beta(w,ang):
+    Nant=w.shape[-1]
+    return(w@np.exp(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.sin(ang)))
+def d_beta(w,ang):
+    Nant=w.shape[-1]
+    return(w@(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.cos(ang)*np.exp(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.sin(ang))))    
+def diffYtoParamGeneral(coef,delay,AoD,AoA,w,v,dAxis='None'):
+    K=w.shape[0]
+    if dAxis=='delay':
+        tau_term=-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] *np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
+    else:
+        tau_term=np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
+    if dAxis=='AoD':
+        theta_term=d_beta( np.transpose(v,(0,1,3,2)) ,AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+    else:
+        theta_term=beta( np.transpose(v,(0,1,3,2)) ,AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+    if dAxis=='AoA':
+        phi_term=beta(w,AoA[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+    else:
+        phi_term=d_beta(w,AoA[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+    return(coef[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis] * tau_term * theta_term * phi_term)
+    
+def getFIMYToParam(sigma2,coef,delay,AoD,AoA,w,v,dAxes=('delay','AoD','AoA') ):
+    npth=AoD.shape[0]
+    K=w.shape[0]
+    Nxp=w.shape[1]
+#    Nrfr=w.shape[2]
+    Na=w.shape[3]
+    Nd=v.shape[2]
+#    Nrft=v.shape[3]
+    listOfpartials = [ diffYtoParamGeneral(coef,delay,AoD,AoA,w,v, term ).reshape(npth,-1) for term in dAxes]
+    partialD=np.concatenate( listOfpartials ,axis=0)
+    J=2*np.real(partialD@partialD.conj().T)*sigma2*K*Nd*Na*Nxp
+    return( J )
+
+def diffTau(p0,pP):
+    c=3e-1#in m/ns
+    return (p0/np.linalg.norm(p0-pP,axis=1)[:,np.newaxis]/c)
+
+def diffTheta(p0,pP):
+    return (np.zeros((pP.shape[0],p0.shape[0])))
+
+def diffPhi(p0,pP):
+    g=(p0[1]-pP[:,1])/(p0[0]-pP[:,0])
+    dgx= 1/(p0[0]-pP[:,0])
+    dgy= -1/((p0[0]-pP[:,0])**2)
+    return np.concatenate([dgx[:,np.newaxis],dgy[:,np.newaxis]],axis=1) * 1/(1+g[:,np.newaxis]**2)
+    
+def getTParamToLoc(p0,pis,dAxes):
+    dfun={
+        'delay':diffTau,
+        'AoD':diffTheta,
+        'AoA':diffPhi
+          }
+    listOfPartials= [dfun[term](p0,pis) for term in dAxes]
+    T=np.concatenate(listOfPartials,axis=0)
+    return(T)
+
+J=getFIMYToParam(sigma2,coefs[0:5,0],dels[0:5,0],AoD[0:5,0],AoA[0:5,0],w,v,('delay','AoD','AoA'))
+
+pathMSE=np.trace(np.linalg.inv(J))
+print("Path param MSE: %f"%pathMSE)
+
+def getFIMYToLoc(p0,pis,sigma2,coef,delay,AoD,AoA,w,v):
+    Jparam_notheta=getFIMYToParam(sigma2,coefs,dels,AoD,AoA,w,v,('delay','AoA'))
+    T=getTParamToLoc(p0,pis,('delay','AoA'))
+    Jloc = T.conj().T @ Jparam_notheta @ T
+    return(Jloc)
+
+p0 = np.stack((x0,y0),axis=1)
+
+J2=getFIMYToLoc(p0[0,:], refPos[0:5,0,:] , sigma2,coefs[0:5,0],dels[0:5,0],AoD[0:5,0],AoA[0:5,0],w,v)
+posMSE=np.trace(np.linalg.inv(J2))
+print("Path position MSE: %f"%posMSE)
+
+#for nplim in range(5,Nstrongest):
+#    J2=getFIMYToLoc(p0[0,:], refPos[0:nplim,0,:] , sigma2,coefs[0:nplim,0],dels[0:nplim,0],AoD[0:nplim,0],AoA[0:nplim,0],w,v)
+#    posMSE=np.trace(np.linalg.inv(J2))
+#    print("Path position MSE: %d %f"%(nplim,posMSE))
+
 #    fig_ctr+=1
 #    plt.figure(fig_ctr)
 #    for nsim in range(Nsims):
