@@ -67,14 +67,14 @@ def fitMmWaveChanDelForLocation(x0,y0,phi0,AoD,AoA):
     exdel=(l-l0)/c
     return (exdel,x,y)
 
-GEN_CHANS=True
-GEN_PLOT=True
+GEN_CHANS=False
+GEN_PLOT=False
 Nstrongest=40
 Nmaxpaths=400
-Nsims=10
+Nsims=100
 
-EST_CHANS=True
-#EST_PLOT=False
+EST_CHANS=False
+EST_PLOT=True
 Nd=8
 Na=8
 Nt=64
@@ -247,8 +247,6 @@ if EST_CHANS:
 #    angleNoiseMSE=(2*np.pi/64)**2
 #    AoD_err = np.mod(AoD+np.random.randn(Nmaxpaths,Nsims)*np.sqrt(angleNoiseMSE),2*np.pi)
 #    AoA_err = np.mod(AoA+np.random.randn(Nmaxpaths,Nsims)*np.sqrt(angleNoiseMSE),2*np.pi)
-    #AoD_err = np.mod(AoD+np.random.rand(Nstrongest,Nsims)*2*np.pi/128,2*np.pi)
-    #AoA_err = np.mod(AoA+np.random.rand(Nstrongest,Nsims)*2*np.pi/128,2*np.pi)
 #    clock_error=(40/c)*np.random.rand(1,Nsims) #delay estimation error
 #    dels_err = dels+clock_error
     
@@ -256,10 +254,10 @@ if EST_CHANS:
     Nchan=Nsims
     omprunner = oc.OMPCachedRunner()
     pilgen = pil.MIMOPilotChannel("UPhase")
-    AoD_est=np.zeros((Nstrongest,Nsims))
-    AoA_est=np.zeros((Nstrongest,Nsims))
-    dels_est=np.zeros((Nstrongest,Nsims))
-    coef_est=np.zeros((Nstrongest,Nsims),dtype=complex)
+    AoD_est=np.zeros((Nmaxpaths,Nsims))
+    AoA_est=np.zeros((Nmaxpaths,Nsims))
+    dels_est=np.zeros((Nmaxpaths,Nsims))
+    coef_est=np.zeros((Nmaxpaths,Nsims),dtype=complex)
     wall=np.zeros((Nsims,K,Nxp,Nrfr,Na),dtype=complex)
     vall=np.zeros((Nsims,K,Nxp,Nd,Nrft),dtype=complex)
     zall=np.zeros((Nsims,K,Nxp,Na,1),dtype=complex)
@@ -279,12 +277,11 @@ if EST_CHANS:
         Pfa=1e-5
         factor_Pfa=np.log(1/(1-(Pfa)**(1/(Nd*Na*Nt))))
         ( hest, Isupp )=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr*factor_Pfa,nsim,v,w, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=5.0,  accelDel = True)
-        MSEOMP[nsim]=np.sum(np.abs(hest-hk)**2)/np.sum(np.abs(hk)**2)
-    #    a_est = np.linalg.lstsq(Isupp.observations,yp.reshape(-1,1),rcond=None)[0]
+        #    a_est = np.linalg.lstsq(Isupp.observations,yp.reshape(-1,1),rcond=None)[0]
         a_est = Isupp.coefs
-        if Nstrongest<a_est.size:
-    #        indStrongest=np.argpartition(-np.abs(a_est[:,0]),Nstrongest,axis=0)[0:Nstrongest]
-            indStrongest=np.argsort(-np.abs(a_est[:,0]),axis=0)[0:Nstrongest]
+        if Nmaxpaths<a_est.size:
+    #        indStrongest=np.argpartition(-np.abs(a_est[:,0]),Nmaxpaths,axis=0)[0:Nmaxpaths]
+            indStrongest=np.argsort(-np.abs(a_est[:,0]),axis=0)[0:Nmaxpaths]
             AoD_est[:,nsim]=np.array(Isupp.AoDs)[indStrongest]
             AoA_est[:,nsim]=np.array(Isupp.AoAs)[indStrongest]
             dels_est[:,nsim]=np.array(Isupp.delays)[indStrongest]*Ts*1e-9
@@ -297,6 +294,7 @@ if EST_CHANS:
             dels_est[0:Nelems,nsim]=np.array(Isupp.delays)[indStrongest]*Ts*1e-9
             coef_est[0:Nelems,nsim]=np.array(Isupp.coefs).reshape(-1)[indStrongest]/np.sqrt(Na*Nd*Nt)
         omprunner.freeCacheOfPilot(nsim,Nt,Nd,Na,Xt=1.0,Xd=1.0,Xa=1.0)
+        MSEOMP[nsim]=np.sum(np.abs(hest-hk)**2)/np.sum(np.abs(hk)**2)
         IsuppAll.append(Isupp)
         wall[nsim,:]=w
         zall[nsim,:]=zp
@@ -318,30 +316,50 @@ if EST_CHANS:
     for ns in range(0,Isupp.coefs.size):
         hest_partial=Isupp.outputs[:,0:(ns+1)]@Isupp.coefs[0:(ns+1),:]
         MSE_partial[ns]=np.sum(np.abs(hest_partial.reshape(Nt,Na,Nd)-hk)**2)/np.sum(np.abs(hk)**2)
-
+    
+    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)
+    NpathsRetrievedMax=np.max(NpathsRetrieved)
+    AoA_est=AoA_est[0:NpathsRetrievedMax,:]
+    AoD_est=AoD_est[0:NpathsRetrievedMax,:]
+    dels_est=dels_est[0:NpathsRetrievedMax,:]
+    doef_est=coef_est[0:NpathsRetrievedMax,:]
     np.savez('./mimoestimschans-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims),
              AoA_est=AoA_est,
              AoD_est=AoD_est,
              dels_est=dels_est,
              coef_est=coef_est,
-             IsuppAll=IsuppAll,
              wall=wall,
              zall=zall,
              vall=vall,
              hkall=hkall,
-             hestall=hestall)
+             hestall=hestall,
+             MSEOMP=MSEOMP)
 else:
-    data=np.load('./mimoestimschans-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims))
+    data=np.load('./mimoestimschans-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims),allow_pickle=True)
     AoA_est=data["AoA_est"]
     AoD_est=data["AoD_est"]
     dels_est=data["dels_est"]
     coef_est=data["coef_est"]
-    IsuppAll=data["IsuppAll"]
     wall=data["wall"]
     zall=data["zall"]
     vall=data["vall"]
     hkall=data["hkall"]
     hestall=data["hestall"]
+    MSEOMP=data["MSEOMP"]
+    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)
+    NpathsRetrievedMax=np.max(NpathsRetrieved)
+
+if EST_PLOT:
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    plt.semilogx(np.sort(MSEOMP),np.linspace(0,1,Nsims),'b')
+    plt.xlabel("e $ = \\frac{\\|\\mathbf{h}-\\hat{\\mathbf{h}}\\|^2}{\\|\\mathbf{h}\\|^2}$")
+    plt.ylabel("$F(e)$")
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    plt.hist(np.sum(np.abs(coef_est)>0,axis=0),np.minimum(25,np.unique(np.sum(np.abs(coef_est)>0,axis=0)).size))
+    plt.xlabel("n paths")
+    plt.ylabel("$F(n)$")
 
 #REFINAMENTO
 #AoD_ref = sage(AOD_est)
@@ -448,7 +466,6 @@ if EST_LOCS:
             ('true','oracle','Hint','-.','p','y'),            
     ]
     Nconfigs=len(configTable)
-    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)    
     
 #    NpathsRetrieved=np.zeros(Nsims,dtype=np.int)
 #    for nsim in range(Nsims):
@@ -458,11 +475,11 @@ if EST_LOCS:
     loc=mploc.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
     t_start_all=np.zeros(Nconfigs)
     t_end_all=np.zeros(Nconfigs)
-    phi0_est=np.zeros((Nconfigs,Nstrongest-3,Nsims))
-    x0_est=np.zeros((Nconfigs,Nstrongest-3,Nsims))
-    y0_est=np.zeros((Nconfigs,Nstrongest-3,Nsims))
-    x_est=np.zeros((Nconfigs,Nstrongest-3,Nstrongest,Nsims))
-    y_est=np.zeros((Nconfigs,Nstrongest-3,Nstrongest,Nsims))
+    phi0_est=np.zeros((Nconfigs,NpathsRetrievedMax-3,Nsims))
+    x0_est=np.zeros((Nconfigs,NpathsRetrievedMax-3,Nsims))
+    y0_est=np.zeros((Nconfigs,NpathsRetrievedMax-3,Nsims))
+    x_est=np.zeros((Nconfigs,NpathsRetrievedMax-3,NpathsRetrievedMax,Nsims))
+    y_est=np.zeros((Nconfigs,NpathsRetrievedMax-3,NpathsRetrievedMax,Nsims))
     phi0_coarse=np.round(phi0*32/np.pi/2)*np.pi*2/32
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
@@ -470,7 +487,8 @@ if EST_LOCS:
         bar = Bar("%s %s %s"%(cfg[0:3]), max=Nsims)
         bar.check_tty = False
         for nsim in range(Nsims):
-            for Nstimpaths in range(3,NpathsRetrieved[nsim]):
+            for Nstimpaths in range(3, NpathsRetrieved[nsim] ):
+                print(Nstimpaths)
                 if cfg[0]=='CS':
                     if cfg[1]=='oracle':
                         if cfg[2]=='Hint':
@@ -533,12 +551,12 @@ if EST_LOCS:
                                     dels[0:Nstimpaths,nsim],
                                     method=cfg[1],
                                     hint_phi0= ( phi0_coarse[nsim] if (cfg[2]=='Hint') else None ) )
-            if NpathsRetrieved[nsim]<Nstrongest:
-                phi0_est[ncfg,NpathsRetrieved[nsim]-2:,nsim]=phi0_est[ncfg,NpathsRetrieved[nsim]-3,nsim]
-                x0_est[ncfg,NpathsRetrieved[nsim]-2:,nsim]=x0_est[ncfg,NpathsRetrieved[nsim]-3,nsim]
-                y0_est[ncfg,NpathsRetrieved[nsim]-2:,nsim]=y0_est[ncfg,NpathsRetrieved[nsim]-3,nsim]
-                x_est[ncfg,NpathsRetrieved[nsim]-2:,0:Nstimpaths,nsim]=x_est[ncfg,NpathsRetrieved[nsim]-3,0:Nstimpaths,nsim]
-                x_est[ncfg,NpathsRetrieved[nsim]-2:,0:Nstimpaths,nsim]=y_est[ncfg,NpathsRetrieved[nsim]-3,0:Nstimpaths,nsim]
+            if NpathsRetrieved[nsim]<NpathsRetrievedMax:
+                phi0_est[ncfg,NpathsRetrieved[nsim]-3:,nsim]=phi0_est[ncfg,NpathsRetrieved[nsim]-4,nsim]
+                x0_est[ncfg,NpathsRetrieved[nsim]-3:,nsim]=x0_est[ncfg,NpathsRetrieved[nsim]-4,nsim]
+                y0_est[ncfg,NpathsRetrieved[nsim]-3:,nsim]=y0_est[ncfg,NpathsRetrieved[nsim]-4,nsim]
+                x_est[ncfg,NpathsRetrieved[nsim]-3:,0:Nstimpaths,nsim]=x_est[ncfg,NpathsRetrieved[nsim]-4,0:Nstimpaths,nsim]
+                x_est[ncfg,NpathsRetrieved[nsim]-3:,0:Nstimpaths,nsim]=y_est[ncfg,NpathsRetrieved[nsim]-4,0:Nstimpaths,nsim]
             bar.next()
         bar.finish()
         t_end_all[ncfg]=time.time()
@@ -562,7 +580,8 @@ else:
     y_est=data["y_est"]
     configTable=data["configTable"]
     Nconfigs=len(configTable)
-    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)    
+    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)
+    NpathsRetrievedMax=np.max(NpathsRetrieved)  
     phi0_est=np.mod(phi0_est,2*np.pi)
     phi0_coarse=np.round(phi0*32/np.pi/2)*np.pi*2/32
 
@@ -614,21 +633,7 @@ if PLOT_LOCS:
             plt.loglog(phi0_eatmin[ncfg,:],error_min[ncfg,:],cfg[4]+cfg[5])
     plt.axis([0,np.pi,0,150])
     plt.legend(labstrFilter)
-
-    def noiseThreshold(coef_est,param):
-        return np.sum(np.abs(coef_est)**2>param[0],axis=0)
-    def boostedNoiseThreshold(coef_est,param):
-        Npathfrac=1-NpathsRetrieved/Nt#TODO: make these variables accessible without being global
-        AvgNoBoost = -Npathfrac*np.log(1-Npathfrac)
-        return np.sum(np.abs(coef_est)**2>AvgNoBoost*param[0],axis=0)
-    def percentTotPowerThreshold(coef_est,param):
-        return np.sum(np.cumsum(np.abs(coef_est)**2/np.sum(np.abs(coef_est)**2,axis=0),axis=0)<param[0],axis=0)
-    def percentMaxPowerThreshold(coef_est,param):
-        return np.sum(np.abs(coef_est)**2/np.max(np.abs(coef_est)**2,axis=0)>param[0],axis=0)
-    def useAllThreshold(coef_est,param):
-        return NpathsRetrieved
-    def usePhi0Err(coef_est,param):
-        return np.sum(np.abs(phi0_est[4,:,:]-phi0_coarse)<2*np.pi/32,axis=0)
+    
 #        return 37-np.argmax(np.abs(phi0_est[4,::-1,:]-phi0_coarse)<2*np.pi/32,axis=0)
     
 #       fig_ctr+=1    
@@ -658,6 +663,37 @@ if PLOT_LOCS:
     #using the above commented code we determined that 0.8 and 0.25 are the best parameters for the power methods
     
     
+
+      
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    plt.plot(npathbest.T,error_min.T,'x')
+    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+    plt.xlabel("Npaths min error")
+    plt.ylabel("Location error")
+    
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    plt.plot(NpathsRetrieved.T,error_min.T,'x')
+    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+    plt.xlabel("Npaths retrieved in CS")
+    plt.ylabel("Location error")
+    
+    def noiseThreshold(coef_est,param):
+        return np.sum(np.abs(coef_est)**2>param[0],axis=0)
+    def boostedNoiseThreshold(coef_est,param):
+        Npathfrac=1-NpathsRetrieved/Nt#TODO: make these variables accessible without being global
+        AvgNoBoost = -Npathfrac*np.log(1-Npathfrac)
+        return np.sum(np.abs(coef_est)**2>AvgNoBoost*param[0],axis=0)
+    def percentTotPowerThreshold(coef_est,param):
+        return np.sum(np.cumsum(np.abs(coef_est)**2/np.sum(np.abs(coef_est)**2,axis=0),axis=0)<param[0],axis=0)
+    def percentMaxPowerThreshold(coef_est,param):
+        return np.sum(np.abs(coef_est)**2/np.max(np.abs(coef_est)**2,axis=0)>param[0],axis=0)
+    def useAllThreshold(coef_est,param):
+        return NpathsRetrieved
+    def usePhi0Err(coef_est,param):
+        return np.sum(np.abs(phi0_est[4,:,:]-phi0_coarse)<2*np.pi/32,axis=0)
+    
     lMethods=[(noiseThreshold,[sigma2],'b','Nth'),
              (boostedNoiseThreshold,[sigma2],'c','Nbo'),
              (percentTotPowerThreshold,[.8],'r','Ptp'),
@@ -666,31 +702,17 @@ if PLOT_LOCS:
              (useAllThreshold,[],'y','All')
             ]
     Nmethods=len(lMethods)
-      
-    fig_ctr+=1
-    plt.figure(fig_ctr)
-    plt.plot(npathbest.T,error_min.T,'x')
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
-    plt.xlabel("Npaths min error")
-    plt.ylabel("Location error")
-    fig_ctr+=1
-    plt.figure(fig_ctr)
-    plt.plot(NpathsRetrieved.T,error_min.T,'x')
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
-    plt.xlabel("Npaths retrieved in CS")
-    plt.ylabel("Location error")
-    
     fig_ctr+=1    
     fig_num_bar=fig_ctr
     fig_ctr+=1    
     fig_num_cdf=fig_ctr
     for nmethod in range(Nmethods):
         method=lMethods[nmethod]
-        npaths_method=np.maximum(np.minimum( method[0](coef_est,method[1])-3,36),0)
+        npaths_method=np.maximum(np.minimum( method[0](coef_est,method[1])-3,NpathsRetrievedMax-4),0)
         CovVsN_method=np.cov(npathbest,npaths_method)
         CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]        
         plt.figure(fig_num_bar)        
-        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+1),CorrN_method,1/(Nmethods+1),color=method[2])
+        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[2])
         
         plt.figure(fig_num_cdf)  
         plt.semilogx(np.sort(error_dist[4,npaths_method,range(Nsims)]),np.linspace(0,1,Nsims),'--x',color=method[2])
@@ -704,13 +726,7 @@ if PLOT_LOCS:
         plt.figure(fig_ctr)
         plt.plot(npaths_method,error_min.T,'x')
         plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
-    plt.figure(fig_num_bar)     
-    plt.legend(["%s"%(x[2]) for x in lMethods])
-    plt.figure(fig_num_cdf)  
-    plt.semilogx(np.sort(error_min[4,:]),np.linspace(0,1,Nsims),'--sk')
-    plt.semilogx(np.sort(error_min[5,:]),np.linspace(0,1,Nsims),'-.ok')
-    plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,Nsims),':k')
-    plt.legend(["%s %s"%(y,x[3]) for x in lMethods+[(0,0,0,'Min')] for y in ['Linear','Oracle']]+['Guess'])
+   
     
     npaths_method=np.maximum(np.minimum( usePhi0Err(coef_est,[.8])-3,36),0)
     fig_ctr+=1
@@ -742,95 +758,150 @@ Scheme %s error...
     plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
     
 
-def beta(w,ang):
-    Nant=w.shape[-1]
-    return(w@np.exp(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.sin(ang)))
-def d_beta(w,ang):
-    Nant=w.shape[-1]
-    return(w@(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.cos(ang)*np.exp(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.sin(ang))))    
-def diffYtoParamGeneral(coef,delay,AoD,AoA,w,v,dAxis='None'):
-    K=w.shape[0]
-    if dAxis=='delay':
-        tau_term=-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] *np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
-    else:
-        tau_term=np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
-    if dAxis=='AoD':
-        theta_term=d_beta( np.transpose(v,(0,1,3,2)) ,AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
-    else:
-        theta_term=beta( np.transpose(v,(0,1,3,2)) ,AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
-    if dAxis=='AoA':
-        phi_term=beta(w,AoA[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
-    else:
-        phi_term=d_beta(w,AoA[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
-    return(coef[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis] * tau_term * theta_term * phi_term)
+    def beta(w,ang):
+        Nant=w.shape[-1]
+        return(w@np.exp(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.sin(ang)))
+    def d_beta(w,ang):
+        Nant=w.shape[-1]
+        return(w@(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.cos(ang)*np.exp(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.sin(ang))))    
+    def diffYtoParamGeneral(coef,delay,AoD,AoA,w,v,dAxis='None'):
+        K=w.shape[0]
+        if dAxis=='delay':
+            tau_term=-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] *np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
+        else:
+            tau_term=np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
+        if dAxis=='AoD':
+            theta_term=d_beta( np.transpose(v,(0,1,3,2)) ,AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+        else:
+            theta_term=beta( np.transpose(v,(0,1,3,2)) ,AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+        if dAxis=='AoA':
+            phi_term=beta(w,AoA[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+        else:
+            phi_term=d_beta(w,AoA[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+        return(coef[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis] * tau_term * theta_term * phi_term)
+        
+    def getFIMYToParam(sigma2,coef,delay,AoD,AoA,w,v,dAxes=('delay','AoD','AoA') ):
+        npth=AoD.shape[0]
+        K=w.shape[0]
+        Nxp=w.shape[1]
+    #    Nrfr=w.shape[2]
+        Na=w.shape[3]
+        Nd=v.shape[2]
+    #    Nrft=v.shape[3]
+        listOfpartials = [ diffYtoParamGeneral(coef,delay,AoD,AoA,w,v, term ).reshape(npth,-1) for term in dAxes]
+        partialD=np.concatenate( listOfpartials ,axis=0)
+        J=2*np.real(partialD@partialD.conj().T)*sigma2*K*Nd*Na*Nxp
+        return( J )
     
-def getFIMYToParam(sigma2,coef,delay,AoD,AoA,w,v,dAxes=('delay','AoD','AoA') ):
-    npth=AoD.shape[0]
-    K=w.shape[0]
-    Nxp=w.shape[1]
-#    Nrfr=w.shape[2]
-    Na=w.shape[3]
-    Nd=v.shape[2]
-#    Nrft=v.shape[3]
-    listOfpartials = [ diffYtoParamGeneral(coef,delay,AoD,AoA,w,v, term ).reshape(npth,-1) for term in dAxes]
-    partialD=np.concatenate( listOfpartials ,axis=0)
-    J=2*np.real(partialD@partialD.conj().T)*sigma2*K*Nd*Na*Nxp
-    return( J )
-
-def diffTau(p0,pP):
-    c=3e-1#in m/ns
-    return (p0/np.linalg.norm(p0-pP,axis=1)[:,np.newaxis]/c)
-
-def diffTheta(p0,pP):
-    return (np.zeros((pP.shape[0],p0.shape[0])))
-
-def diffPhi(p0,pP):
-    g=(p0[1]-pP[:,1])/(p0[0]-pP[:,0])
-    dgx= 1/(p0[0]-pP[:,0])
-    dgy= -1/((p0[0]-pP[:,0])**2)
-    return np.concatenate([dgx[:,np.newaxis],dgy[:,np.newaxis]],axis=1) * 1/(1+g[:,np.newaxis]**2)
+    def diffTau(p0,pP):
+        c=3e-1#in m/ns
+        return (p0/np.linalg.norm(p0-pP,axis=1)[:,np.newaxis]/c)
     
-def getTParamToLoc(p0,pis,dAxes):
-    dfun={
-        'delay':diffTau,
-        'AoD':diffTheta,
-        'AoA':diffPhi
-          }
-    listOfPartials= [dfun[term](p0,pis) for term in dAxes]
-    T=np.concatenate(listOfPartials,axis=0)
-    return(T)
-
-J=getFIMYToParam(sigma2,coefs[0:5,0],dels[0:5,0],AoD[0:5,0],AoA[0:5,0],w,v,('delay','AoD','AoA'))
-
-pathMSE=np.trace(np.linalg.inv(J))
-print("Path param MSE: %f"%pathMSE)
-
-def getFIMYToLoc(p0,pis,sigma2,coef,delay,AoD,AoA,w,v):
-    Jparam_notheta=getFIMYToParam(sigma2,coefs,dels,AoD,AoA,w,v,('delay','AoA'))
-    T=getTParamToLoc(p0,pis,('delay','AoA'))
-    Jloc = T.conj().T @ Jparam_notheta @ T
-    return(Jloc)
-
-p0 = np.stack((x0,y0),axis=1)
-
-J2=getFIMYToLoc(p0[0,:], refPos[0:5,0,:] , sigma2,coefs[0:5,0],dels[0:5,0],AoD[0:5,0],AoA[0:5,0],w,v)
-posMSE=np.trace(np.linalg.inv(J2))
-print("Path position MSE: %f"%posMSE)
-
-#for nplim in range(5,Nstrongest):
-#    J2=getFIMYToLoc(p0[0,:], refPos[0:nplim,0,:] , sigma2,coefs[0:nplim,0],dels[0:nplim,0],AoD[0:nplim,0],AoA[0:nplim,0],w,v)
-#    posMSE=np.trace(np.linalg.inv(J2))
-#    print("Path position MSE: %d %f"%(nplim,posMSE))
-
-#    fig_ctr+=1
-#    plt.figure(fig_ctr)
-#    for nsim in range(Nsims):
-#        if NpathsRetrieved[nsim]>3:
-#            plt.plot(np.arange(0,1,1/(NpathsRetrieved[nsim]-3)),error_dist[4,0:(NpathsRetrieved[nsim]-3),nsim])
-#    plt.axis([0,1,0,100])
+    def diffTheta(p0,pP):
+        return (np.zeros((pP.shape[0],p0.shape[0])))
     
- 
+    def diffPhi(p0,pP):
+        g=(p0[1]-pP[:,1])/(p0[0]-pP[:,0])
+        dgx= 1/(p0[0]-pP[:,0])
+        dgy= -1/((p0[0]-pP[:,0])**2)
+        return np.concatenate([dgx[:,np.newaxis],dgy[:,np.newaxis]],axis=1) * 1/(1+g[:,np.newaxis]**2)
+        
+    def getTParamToLoc(p0,pis,dAxes):
+        dfun={
+            'delay':diffTau,
+            'AoD':diffTheta,
+            'AoA':diffPhi
+              }
+        listOfPartials= [dfun[term](p0,pis) for term in dAxes]
+        T=np.concatenate(listOfPartials,axis=0)
+        return(T)
+
+    #for nsim in range(Nsims):
+    #    npath=npathbest[5,nsim]+3
+    #    J=getFIMYToParam(sigma2,coefs[0:npath,nsim],dels[0:npath,nsim],AoD[0:npath,nsim],AoA[0:npath,nsim],wall[nsim],vall[nsim],('delay','AoD','AoA'))
+    #    pathMSE=np.trace(np.linalg.inv(J))/3/npath
+    #    print("Sim best (%d Path) param MSE: %f"%(nsim,pathMSE))
     
+    def getFIMYToLoc(p0,pis,sigma2,coef,delay,AoD,AoA,w,v):
+        Jparam_notheta=getFIMYToParam(sigma2,coef,delay,AoD,AoA,w,v,('delay','AoA'))
+        T=getTParamToLoc(p0,pis,('delay','AoA'))
+        Jloc = T.conj().T @ Jparam_notheta @ T
+        return(Jloc)
+    
+    p0 = np.stack((x0,y0),axis=-1)  
+    posMSE=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))    
+    for nsim in range(Nsims):
+        for npath in range(3,NpathsRetrieved[nsim]):
+    #    npath=npathbest[5,nsim]+3
+            J2=getFIMYToLoc(p0[nsim,:], refPos[0:npath,nsim,:] , sigma2,coefs[0:npath,nsim],dels[0:npath,nsim],AoD[0:npath,nsim],AoA[0:npath,nsim],wall[nsim],vall[nsim])
+            posMSE[nsim,npath-3]=np.trace(np.linalg.inv(J2))
+        print("Sim %d paths %d pos J MSE: %f"%(nsim,np.argmin(posMSE[nsim,:]),np.min(posMSE[nsim,:])))
+    p0 = np.stack((x0,y0),axis=-1)  
+    posMSE_est=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))    
+    
+    p0_est = np.stack((x0_est,y0_est),axis=-1) 
+    pAll_est = np.stack((x_est,y_est),axis=-1)   
+    nmethod=5
+    posMSE_est=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))    
+    for nsim in range(Nsims):
+        for npath in range(3,NpathsRetrieved[nsim]):
+    #    npath=npathbest[5,nsim]+3
+            J2_est=getFIMYToLoc(
+                    p0_est[nmethod,npath-3,nsim,:], 
+                    pAll_est[nmethod,npath-3,0:npath,nsim,:], 
+                    sigma2,
+                    coef_est[0:npath,nsim],
+                    dels_est[0:npath,nsim],
+                    AoD_est[0:npath,nsim],
+                    AoA_est[0:npath,nsim],
+                    wall[nsim],
+                    vall[nsim])
+            posMSE_est[nsim,npath-3]=np.trace(np.linalg.inv(J2_est))
+        print("Sim %d paths %d pos J MSE est: %f"%(nsim,np.argmin(posMSE_est[nsim,:]),np.min(posMSE_est[nsim,:])))
+    
+#    bestNposMSE=np.argmin(posMSE,axis=1)
+    bestNposMSE=np.argmin(posMSE_est,axis=1)
+    
+    CovVsN_method=np.cov(npathbest,bestNposMSE)
+    CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]        
+    plt.figure(fig_num_bar)        
+    plt.bar(np.arange(Nconfigs)+Nmethods*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[2])   
+    plt.legend(["%s"%(x[3]) for x in lMethods+[(0,0,0,'Jloc')]])
+    plt.figure(fig_num_cdf)  
+    plt.semilogx(np.sort(error_dist[4,bestNposMSE,range(Nsims)]),np.linspace(0,1,Nsims),'--x',color='k')
+    plt.semilogx(np.sort(error_dist[5,bestNposMSE,range(Nsims)]),np.linspace(0,1,Nsims),'-.*',color='k') 
+    plt.semilogx(np.sort(error_min[4,:]),np.linspace(0,1,Nsims),'--sk')
+    plt.semilogx(np.sort(error_min[5,:]),np.linspace(0,1,Nsims),'-.ok')
+    plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,Nsims),':k')
+    plt.legend(["%s %s"%(y,x[3]) for x in lMethods+[(0,0,0,'Jloc')]+[(0,0,0,'Min')] for y in ['Linear','Oracle']]+['Guess'])
+    
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    for ncfg in range(Nconfigs):
+        cfg = configTable[ncfg]
+        er_data=error_dist[ncfg,bestNposMSE,np.arange(Nsims)]
+        plt.semilogx(np.sort(er_data),np.linspace(0,1,Nsims),cfg[3]+cfg[5])
+        print("""
+Scheme %s error...
+          Mean: %.3f
+        Median: %.3f
+    Worst 25-p: %.3f
+          10-p: %.3f
+           5-p: %.3f
+              """%(
+                  cfg[0]+" "+cfg[1]+" "+cfg[2],
+                  np.mean(er_data),
+                  np.median(er_data),                 
+                  np.percentile(er_data,75),       
+                  np.percentile(er_data,90),         
+                  np.percentile(er_data,95),         
+                  ))
+    
+    x0_guess=np.random.rand(Nsims)*100
+    y0_guess=np.random.rand(Nsims)*100-50
+    
+    plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,error_guess.size),':k')
+    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
     
     #NAnglenoises=11
     #t_start_ba= time.time()
