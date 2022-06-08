@@ -40,7 +40,7 @@ class ThreeGPPMultipathChannelModel:
         'czsa',
         'xi',
         'Cc', #Correlations Matrix Azimut [sSF, sK, sDS, sASD, sASA, sZSD, sZSA]
-        'pLossFun'
+        'pLossFun',
         'zsdFun'
     ])
     #Crear diccionarios
@@ -122,7 +122,6 @@ class ThreeGPPMultipathChannelModel:
                    [0,0,0,0.5,0,1,0],
                    [0,0,-0.5,0.5,0.2,0,1]]),
                 self.scenarioPlossUMiNLOS,
-                self.ZSDUMiLOS,
                 self.ZODUMiNLOS,
             )
         elif sce.find("UMa")>=0:
@@ -152,7 +151,7 @@ class ThreeGPPMultipathChannelModel:
                    [0,1,-0.4,0,-0.2,0,0],
                    [-0.4,-0.4,1,0.4,0.8,-0.2,0],
                    [-0.5,0,0.4,1,0,0.5,0],
-                   [-0.5,-0.2,0.8,0,1,-0.3,0.4]
+                   [-0.5,-0.2,0.8,0,1,-0.3,0.4],
                    [0,0,-0.2,0.5,-0.3,1,0],
                    [-0.8,0,0,0,0.4,0,1]]),
                 self.scenarioPlossUMaLOS,
@@ -182,7 +181,7 @@ class ThreeGPPMultipathChannelModel:
                    [0,1,0,0,0,0,0],
                    [-0.4,0,1,0.4,0.6,-0.5,0],
                    [-0.6,0,0.4,1,0.4,0.5,-0.1],
-                   [0,0,0.6,0.4,1,0,0]
+                   [0,0,0.6,0.4,1,0,0],
                    [0,0,-0.5,0.5,0,1,0],
                    [-0.4,0,0,-0.1,0,0,1]]),
                 self.scenarioPlossUMaNLOS,
@@ -320,7 +319,7 @@ class ThreeGPPMultipathChannelModel:
                 self.ZODInNLOS,
             )
             
-    def scenarioPlossUMiLOS(d3D,d2D):
+    def scenarioPlossUMiLOS(self,d3D,d2D):
         outdoor = True
         if outdoor:
             n=1
@@ -328,12 +327,12 @@ class ThreeGPPMultipathChannelModel:
             Nf=np.ramdon.rand(4,8)
             n=np.ramdon.rand(1,Nf)
         hut= 3*(n-1) + 1.5
-        prima_dBP = (4*10.0*hut*self.fc) / self.clight
-        PL1 = 32.4 + 21.0*np.log10(d3D)+20.0*np.log10(self.fc)
-        PL2 = 32.4 + 40*np.log10(d3D)+20.0*np.log10(self.fc)-9.5*np.log10(prima_dBP**2+(10.0-hut)**2)
+        prima_dBP = (4*10.0*hut*self.frecRefGHz) / self.clight
+        PL1 = 32.4 + 21.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
+        PL2 = 32.4 + 40*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.5*np.log10(prima_dBP**2+(10.0-hut)**2)
         ploss = lambda d2D : PL1 if 10<=d2D<=prima_dBP else PL2
         return(ploss)
-    def scenarioPlossUMiNLOS(d3D,d2D):
+    def scenarioPlossUMiNLOS(self,d3D,d2D):
         outdoor = True
         if outdoor:
             n=1
@@ -341,12 +340,12 @@ class ThreeGPPMultipathChannelModel:
             Nf=np.ramdon.rand(4,8)
             n=np.ramdon.rand(1,Nf)
         hut= 3*(n-1) + 1.5
-        PL1 = 35.3*np.log10(d3D) + 22.4 + 21.3*np.log10(self.fc)-0.3*(hut - 1.5)
+        PL1 = 35.3*np.log10(d3D) + 22.4 + 21.3*np.log10(self.frecRefGHz)-0.3*(hut - 1.5)
         PL2 = self.scenarioPlossUMiLOS
         ploss = np.maximun(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossUMaLOS(d3D,d2D):
+    def scenarioPlossUMaLOS(self,d3D,d2D):
         #Hay que diferenciar entre outdoor e indoor
         outdoor = True
         if outdoor:
@@ -355,12 +354,12 @@ class ThreeGPPMultipathChannelModel:
             Nf=np.ramdon.rand(4,8)
             n=np.ramdon.rand(1,Nf)
         hut= 3*(n-1) + 1.5
-        prima_dBP = (4*25.0*hut*self.fc) / self.clight
-        PL1 = 28.0 + 22.0*np.log10(d3D)+20.0*np.log10(self.fc)
-        PL2 = 28.0 + 40.0*np.log10(d3D)+20.0*np.log10(self.fc)-9.0*np.log10(np.exp(prima_dBP)+np.exp(25.0-bPos[2]))
+        prima_dBP = (4*25.0*hut*self.frecRefGHz) / self.clight
+        PL1 = 28.0 + 22.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
+        PL2 = 28.0 + 40.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.0*np.log10(np.exp(prima_dBP)+np.exp(25.0-bPos[2]))
         ploss = lambda d2D : PL1 if 10<=d2D<=prima_dBP else PL2
         return(ploss)
-    def scenarioPlossUMaNLOS(d3D,d2D):
+    def scenarioPlossUMaNLOS(self,d3D,d2D):
         outdoor = True
         if outdoor:
             n=1
@@ -368,81 +367,81 @@ class ThreeGPPMultipathChannelModel:
             Nf=np.ramdon.rand(4,8)
             n=np.ramdon.rand(1,Nf)
         hut= 3*(n-1) + 1.5
-        PL1 = 13.54 + 39.08*np.log10(d3D) + 20.0*np.log10(self.fc) - 0.6*(hut - 1.5)
+        PL1 = 13.54 + 39.08*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz) - 0.6*(hut - 1.5)
         PL2 = self.scenarioPlossUMaLOS
         ploss = np.maximun(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossRMaLOS(d3D,d2D):
-        dBp = (2*np.pi*35.0*1.5*self.fc)/self.clight
-        PL1= 20*np.log10((40.0*np.pi*d3D*self.fc)/3.0)+np.minimum(0.03*(5.0**1.72),10)*np.log10(d3D)-np.minimun(0.44*(5.0**1.72),14.77)+0.002*np.log10(5.0)*d3D
+    def scenarioPlossRMaLOS(self,d3D,d2D):
+        dBp = (2*np.pi*35.0*1.5*self.frecRefGHz)/self.clight
+        PL1= 20*np.log10((40.0*np.pi*d3D*self.frecRefGHz)/3.0)+np.minimum(0.03*(5.0**1.72),10)*np.log10(d3D)-np.minimun(0.44*(5.0**1.72),14.77)+0.002*np.log10(5.0)*d3D
         PL2= PL1 + 40.0*np.log10(d3D/dBp)
         ploss = lambda d2D : PL1 if 10<=d2D<=dBp else PL2
         return(ploss)
-    def scenarioPlossRMaNLOS(d3D,d2D):
-        PL1= 161.04 - 7.1*np.log10(20) - 7.5*np.log10(5) - (24.37 - 3.7*((5/35)**2))*np.log10(35) + (43.42 - 3.1*np.log10(35))*(np.log10(d3D)-3) + 20*np.log10(self.fc) - (3.2*np.log10(11.75*1.5))**2 - 4.97 
+    def scenarioPlossRMaNLOS(self,d3D,d2D):
+        PL1= 161.04 - 7.1*np.log10(20) - 7.5*np.log10(5) - (24.37 - 3.7*((5/35)**2))*np.log10(35) + (43.42 - 3.1*np.log10(35))*(np.log10(d3D)-3) + 20*np.log10(self.frecRefGHz) - (3.2*np.log10(11.75*1.5))**2 - 4.97 
         PL2= self.scenarioPlossRMaLOS
         ploss = np.maximun(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossInLOS(d3d,d2D):
-        ploss= 32.4 + 17.3*np.log10(d3D) + 20.0*np.log10(self.fc)
+    def scenarioPlossInLOS(self,d3d,d2D):
+        ploss= 32.4 + 17.3*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
         return(ploss)
-    def scenarioPlossInNLOS(d3D,d2D):
-        PL1= 38.3*np.log10(d3D) + 17.30 + 24.9*np.log10(self.fc)
+    def scenarioPlossInNLOS(self,d3D,d2D):
+        PL1= 38.3*np.log10(d3D) + 17.30 + 24.9*np.log10(self.frecRefGHz)
         PL2= self.scenarioPlossInLOS
         ploss= np.maximum(PL1,PL2)
         return(ploss)  
     
-    def ZSDUMiLOS(d3D,d2D):  
+    def ZSDUMiLOS(self,d3D,d2D):  
         zsd_mu = np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(rxPos[2]-txPos[2]) +0.83)
         zsd_sg = 0.35
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZSDUMaLOS(d3D,d2D):
+    def ZSDUMaLOS(self,d3D,d2D):
         zsd_mu = np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(rxPos[2]- 1.5) + 0.75)
         zsd_sg = 0.40
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd) 
-    def ZSDRMaLOS(d3D,d2D):
+    def ZSDRMaLOS(self,d3D,d2D):
         zsd_mu = np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(rxPos[2]- 1.5) + 0.22)
         zsd_sg = 0.34
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-   def ZSDInLOS(d3D,d2D):
-         zsd_mu = -1.43*np.log10(1 + self.fc) + 2.228
-         zsd_sg = 0.13*np.log10(1 + self.fc) + 0.30
-         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-         return(zsd)
+    def ZSDInLOS(self,d3D,d2D):
+        zsd_mu = -1.43*np.log10(1 + self.frecRefGHz) + 2.228
+        zsd_sg = 0.13*np.log10(1 + self.frecRefGHz) + 0.30
+        zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
+        return(zsd)
     
-   def ZSDUMiNLOS(d3D,d2D):     
-       zsd_mu = np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(rxPos[2]-txPos[2],0.0) +0.2)
-       zsd_sg = 0.35
-       zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-       return(zsd)
-   def ZODUMiNLOS(d2D):
-       zod_offset_mu = -10.0**(-1.5*np.log10(np.maximum(10,d2D)) + 3.3)
-       return(zod_offset_mu)
+    def ZSDUMiNLOS(self,d3D,d2D):     
+        zsd_mu = np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(rxPos[2]-txPos[2],0.0) +0.2)
+        zsd_sg = 0.35
+        zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
+        return(zsd)
+    def ZODUMiNLOS(self,d2D):
+        zod_offset_mu = -10.0**(-1.5*np.log10(np.maximum(10,d2D)) + 3.3)
+        return(zod_offset_mu)
        
-   def ZSDUMaNLOS(d3D,d2D):     
-        zsd_mu = np.maximun(-0.5, -2.1(d2D/1000.0) - 0.01*(rxPos[2] - 1.5) + 0.9)
+    def ZSDUMaNLOS(self,d3D,d2D):     
+        zsd_mu = np.maximun(-0.5, -2.1*(d2D/1000.0) - 0.01*(rxPos[2] - 1.5) + 0.9)
         zsd_sg = 0.49
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZODUMaNLOS(d2D):
-        zod_offset_mu= 7.66*np.log10(self.fc) - 5.96 - 10**((0.208*np.log10(self.fc) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.fc) + 2.03 - 0.07*(rxPos[2] - 1.5))
+    def ZODUMaNLOS(self,d2D):
+        zod_offset_mu= 7.66*np.log10(self.frecRefGHz) - 5.96 - 10**((0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(rxPos[2] - 1.5))
         return(zod_offset_mu)
       
-    def ZSDRMaNLOS(d3D,d2D):     
+    def ZSDRMaNLOS(self,d3D,d2D):     
         zsd_mu = np.maximum(-1, -0.19*(d2D/1000) - 0.01*(rxPs[2] - 1.5) + 0.28)
         zsd_sg = 0.30
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZODRMaNLOS(d2D):
+    def ZODRMaNLOS(self,d2D):
         zod_offset_mu= np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D)
         return(zod_offset_mu)
  
-    def ZSDInNLOS(d3D,d2D):     
+    def ZSDInNLOS(self,d3D,d2D):     
         zsd_mu = 1.08
         zsd_sg = 0.36
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
@@ -457,9 +456,9 @@ class ThreeGPPMultipathChannelModel:
         d2D=np.sqrt((rxPos[0]-txPos[0])**2.0+(rxPos[1]-txPos[1])**2.0)
         pLos=self.senarioLosProb(d2D)
         los = (np.random.rand(1) <= pLos)
-        vIndep=np.random.randn(1,7)
-        vDepLOS=self.senarioParamsLOS.Cc@vIndep
-        vDepNLOS=self.senarioParamsNLOS.Cc@vIndep
+        vIndep=np.random.randn(7,1)
+        vDepLOS=self.scenarioParamsLOS.Cc@vIndep
+        vDepNLOS=self.scenarioParamsNLOS.Cc@vIndep
         if los:
             ds = 10.0**( self.scenarioParamsLOS.ds_mu + self.scenarioParamsLOS.ds_sg * vDepLOS[2] )
             asa = min( 10.0**( self.scenarioParamsLOS.asa_mu + self.scenarioParamsLOS.asa_sg * vDepLOS[4] ), 104.0)
@@ -469,7 +468,7 @@ class ThreeGPPMultipathChannelModel:
             zod_offset_mu = 0
             K= self.scenarioParamsLOS.K_mu
             sf = self.scenarioParamsNLOS.sf_sg*vDepLOS[0]
-            PLdB = self.pLoss
+            PLdB = self.scenarioParamsLOS.pLossFun(d3D,d2D)
             PL=PLdB+sf
         else:
             ds = 10.0**( self.scenarioParamsNLOS.ds_mu + self.scenarioParamsNLOS.ds_sg * vDepNLOS[2] )
@@ -481,7 +480,7 @@ class ThreeGPPMultipathChannelModel:
             K= self.scenarioParamsNLOS.K_mu
             sf = self.scenarioParamsNLOS.sf_sg*vDepNLOS[0]
             sflos=self.scenarioParamsLOS.sf_sg*vDepLOS[0]
-            PLdB = self.pLoss
+            PLdB = self.scenarioParamsNLOS.pLossFun(d3D,d2D)
             PL=np.maximum(PLdB + sf,PLdB + sflos)
         TgridXIndex= txPos[0] // self.corrDistance
         TgridYIndex= txPos[1] // self.corrDistance 
@@ -523,9 +522,9 @@ class ThreeGPPMultipathChannelModel:
             phiAOAprima = ((2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP)))/Cphi)
             Y=np.random.rand(0,(ASA/7)**2)
             X=np.random.rand(-1,1)
-            phiAOA = (X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1]#- phiLOSAOA) #Preguntar si en la teoria empieza en 0 o 1
+            phiAOA = (X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1])#- phiLOSAOA) #Preguntar si en la teoria empieza en 0 o 1
             phiAOA = phiAOA + self.scenarioParamsLOS.casa*alpham[M] #hay que pasar M? phiAOD = phiaAOA + self.scenarioParamsLOS.casa*alpham[M]
-            Cteta = CtetaNLOS[N]*(1.3086 + 0.0339*K −0.0077*(K**2) + 0.0002*(K**3))
+            Cteta = CtetaNLOS[N]*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
             tetaZOAprima = -((ZSA*np.log(powC/maxP)) / Cteta)
             tetaZOA=(X*tetaZOAprima + Y) - (X[1]*tetaZOAprima[1] + Y[1])#- tetaLOSzOA)
         else:
