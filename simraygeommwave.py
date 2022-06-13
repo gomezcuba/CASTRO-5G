@@ -74,7 +74,7 @@ Nmaxpaths=400
 Nsims=100
 
 EST_CHANS=False
-EST_PLOT=True
+EST_PLOT=False
 Nd=8
 Na=8
 Nt=64
@@ -89,8 +89,8 @@ sigma2=.01
 MATCH_CHANS=False
 #MATCH_PLOT=True
 
-EST_LOCS=True
-PLOT_LOCS=False
+EST_LOCS=False
+PLOT_LOCS=True
 
 t_total_run_init=time.time()
 fig_ctr=0
@@ -363,7 +363,7 @@ if EST_PLOT:
 
 #REFINAMENTO
 #AoD_ref = sage(AOD_est)
-AoD_ref=AoD_est
+#AoD_ref=AoD_est
 
 #CALCULO POSICIOM CON REFINAMENTO EXIP
 
@@ -449,21 +449,21 @@ if MATCH_CHANS:
 if EST_LOCS:
     
     configTable=[
-            #location method, user phi0 coarse hint initialization
-            ('CS','bisec','',':','*','b'),
-            ('CS','fsolve','No Hint',':','x','g'),
-            ('CS','fsolve_linear','No hint','--','s','g'),
-            ('CS','fsolve','Hint',':','+','m'),
-            ('CS','fsolve_linear','Hint','--','d','m'),
-            ('CS','oracle','Pure','-','p','r'),            
-            ('CS','oracle','Hint','-.','p','y'),            
-            ('true','bisec','',':','*','b'),
-            ('true','fsolve','No Hint',':','x','g'),
-            ('true','fsolve_linear','No hint','--','s','g'),
-            ('true','fsolve','Hint',':','+','m'),
-            ('true','fsolve_linear','Hint','--','d','m'),
-            ('true','oracle','Pure','-','p','r'),            
-            ('true','oracle','Hint','-.','p','y'),            
+            #multipath data source, location method, user phi0 coarse hint initialization
+            ('CS','bisec',''),
+            ('CS','fsolve','No Hint'),
+#            ('CS','fsolve_linear','No hint'),
+            ('CS','fsolve','Hint'),
+            ('CS','fsolve_linear','Hint'),
+            ('CS','oracle','Pure'),            
+            ('CS','oracle','Hint'),            
+            ('true','bisec',''),
+            ('true','fsolve','No Hint'),
+#            ('true','fsolve_linear','No hint'),
+            ('true','fsolve','Hint'),
+            ('true','fsolve_linear','Hint'),
+            ('true','oracle','Pure'),            
+            ('true','oracle','Hint'),            
     ]
     Nconfigs=len(configTable)
     
@@ -484,11 +484,10 @@ if EST_LOCS:
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
         t_start_all[ncfg]=time.time()
-        bar = Bar("%s %s %s"%(cfg[0:3]), max=Nsims)
+        bar = Bar("%s %s %s"%(cfg), max=Nsims)
         bar.check_tty = False
         for nsim in range(Nsims):
             for Nstimpaths in range(3, NpathsRetrieved[nsim] ):
-                print(Nstimpaths)
                 if cfg[0]=='CS':
                     if cfg[1]=='oracle':
                         if cfg[2]=='Hint':
@@ -590,11 +589,30 @@ if PLOT_LOCS:
     fig_ctr+=1
     plt.figure(fig_ctr)
     error_dist=np.sqrt( (x0_est - x0)**2 + (y0_est - y0)**2 )
+    error_dist[np.isnan(error_dist)]=np.inf
     npathbest=np.argmin(error_dist,axis=1)
     error_min=np.min(error_dist,axis=1)
+    
+    configTablePlot=[
+            (':','x','c'),
+            (':','+','y'),
+#            (':','*','k'),
+            ('-.','+','g'),
+            ('-.','*','b'),
+            ('-.','v','r'),            
+            ('-.','^','m'),            
+            ('--','s','c'),
+            ('--','d','y'),
+#            ('--','p','k'),
+            ('-','d','g'),
+            ('-','p','b'),
+            ('-','>','r'),            
+            ('-','<','m'),            
+    ]
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
-        plt.semilogx(np.sort(error_min[ncfg,:]),np.linspace(0,1,Nsims),cfg[3]+cfg[5])
+        (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
+        plt.semilogx(np.sort(error_min[ncfg,:]),np.linspace(0,1,Nsims),linestyle=lncfg,color=clcfg)
     
     x0_guess=np.random.rand(Nsims)*100
     y0_guess=np.random.rand(Nsims)*100-50
@@ -602,24 +620,29 @@ if PLOT_LOCS:
     error_guess=np.sqrt(np.abs(x0-x0_guess)**2+np.abs(y0-y0_guess))
     plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,error_guess.size),':k')
     plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
-    1
-    fig_ctr+=1
-    plt.figure(fig_ctr)
-    labstrFilter=["bisec ", "fsolve linear No hint", "fsolve linear Hint", "oracle Hint"]
-    for ncfg in range(Nconfigs):
-        cfg = configTable[ncfg]
-        labstr = "%s %s %s"%(cfg[0],cfg[1].replace("_"," "),cfg[2])
-        if labstr in labstrFilter:
-            pcatch = plt.plot(np.vstack((x0,x0_est[ncfg,npathbest[ncfg,:],range(Nsims)])),np.vstack((y0,y0_est[ncfg,npathbest[ncfg,:],range(Nsims)])),':'+cfg[4]+cfg[5], mfc='none', label=labstr)
-            plt.setp(pcatch[1:],label="_")
-
-    plt.plot(x0,y0,'ok')
-    plt.axis([0, 100, -50, 50])
-    plt.legend()
+    plt.xlabel("Position error (m)")
+    plt.ylabel("C.D.F.")
+    plt.title("Assuming optimum number of paths")
     
     fig_ctr+=1
     plt.figure(fig_ctr)
-    labstrFilter=["CS bisec ", "CS fsolve linear No hint", "CS fsolve linear Hint"]
+    labstrFilter=["CS fsolve linear Hint", "true fsolve linear Hint", "CS oracle Hint", "true oracle Hint"]
+    plt.plot(x0,y0,'ok')
+    for ncfg in range(Nconfigs):
+        cfg = configTable[ncfg]
+        (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
+        labstr = "%s %s %s"%(cfg[0],cfg[1].replace("_"," "),cfg[2])
+        if labstr in labstrFilter:
+            pcatch = plt.plot(np.vstack((x0,x0_est[ncfg,npathbest[ncfg,:],range(Nsims)])),np.vstack((y0,y0_est[ncfg,npathbest[ncfg,:],range(Nsims)])),linestyle=':',color=clcfg,marker=mkcfg, mfc='none', label=labstr)
+            plt.setp(pcatch[1:],label="_")
+
+    plt.axis([0, 100, -50, 50])
+    plt.legend()
+    plt.title("All device positions and their error drift")
+    
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    labstrFilter=["CS bisec ", "CS fsolve No hint", "CS fsolve Hint", "CS fsolve linear Hint"]
     phi0_err = np.minimum(
             np.mod(np.abs(phi0-phi0_est),np.pi*2),
             np.mod(np.abs(phi0+phi0_est-2*np.pi),np.pi*2)
@@ -630,12 +653,36 @@ if PLOT_LOCS:
         phi0_eatmin[ncfg,:]=phi0_err[ncfg,npathbest[ncfg,:],range(Nsims)]
         labstr = "%s %s %s"%(cfg[0],cfg[1].replace("_"," "),cfg[2])
         if labstr in labstrFilter:
-            plt.loglog(phi0_eatmin[ncfg,:],error_min[ncfg,:],cfg[4]+cfg[5])
+            (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
+            plt.loglog(phi0_eatmin[ncfg,:],error_min[ncfg,:],linestyle='',marker=mkcfg,color=clcfg)
+            plt.loglog(phi0_err[ncfg,:,:].reshape(-1),error_dist[ncfg,:,:].reshape(-1),linestyle='',marker=mkcfg,color='r')
     plt.axis([0,np.pi,0,150])
     plt.legend(labstrFilter)
+    plt.xlabel("$\\phi_o$ error (rad)")
+    plt.ylabel("Position error (m)")
+      
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    for ncfg in range(Nconfigs):
+        cfg = configTable[ncfg]
+        (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
+        plt.plot(npathbest[ncfg,:],error_min[ncfg,:],linestyle='',marker=mkcfg,color=clcfg)
+    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+    plt.xlabel("Npaths at min error")
+    plt.ylabel("Location error")
+    plt.axis([0,NpathsRetrievedMax,0,50])
     
-#        return 37-np.argmax(np.abs(phi0_est[4,::-1,:]-phi0_coarse)<2*np.pi/32,axis=0)
-    
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    for ncfg in range(Nconfigs):
+        cfg = configTable[ncfg]
+        (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
+        plt.plot(NpathsRetrieved,error_min[ncfg,:],linestyle='',marker=mkcfg,color=clcfg)
+    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+    plt.xlabel("Npaths retrieved total")
+    plt.ylabel("Location error")
+    plt.axis([0,NpathsRetrievedMax,0,50])
+
 #       fig_ctr+=1    
 #    plt.figure(fig_ctr)
 #    for perct in np.arange(0.64,.96,0.02):
@@ -662,22 +709,9 @@ if PLOT_LOCS:
         
     #using the above commented code we determined that 0.8 and 0.25 are the best parameters for the power methods
     
-    
+############################
+#define some simple methods to find how may paths have how much noise/power    
 
-      
-    fig_ctr+=1
-    plt.figure(fig_ctr)
-    plt.plot(npathbest.T,error_min.T,'x')
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
-    plt.xlabel("Npaths min error")
-    plt.ylabel("Location error")
-    
-    fig_ctr+=1
-    plt.figure(fig_ctr)
-    plt.plot(NpathsRetrieved.T,error_min.T,'x')
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
-    plt.xlabel("Npaths retrieved in CS")
-    plt.ylabel("Location error")
     
     def noiseThreshold(coef_est,param):
         return np.sum(np.abs(coef_est)**2>param[0],axis=0)
@@ -693,71 +727,11 @@ if PLOT_LOCS:
         return NpathsRetrieved
     def usePhi0Err(coef_est,param):
         return np.sum(np.abs(phi0_est[4,:,:]-phi0_coarse)<2*np.pi/32,axis=0)
+                      
+                      
+############################
+#define a much more advanced method to determine the FIM lower bound to noise vs number of paths
     
-    lMethods=[(noiseThreshold,[sigma2],'b','Nth'),
-             (boostedNoiseThreshold,[sigma2],'c','Nbo'),
-             (percentTotPowerThreshold,[.8],'r','Ptp'),
-             (percentMaxPowerThreshold,[.25],'m','Pmp'),
-             (usePhi0Err,[.8],'g','P0'),
-             (useAllThreshold,[],'y','All')
-            ]
-    Nmethods=len(lMethods)
-    fig_ctr+=1    
-    fig_num_bar=fig_ctr
-    fig_ctr+=1    
-    fig_num_cdf=fig_ctr
-    for nmethod in range(Nmethods):
-        method=lMethods[nmethod]
-        npaths_method=np.maximum(np.minimum( method[0](coef_est,method[1])-3,NpathsRetrievedMax-4),0)
-        CovVsN_method=np.cov(npathbest,npaths_method)
-        CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]        
-        plt.figure(fig_num_bar)        
-        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[2])
-        
-        plt.figure(fig_num_cdf)  
-        plt.semilogx(np.sort(error_dist[4,npaths_method,range(Nsims)]),np.linspace(0,1,Nsims),'--x',color=method[2])
-        plt.semilogx(np.sort(error_dist[5,npaths_method,range(Nsims)]),np.linspace(0,1,Nsims),'-.*',color=method[2])
-                
-#        fig_ctr+=1
-#        plt.figure(fig_ctr)
-#        plt.plot(npaths_method,npathbest.T,'x')
-#        plt.legend(["%s %s"%(x[0].replace("_"," "),x[1]) for x in configTable])
-        fig_ctr+=1
-        plt.figure(fig_ctr)
-        plt.plot(npaths_method,error_min.T,'x')
-        plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
-   
-    
-    npaths_method=np.maximum(np.minimum( usePhi0Err(coef_est,[.8])-3,36),0)
-    fig_ctr+=1
-    plt.figure(fig_ctr)
-    for ncfg in range(Nconfigs):
-        cfg = configTable[ncfg]
-        er_data=error_dist[ncfg,npaths_method,np.arange(Nsims)]
-        plt.semilogx(np.sort(er_data),np.linspace(0,1,Nsims),cfg[3]+cfg[5])
-        print("""
-Scheme %s error...
-          Mean: %.3f
-        Median: %.3f
-    Worst 25-p: %.3f
-          10-p: %.3f
-           5-p: %.3f
-              """%(
-                  cfg[0]+" "+cfg[1]+" "+cfg[2],
-                  np.mean(er_data),
-                  np.median(er_data),                 
-                  np.percentile(er_data,75),       
-                  np.percentile(er_data,90),         
-                  np.percentile(er_data,95),         
-                  ))
-    
-    x0_guess=np.random.rand(Nsims)*100
-    y0_guess=np.random.rand(Nsims)*100-50
-    
-    plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,error_guess.size),':k')
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
-    
-
     def beta(w,ang):
         Nant=w.shape[-1]
         return(w@np.exp(-1j*np.pi*np.arange(Nant)[:,np.newaxis]*np.sin(ang)))
@@ -826,27 +800,31 @@ Scheme %s error...
         Jparam_notheta=getFIMYToParam(sigma2,coef,delay,AoD,AoA,w,v,('delay','AoA'))
         T=getTParamToLoc(p0,pis,('delay','AoA'))
         Jloc = T.conj().T @ Jparam_notheta @ T
-        return(Jloc)
+        return(Jloc)    
     
-    p0 = np.stack((x0,y0),axis=-1)  
-    posMSE=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))    
-    for nsim in range(Nsims):
-        for npath in range(3,NpathsRetrieved[nsim]):
-    #    npath=npathbest[5,nsim]+3
-            J2=getFIMYToLoc(p0[nsim,:], refPos[0:npath,nsim,:] , sigma2,coefs[0:npath,nsim],dels[0:npath,nsim],AoD[0:npath,nsim],AoA[0:npath,nsim],wall[nsim],vall[nsim])
-            posMSE[nsim,npath-3]=np.trace(np.linalg.inv(J2))
-        print("Sim %d paths %d pos J MSE: %f"%(nsim,np.argmin(posMSE[nsim,:]),np.min(posMSE[nsim,:])))
-    p0 = np.stack((x0,y0),axis=-1)  
-    posMSE_est=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))    
     
-    p0_est = np.stack((x0_est,y0_est),axis=-1) 
-    pAll_est = np.stack((x_est,y_est),axis=-1)   
-    nmethod=5
-    posMSE_est=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))    
-    for nsim in range(Nsims):
-        for npath in range(3,NpathsRetrieved[nsim]):
-    #    npath=npathbest[5,nsim]+3
-            J2_est=getFIMYToLoc(
+    def useFIMErr(coef_est,param):
+        posMSE=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))
+        bar = Bar("FIM finding best num. paths", max=Nsims)
+        bar.check_tty = False
+        for nsim in range(Nsims):
+            for npath in range(3,NpathsRetrieved[nsim]):
+                J2=getFIMYToLoc(p0[nsim,:], refPos[0:npath,nsim,:] , sigma2,coefs[0:npath,nsim],dels[0:npath,nsim],AoD[0:npath,nsim],AoA[0:npath,nsim],wall[nsim],vall[nsim])
+                posMSE[nsim,npath-3]=np.trace(np.linalg.inv(J2))
+            bar.next()
+        bar.finish()
+        return np.argmin(posMSE,axis=1)+3
+    
+    def useEstFIMErr(coef_est,param):            
+#        nmethod=5
+        p0_est = np.stack((x0_est,y0_est),axis=-1) 
+        pAll_est = np.stack((x_est,y_est),axis=-1)   
+        posMSE_est=np.inf*np.ones((Nsims,NpathsRetrievedMax-3)) 
+        bar = Bar("Estimated FIM finding best num. paths", max=Nsims)
+        bar.check_tty = False 
+        for nsim in range(Nsims):
+            for npath in range(3,NpathsRetrieved[nsim]):
+                 J2_est=getFIMYToLoc(
                     p0_est[nmethod,npath-3,nsim,:], 
                     pAll_est[nmethod,npath-3,0:npath,nsim,:], 
                     sigma2,
@@ -856,52 +834,141 @@ Scheme %s error...
                     AoA_est[0:npath,nsim],
                     wall[nsim],
                     vall[nsim])
-            posMSE_est[nsim,npath-3]=np.trace(np.linalg.inv(J2_est))
-        print("Sim %d paths %d pos J MSE est: %f"%(nsim,np.argmin(posMSE_est[nsim,:]),np.min(posMSE_est[nsim,:])))
+                 posMSE_est[nsim,npath-3]=np.trace(np.linalg.inv(J2_est))
+            bar.next()
+        bar.finish()
+        return np.argmin(posMSE_est,axis=1)+3
+   
+    p0 = np.stack((x0,y0),axis=-1)  
+    p0_est = np.stack((x0_est,y0_est),axis=-1) 
+    pAll_est = np.stack((x_est,y_est),axis=-1)     
+  
+    lMethods=[(noiseThreshold,[sigma2],'b','Nth'),
+             (boostedNoiseThreshold,[sigma2],'c','Nbo'),
+             (percentTotPowerThreshold,[.8],'r','Ptp'),
+             (percentMaxPowerThreshold,[.25],'m','Pmp'),
+             (usePhi0Err,[.8],'g','P0'),
+             (useAllThreshold,[],'y','All'),
+             (useFIMErr,[],'k','FIM'),
+             (useEstFIMErr,[],'y','eFIM'),
+            ]
+    Nmethods=len(lMethods)
     
-#    bestNposMSE=np.argmin(posMSE,axis=1)
-    bestNposMSE=np.argmin(posMSE_est,axis=1)
+    Ncfglinhint = np.argmax(np.all(configTable==('CS','fsolve_linear','Hint'),axis=1))
+    Ncfgoracle = np.argmax(np.all(configTable==('CS','oracle','Pure'),axis=1))
     
-    CovVsN_method=np.cov(npathbest,bestNposMSE)
-    CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]        
-    plt.figure(fig_num_bar)        
-    plt.bar(np.arange(Nconfigs)+Nmethods*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[2])   
-    plt.legend(["%s"%(x[3]) for x in lMethods+[(0,0,0,'Jloc')]])
+    fig_ctr+=1    
+    fig_num_bar=fig_ctr
+    fig_ctr+=1    
+    fig_num_cdf=fig_ctr
+    er_data_pctls=np.zeros((Nmethods,Nconfigs,5))
+    for nmethod in range(Nmethods):
+        method=lMethods[nmethod]
+        npaths_method=np.maximum(np.minimum( method[0](coef_est,method[1])-3,NpathsRetrievedMax-4),0)
+        CovVsN_method=np.cov(npathbest,npaths_method)
+        CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]        
+        plt.figure(fig_num_bar)        
+        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[2])
+        
+        plt.figure(fig_num_cdf)  
+        plt.semilogx(np.sort(error_dist[Ncfglinhint,npaths_method,range(Nsims)]),np.linspace(0,1,Nsims),'-x',color=method[2])
+        plt.semilogx(np.sort(error_dist[Ncfgoracle,npaths_method,range(Nsims)]),np.linspace(0,1,Nsims),'--s',color=method[2])
+                
+#        fig_ctr+=1
+#        plt.figure(fig_ctr)
+#        plt.plot(npaths_method,npathbest.T,'x')
+#        plt.legend(["%s %s"%(x[0].replace("_"," "),x[1]) for x in configTable])
+#        fig_ctr+=1
+#        plt.figure(fig_ctr)
+#        for ncfg in range(Nconfigs):
+#            cfg = configTable[ncfg]
+#            (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
+#            plt.plot(NpathsRetrieved, error_dist[ncfg,npaths_method,range(Nsims)],linestyle='',marker=mkcfg,color=clcfg)
+#        plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+#        plt.axis([0,NpathsRetrievedMax,0,50])
+#        plt.xlabel("npaths selected method")
+#        plt.ylabel("Location error")
+#        plt.title("method = %s"%method[3])
+        
+        
+        fig_ctr+=1
+        plt.figure(fig_ctr)
+        for ncfg in range(Nconfigs):
+            cfg = configTable[ncfg]
+            (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
+            er_data=error_dist[ncfg,npaths_method,np.arange(Nsims)]
+#            plt.semilogx(np.sort(er_data),np.linspace(0,1,Nsims),linestyle=lncfg,color=clcfg)
+#            print("""
+#    Criterion %s, Scheme %s error...
+#              Mean: %.3f
+#            Median: %.3f
+#        Worst 25-p: %.3f
+#              10-p: %.3f
+#               5-p: %.3f
+#                  """%(
+#                      method[3],
+#                      cfg[0]+" "+cfg[1]+" "+cfg[2],
+#                      np.mean(er_data),
+#                      np.median(er_data),                 
+#                      np.percentile(er_data,75),
+#                      np.percentile(er_data,90),
+#                      np.percentile(er_data,95),
+#                      ))
+            er_data_pctls[nmethod,ncfg,:]=[
+                      np.mean(er_data),
+                      np.median(er_data),                 
+                      np.percentile(er_data,75),
+                      np.percentile(er_data,90),
+                      np.percentile(er_data,95),
+                      ]
+#        plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,Nsims),':k')        
+#        plt.title("Assuming %s bound min number of paths"%method[3])
+#        plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
+#        plt.xlabel("Position error (m)")
+#        plt.ylabel("C.D.F.")
+        
+    plt.figure(fig_num_bar)
+    plt.legend([x[3] for x in lMethods])
+    plt.xlabel('config')
+    plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable],rotation=45)
+    plt.ylabel('Corr coefficient')
+#    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+   
+    
+#    npaths_method=np.maximum(np.minimum( usePhi0Err(coef_est,[.8])-3,36),0)
+#    fig_ctr+=1
+#    plt.figure(fig_ctr)
+#    for ncfg in range(Nconfigs):
+#        cfg = configTable[ncfg]
+#        er_data=error_dist[ncfg,npaths_method,np.arange(Nsims)]
+#        plt.semilogx(np.sort(er_data),np.linspace(0,1,Nsims),linestyle=lncfg,color=clcfg)
+#        print("""
+#Scheme %s error...
+#          Mean: %.3f
+#        Median: %.3f
+#    Worst 25-p: %.3f
+#          10-p: %.3f
+#           5-p: %.3f
+#              """%(
+#                  cfg[0]+" "+cfg[1]+" "+cfg[2],
+#                  np.mean(er_data),
+#                  np.median(er_data),                 
+#                  np.percentile(er_data,75),       
+#                  np.percentile(er_data,90),         
+#                  np.percentile(er_data,95),         
+#                  ))
     plt.figure(fig_num_cdf)  
-    plt.semilogx(np.sort(error_dist[4,bestNposMSE,range(Nsims)]),np.linspace(0,1,Nsims),'--x',color='k')
-    plt.semilogx(np.sort(error_dist[5,bestNposMSE,range(Nsims)]),np.linspace(0,1,Nsims),'-.*',color='k') 
-    plt.semilogx(np.sort(error_min[4,:]),np.linspace(0,1,Nsims),'--sk')
-    plt.semilogx(np.sort(error_min[5,:]),np.linspace(0,1,Nsims),'-.ok')
+    plt.semilogx(np.sort(error_min[Ncfglinhint,:]),np.linspace(0,1,Nsims),'-.*k')
+    plt.semilogx(np.sort(error_min[Ncfgoracle,:]),np.linspace(0,1,Nsims),'-.ok')
     plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,Nsims),':k')
-    plt.legend(["%s %s"%(y,x[3]) for x in lMethods+[(0,0,0,'Jloc')]+[(0,0,0,'Min')] for y in ['Linear','Oracle']]+['Guess'])
+    plt.legend(["%s %s"%(y,x[3]) for x in lMethods+[(0,0,0,'Min')] for y in ['Linear','Oracle']]+['Guess'])
+    plt.xlabel("Position error (m)")
+    plt.ylabel("C.D.F.")
+   
+        
+       
+    npaths_method=np.maximum(np.minimum( useEstFIMErr(coef_est,[.8])-3,36),0)
     
-    fig_ctr+=1
-    plt.figure(fig_ctr)
-    for ncfg in range(Nconfigs):
-        cfg = configTable[ncfg]
-        er_data=error_dist[ncfg,bestNposMSE,np.arange(Nsims)]
-        plt.semilogx(np.sort(er_data),np.linspace(0,1,Nsims),cfg[3]+cfg[5])
-        print("""
-Scheme %s error...
-          Mean: %.3f
-        Median: %.3f
-    Worst 25-p: %.3f
-          10-p: %.3f
-           5-p: %.3f
-              """%(
-                  cfg[0]+" "+cfg[1]+" "+cfg[2],
-                  np.mean(er_data),
-                  np.median(er_data),                 
-                  np.percentile(er_data,75),       
-                  np.percentile(er_data,90),         
-                  np.percentile(er_data,95),         
-                  ))
-    
-    x0_guess=np.random.rand(Nsims)*100
-    y0_guess=np.random.rand(Nsims)*100-50
-    
-    plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,error_guess.size),':k')
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
     
     #NAnglenoises=11
     #t_start_ba= time.time()
