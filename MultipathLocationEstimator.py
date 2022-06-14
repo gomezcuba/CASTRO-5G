@@ -102,6 +102,7 @@ class MultipathLocationEstimator:
     
     def solvePhi0ForAllPaths_linear(self,AoD,AoA,dels,init_phi0):
         res=opt.root(self.feval_wrapper_AllPathsLinear_drop1,x0=init_phi0,args=(AoD,AoA,dels),method=self.RootMethod)
+#        print(res)
         if not res.success:
 #            print("Attempting to correct initialization problem")
             niter=0 
@@ -110,10 +111,10 @@ class MultipathLocationEstimator:
                 niter+=1
 #            print("Final Niter %d"%niter)
         if res.success:
-            return (res.x)
+            return (res.x,res.cov_x)
         else:
             print("ERROR: Phi0 root not found")
-            return (np.array(0.0))
+            return (np.array(0.0),np.inf)
     
     def bisectPhi0ForAllPaths(self,AoD,AoA,dels,Npoint=None,Niter=None,Ndiv=None):        
         philow=0
@@ -154,10 +155,10 @@ class MultipathLocationEstimator:
                 niter+=1
 #            print("Final Niter %d"%niter)
         if res.success:
-            return (res.x)
+            return (res.x,res.cov_x)
         else:
             print("ERROR: Phi0 root not found")
-            return (np.array(0.0))
+            return (np.array(0.0),np.inf)
    
     def computeAllLocationsFromPaths(self,AoD,AoA,dels,method='fsolve',hint_phi0=None):        
         if (hint_phi0==None):
@@ -166,11 +167,12 @@ class MultipathLocationEstimator:
         else:
             init_phi0=hint_phi0
         if method=='fsolve':
-            phi0_est=self.solvePhi0ForAllPaths(AoD,AoA,dels,init_phi0)
+            (phi0_est,cov_phi0)=self.solvePhi0ForAllPaths(AoD,AoA,dels,init_phi0)
         elif method=='bisec':
             phi0_est=self.bisectPhi0ForAllPaths(AoD,AoA,dels)
+            cov_phi0=np.pi/self.NLinePointsPerIteration
         elif method=='fsolve_linear':
-            phi0_est=self.solvePhi0ForAllPaths_linear(AoD,AoA,dels,init_phi0)
+            (phi0_est,cov_phi0)=self.solvePhi0ForAllPaths_linear(AoD,AoA,dels,init_phi0)
         else:
             print("unsupported method")
             return(None)
@@ -182,4 +184,4 @@ class MultipathLocationEstimator:
             x0=np.mean(x0all,1)
             y0=np.mean(y0all,1)
             (vx,vy)= self.computeAllPathsWithParams(AoD,AoA,dels,x0,y0,phi0_est)
-        return(phi0_est,x0,y0,vx,vy)
+        return(phi0_est,x0,y0,vx,vy,cov_phi0)

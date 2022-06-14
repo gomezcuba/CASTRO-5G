@@ -450,17 +450,17 @@ if EST_LOCS:
     
     configTable=[
             #multipath data source, location method, user phi0 coarse hint initialization
-            ('CS','bisec',''),
-            ('CS','fsolve','No Hint'),
+#            ('CS','bisec',''),
+#            ('CS','fsolve','No Hint'),
 #            ('CS','fsolve_linear','No hint'),
-            ('CS','fsolve','Hint'),
+#            ('CS','fsolve','Hint'),
             ('CS','fsolve_linear','Hint'),
             ('CS','oracle','Pure'),            
             ('CS','oracle','Hint'),            
-            ('true','bisec',''),
-            ('true','fsolve','No Hint'),
+#            ('true','bisec',''),
+#            ('true','fsolve','No Hint'),
 #            ('true','fsolve_linear','No hint'),
-            ('true','fsolve','Hint'),
+#            ('true','fsolve','Hint'),
             ('true','fsolve_linear','Hint'),
             ('true','oracle','Pure'),            
             ('true','oracle','Hint'),            
@@ -481,6 +481,7 @@ if EST_LOCS:
     x_est=np.zeros((Nconfigs,NpathsRetrievedMax-3,NpathsRetrievedMax,Nsims))
     y_est=np.zeros((Nconfigs,NpathsRetrievedMax-3,NpathsRetrievedMax,Nsims))
     phi0_coarse=np.round(phi0*32/np.pi/2)*np.pi*2/32
+    phi0_cov=np.zeros((Nconfigs,NpathsRetrievedMax-3,Nsims))
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
         t_start_all[ncfg]=time.time()
@@ -512,7 +513,8 @@ if EST_LOCS:
                                     x0_est[ncfg,Nstimpaths-3,nsim],
                                     y0_est[ncfg,Nstimpaths-3,nsim],
                                     x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
-                                    y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim]
+                                    y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
+                                    phi0_cov[ncfg,Nstimpaths-3,nsim]
                             ) = loc.computeAllLocationsFromPaths(
                                     AoD_est[0:Nstimpaths,nsim],
                                     AoA_est[0:Nstimpaths,nsim],
@@ -543,7 +545,8 @@ if EST_LOCS:
                                     x0_est[ncfg,Nstimpaths-3,nsim],
                                     y0_est[ncfg,Nstimpaths-3,nsim],
                                     x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
-                                    y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim]
+                                    y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
+                                    phi0_cov[ncfg,Nstimpaths-3,nsim]
                             ) = loc.computeAllLocationsFromPaths(
                                     AoD[0:Nstimpaths,nsim],
                                     AoA[0:Nstimpaths,nsim],
@@ -568,6 +571,7 @@ if EST_LOCS:
                 x_est=x_est,
                 y_est=y_est,
                 configTable=configTable)
+        configTable=np.array(configTable)
 else:
     data=np.load('./mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims))
     t_start_all=data["t_start_all"]
@@ -741,9 +745,9 @@ if PLOT_LOCS:
     def diffYtoParamGeneral(coef,delay,AoD,AoA,w,v,dAxis='None'):
         K=w.shape[0]
         if dAxis=='delay':
-            tau_term=-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] *np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
+            tau_term=-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] *np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]*1e9/Nt/Ts)
         else:
-            tau_term=np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
+            tau_term=np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]*1e9/Nt/Ts)
         if dAxis=='AoD':
             theta_term=d_beta( np.transpose(v,(0,1,3,2)) ,AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
         else:
@@ -1007,5 +1011,8 @@ if PLOT_LOCS:
 #    fig_ctr+=1
 #    plt.figure(fig_ctr)
     #plt.semilogx(np.sort(error_root,axis=1).T,np.tile(np.arange(Nsims)/Nsims,[NAnglenoises,1]).T)
+    
+
+(phi0_aux, x0_aux, y0_aux, x_aux, y_aux) = loc.computeAllLocationsFromPaths( AoD_est[0:10,0], AoA_est[0:10,0], dels_est[0:10,0],method='fsolve_linear',hint_phi0= phi0_coarse[0])
     
 print("Total run time %d seconds"%(time.time()-t_total_run_init))
