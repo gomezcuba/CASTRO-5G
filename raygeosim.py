@@ -59,7 +59,7 @@ y_b=np.zeros((Npath,Nsims))
 bar = Bar("bisec", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],x_b[:,nsim],y_b[:,nsim])= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='bisec')
+    (phi0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],x_b[:,nsim],y_b[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='bisec')
     bar.next()
 bar.finish()
 error_bisec=np.sqrt(np.abs(x0-x0_b)**2+np.abs(y0-y0_b))
@@ -76,7 +76,7 @@ y_r=np.zeros((Npath,Nsims))
 bar = Bar("froot", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],x_r[:,nsim],y_r[:,nsim])= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve')
+    (phi0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],x_r[:,nsim],y_r[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve')
     bar.next()
 bar.finish()
 error_root=np.sqrt(np.abs(x0-x0_r)**2+np.abs(y0-y0_r))
@@ -94,7 +94,7 @@ y_r2=np.zeros((Npath,Nsims))
 bar = Bar("froot_linear", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_r2[:,nsim],x0_r2[:,nsim],y0_r2[:,nsim],x_r2[:,nsim],y_r2[:,nsim])= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve_linear')
+    (phi0_r2[:,nsim],x0_r2[:,nsim],y0_r2[:,nsim],x_r2[:,nsim],y_r2[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve_linear')
     bar.next()
 bar.finish()
 error_root2=np.sqrt(np.abs(x0-x0_r2)**2+np.abs(y0-y0_r2))
@@ -113,7 +113,7 @@ bar = Bar("froot_linear hint", max=Nsims)
 bar.check_tty = False
 phi0_coarse=np.round(phi0*256/np.pi/2)*np.pi*2/256
 for nsim in range(Nsims):
-    (phi0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],x_h[:,nsim],y_h[:,nsim])= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve_linear',hint_phi0=phi0_coarse[:,nsim])
+    (phi0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],x_h[:,nsim],y_h[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve_linear',hint_phi0=phi0_coarse[:,nsim])
     bar.next()
 bar.finish()
 error_rooth=np.sqrt(np.abs(x0-x0_h)**2+np.abs(y0-y0_h))
