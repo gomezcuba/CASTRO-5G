@@ -573,6 +573,7 @@ if EST_LOCS:
                 configTable=configTable)
         configTable=np.array(configTable)
 else:
+    loc=mploc.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
     data=np.load('./mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims))
     t_start_all=data["t_start_all"]
     t_end_all=data["t_end_all"]
@@ -820,7 +821,6 @@ if PLOT_LOCS:
         return np.argmin(posMSE,axis=1)+3
     
     def useEstFIMErr(coef_est,param):            
-#        nmethod=5
         p0_est = np.stack((x0_est,y0_est),axis=-1) 
         pAll_est = np.stack((x_est,y_est),axis=-1)   
         posMSE_est=np.inf*np.ones((Nsims,NpathsRetrievedMax-3)) 
@@ -829,8 +829,8 @@ if PLOT_LOCS:
         for nsim in range(Nsims):
             for npath in range(3,NpathsRetrieved[nsim]):
                  J2_est=getFIMYToLoc(
-                    p0_est[nmethod,npath-3,nsim,:], 
-                    pAll_est[nmethod,npath-3,0:npath,nsim,:], 
+                    p0_est[Ncfglinhint,npath-3,nsim,:], 
+                    pAll_est[Ncfglinhint,npath-3,0:npath,nsim,:], 
                     sigma2,
                     coef_est[0:npath,nsim],
                     dels_est[0:npath,nsim],
@@ -895,8 +895,8 @@ if PLOT_LOCS:
 #        plt.title("method = %s"%method[3])
         
         
-        fig_ctr+=1
-        plt.figure(fig_ctr)
+#        fig_ctr+=1
+#        plt.figure(fig_ctr)
         for ncfg in range(Nconfigs):
             cfg = configTable[ncfg]
             (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
@@ -1013,6 +1013,6 @@ if PLOT_LOCS:
     #plt.semilogx(np.sort(error_root,axis=1).T,np.tile(np.arange(Nsims)/Nsims,[NAnglenoises,1]).T)
     
 
-(phi0_aux, x0_aux, y0_aux, x_aux, y_aux) = loc.computeAllLocationsFromPaths( AoD_est[0:10,0], AoA_est[0:10,0], dels_est[0:10,0],method='fsolve_linear',hint_phi0= phi0_coarse[0])
+(phi0_aux, x0_aux, y0_aux, x_aux, y_aux,phi0_var) = loc.computeAllLocationsFromPaths( AoD_est[0:10,0], AoA_est[0:10,0], dels_est[0:10,0],method='fsolve_linear',hint_phi0= phi0_coarse[0])
     
 print("Total run time %d seconds"%(time.time()-t_total_run_init))
