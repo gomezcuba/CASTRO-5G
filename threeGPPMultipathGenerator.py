@@ -41,18 +41,19 @@ class ThreeGPPMultipathChannelModel:
         'xi',
         'Cc', #Correlations Matrix Azimut [sSF, sK, sDS, sASD, sASA, sZSD, sZSA]
         'pLossFun',
-        'zsdFun'
+        'zsdFun',
+        'zodFun'
     ])
     #Crear diccionarios
-    CphiNLOS = {4 : 0.779, 5 : 0.860 , 8 : 1.018, 10 : 1.090, 
-                11 : 1.123, 12: 1.146, 14 : 1.190, 15 : 1.211, 16 : 1.226, 
-                19 : 1.273, 20 : 1.289, 25 : 1.358}
-    CtetaNLOS = {8 : 0.889, 10 : 0.957, 11 : 1.031, 12 : 1.104, 
-                 15 : 1.1088, 19 : 1.184, 20 : 1.178, 25 : 1.282}
-    alpham = {1 : 0.0447, 2 : 0.0447, 3 : 0.1413, 4 : 0.1413, 5 : 0.2492,
-              6 : 0.2492, 7 :  0.3715, 8 :  0.3715, 9 : 0.5129, 10 : 0.5129,
-              11 : 0.6797, 12 : 0.6797, 13 :  0.8844, 14 :  0.8844, 15 : 1.1481,
-              16 : 1.1481, 17 : 1.5195, 18 : 1.5195, 19 : 2.1551, 20 : 2.1551}
+    CphiNLOS = {'4' : 0.779, '5' : 0.860 , '8' : 1.018, '10' : 1.090, 
+                '11' : 1.123, '12': 1.146, '14' : 1.190, '15' : 1.211, '16' : 1.226, 
+                '19' : 1.273, '20' : 1.289, '25' : 1.358}
+    CtetaNLOS = {'8' : 0.889, '10' : 0.957, '11' : 1.031, '12' : 1.104, 
+                 '15' : 1.1088, '19' : 1.184, '20' : 1.178, '25' : 1.282}
+    alpham = {'1' : 0.0447, '2' : 0.0447, '3' : 0.1413, '4' : 0.1413, '5' : 0.2492,
+              '6' : 0.2492, '7' :  0.3715, '8' :  0.3715, '9' : 0.5129, '10' : 0.5129,
+              '11' : 0.6797, '12' : 0.6797, '13' :  0.8844, '14' :  0.8844, '15' : 1.1481,
+              '16' : 1.1481, '17' : 1.5195, '18' : 1.5195, '19' : 2.1551, '20' : 2.1551}
     def __init__(self, fc = 28, sce = "UMi", corrDistance = 5.0):
         self.frecRefGHz = fc
         self.scenario = sce
@@ -60,7 +61,7 @@ class ThreeGPPMultipathChannelModel:
         self.dMacrosGenerated = {}
         self.dChansGenerated = {}
         self.bLargeBandwidthOption = False
-        clight=3e8
+        self.clight=3e8
         if sce.find("UMi")>=0:
             #LOS Probability (distance is in meters)
             self.senarioLosProb = lambda d2D : 1 if d2D<18 else 18.0/d2D + np.exp(-d2D/36.0)*(1-18.0/d2D)
@@ -93,6 +94,7 @@ class ThreeGPPMultipathChannelModel:
                    [0,0,0.2,0.3,0,0,1]]),
                 self.scenarioPlossUMiLOS,
                 self.ZSDUMiLOS,
+                0,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -.24*np.log10(1+fc)-6.83,
@@ -122,11 +124,12 @@ class ThreeGPPMultipathChannelModel:
                    [0,0,0,0.5,0,1,0],
                    [0,0,-0.5,0.5,0.2,0,1]]),
                 self.scenarioPlossUMiNLOS,
+                self.ZSDUMiNLOS,
                 self.ZODUMiNLOS,
             )
         elif sce.find("UMa")>=0:
-            C = lambda hut : 0 if hut<=23 else ((hut-13.0)/10.0)**1.5 
-            self.senarioLosProb = lambda d2D : 1 if d2D<18 else (18.0/d2D + np.exp(-d2D/63.0)*(1-18.0/d2D))*(1 + C*1.25*np.exp(d2D/100.0)*(-d2D/150.0)**3.0) 
+            # C = lambda hut :  0 if hut<=23 else ((hut-13.0)/10.0)**1.5
+            self.senarioLosProb = lambda d2D,hut : 1 if d2D<18 else (18.0/d2D + np.exp(-d2D/63.0)*(1-18.0/d2D))*(1 + (0 if hut<=23 else ((hut-13.0)/10.0)**1.5)*1.25*np.exp(d2D/100.0)*(-d2D/150.0)**3.0) 
             self.scenarioParamsLOS = self.ThreeGPPScenarioParams(
                 -6.955 - 0.0963*np.log10(fc),
                 0.66,
@@ -151,11 +154,12 @@ class ThreeGPPMultipathChannelModel:
                    [0,1,-0.4,0,-0.2,0,0],
                    [-0.4,-0.4,1,0.4,0.8,-0.2,0],
                    [-0.5,0,0.4,1,0,0.5,0],
-                   [-0.5,-0.2,0.8,0,1,-0.3,0.4],
+                   [-0.5,-0.2,0.8,0,1,-0.3,0.4]
                    [0,0,-0.2,0.5,-0.3,1,0],
                    [-0.8,0,0,0,0.4,0,1]]),
                 self.scenarioPlossUMaLOS,
                 self.ZSDUMaLOS,
+                0,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -6.28 - 0.204*np.log10(fc),
@@ -181,11 +185,12 @@ class ThreeGPPMultipathChannelModel:
                    [0,1,0,0,0,0,0],
                    [-0.4,0,1,0.4,0.6,-0.5,0],
                    [-0.6,0,0.4,1,0.4,0.5,-0.1],
-                   [0,0,0.6,0.4,1,0,0],
+                   [0,0,0.6,0.4,1,0,0]
                    [0,0,-0.5,0.5,0,1,0],
                    [-0.4,0,0,-0.1,0,0,1]]),
                 self.scenarioPlossUMaNLOS,
                 self.scenarioUMaNLOS,
+                self.ZSDUMaNLOS,
                 self.ZODUMaNLOS,
             )
         elif sce.find("RMa")>=0:
@@ -219,6 +224,7 @@ class ThreeGPPMultipathChannelModel:
                    [-0.17,-0.02,0.27,-0.14,0.24,-0.07,1]]),
                 self.scenarioPlossRMaNLOS,
                 self.ZSDRMaLOS,
+                0,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -7.43,
@@ -251,12 +257,8 @@ class ThreeGPPMultipathChannelModel:
                 self.ZSDRMaNLOS,
                 self.ZODRMaNLOS,
             )
-        elif sce.find("InH-Office")>=0:
-            #Mixed Office or Open Office 
-            if sce.find("Mixed"):
-                self.senarioLosProb = lambda d2D : 1 if d2D<1.2 else (np.exp(-(d2D-1.2)/4.7) if 1.2<d2D<6.5 else (np.exp(-(d2D-6.5)/32.6))*0.32)
-            else: 
-                self.senarioLosProb = lambda d2D : 1 if d2D<=5 else (np.exp(-(d2D-5.0)/70.8) if 5<d2D<49 else (np.exp(-(d2D-49.0)/211.7))*0.54)
+        elif sce.find("InH-Office-Mixed")>=0:
+            self.senarioLosProb = lambda d2D : 1 if d2D<1.2 else (np.exp(-(d2D-1.2)/4.7) if 1.2<d2D<6.5 else (np.exp(-(d2D-6.5)/32.6))*0.32)
             self.scenarioParamsLOS = self.ThreeGPPScenarioParams(
                 -0.01*np.log10(1+fc) - 7.692,
                 0.18,
@@ -286,6 +288,71 @@ class ThreeGPPMultipathChannelModel:
                    [0.3,0.1,0.2,0,0.5,0,1]]),
                self.scenarioPlossInLOS,
                self.ZSDInLOS,
+               0,
+            )
+            self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
+                -0.28*np.log10(1+fc) - 7.173,
+                0.10*np.log10(1+fc) + 0.055,
+                1.62,
+                0.25,
+                -0.11*np.log10(1+fc) + 1.863,
+                0.12*np.log10(1+fc) + 0.059,
+                -0.15*np.log10(1+fc) + 1.387,
+                -0.09*np.log10(1+fc) + 0.746,
+                8.03,
+                0,
+                0,
+                3,
+                19,
+                20,
+                0,
+                5,
+                11,
+                9,
+                3,
+                np.array([[1,0,-0.5,0,-0.4,0,0],
+                   [0,1,0,0,0,0,0],
+                   [-0.5,0,1,0.4,0,-0.27,-0.06],
+                   [0,0,0.4,1,0,0.35,0.23],
+                   [-0.4,0,0,0,1,-0.08,0.43],
+                   [0,0,-0.27,0.35,-0.08,1,0.42],
+                   [0,0,-0.06,0.23,0.43,0.42,1]]),
+                self.scenarioPlossInNLOS,
+                self.ZSDInNLOS,
+                self.ZODInNLOS,
+            )
+        elif sce.find("InH-Office-Open")>=0:
+            self.senarioLosProb = lambda d2D : 1 if d2D<=5 else (np.exp(-(d2D-5.0)/70.8) if 5<d2D<49 else (np.exp(-(d2D-49.0)/211.7))*0.54)
+            self.scenarioParamsLOS = self.ThreeGPPScenarioParams(
+                -0.01*np.log10(1+fc) - 7.692,
+                0.18,
+                1.60,
+                0.18,
+                -0.19*np.log10(1+fc) + 1.781,
+                0.12*np.log10(1+fc) + 0.119,
+                -0.26*np.log10(1+fc) + 1.44,
+                -0.04*np.log10(1+fc) + 0.264,
+                3,
+                7,
+                4,
+                3.6,
+                15,
+                20,
+                0,
+                5,
+                8,
+                9,
+                6,
+                np.array([[1,0.5,-0.8,-0.4,-0.5,0.2,0.3],
+                   [0.5,1,-0.5,0,0,0,0.1],
+                   [-0.8,-0.5,1,0.6,0.8,0.1,0.2],
+                   [-0.4,0,0.6,1,0.4,0.5,0],
+                   [-0.5,0,0.8,0.4,1,0,0.5],
+                   [0.2,0,0.1,0.5,0,1,0],
+                   [0.3,0.1,0.2,0,0.5,0,1]]),
+               self.scenarioPlossInLOS,
+               self.ZSDInLOS,
+               0,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -0.28*np.log10(1+fc) - 7.173,
@@ -319,7 +386,8 @@ class ThreeGPPMultipathChannelModel:
                 self.ZODInNLOS,
             )
             
-    def scenarioPlossUMiLOS(self,d3D,d2D):
+
+    def scenarioPlossUMiLOS(self,d3D,d2D,hut):
         outdoor = True
         if outdoor:
             n=1
@@ -332,7 +400,7 @@ class ThreeGPPMultipathChannelModel:
         PL2 = 32.4 + 40*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.5*np.log10(prima_dBP**2+(10.0-hut)**2)
         ploss = lambda d2D : PL1 if 10<=d2D<=prima_dBP else PL2
         return(ploss)
-    def scenarioPlossUMiNLOS(self,d3D,d2D):
+    def scenarioPlossUMiNLOS(self,d3D,d2D,hut):
         outdoor = True
         if outdoor:
             n=1
@@ -341,11 +409,11 @@ class ThreeGPPMultipathChannelModel:
             n=np.ramdon.rand(1,Nf)
         hut= 3*(n-1) + 1.5
         PL1 = 35.3*np.log10(d3D) + 22.4 + 21.3*np.log10(self.frecRefGHz)-0.3*(hut - 1.5)
-        PL2 = self.scenarioPlossUMiLOS
-        ploss = np.maximun(PL1,PL2)
+        PL2 = self.scenarioPlossUMiLOS(d3D,d2D,hut)
+        ploss = np.maximum(PL1,PL2)#da fallo
         return(ploss)
     
-    def scenarioPlossUMaLOS(self,d3D,d2D):
+    def scenarioPlossUMaLOS(self,d3D,d2D,hut):
         #Hay que diferenciar entre outdoor e indoor
         outdoor = True
         if outdoor:
@@ -353,107 +421,109 @@ class ThreeGPPMultipathChannelModel:
         else:
             Nf=np.ramdon.rand(4,8)
             n=np.ramdon.rand(1,Nf)
-        hut= 3*(n-1) + 1.5
-        prima_dBP = (4*25.0*hut*self.frecRefGHz) / self.clight
-        PL1 = 28.0 + 22.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
-        PL2 = 28.0 + 40.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.0*np.log10(np.exp(prima_dBP)+np.exp(25.0-bPos[2]))
-        ploss = lambda d2D : PL1 if 10<=d2D<=prima_dBP else PL2
+        hut_aux= 3*(n-1) + 1.5
+        prima_dBP = (4*25.0*hut_aux*self.frecRefGHz) / self.clight
+        if(d2D<prima_dBP):
+            ploss = 28.0 + 22.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
+        else:
+            ploss = 28.0 + 40.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.0*np.log10(np.exp(prima_dBP)+np.exp(25.0-hut_aux))
         return(ploss)
-    def scenarioPlossUMaNLOS(self,d3D,d2D):
+    def scenarioPlossUMaNLOS(self,d3D,d2D,hut):
         outdoor = True
         if outdoor:
             n=1
         else:
             Nf=np.ramdon.rand(4,8)
             n=np.ramdon.rand(1,Nf)
-        hut= 3*(n-1) + 1.5
-        PL1 = 13.54 + 39.08*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz) - 0.6*(hut - 1.5)
-        PL2 = self.scenarioPlossUMaLOS
-        ploss = np.maximun(PL1,PL2)
+        hut_aux= 3*(n-1) + 1.5
+        PL1 = 13.54 + 39.08*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz) - 0.6*(hut_aux - 1.5)
+        PL2 = self.scenarioPlossUMaLOS(d3D,d2D,hut)
+        ploss = np.maximum(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossRMaLOS(self,d3D,d2D):
+    def scenarioPlossRMaLOS(self,d3D,d2D,hut):
         dBp = (2*np.pi*35.0*1.5*self.frecRefGHz)/self.clight
-        PL1= 20*np.log10((40.0*np.pi*d3D*self.frecRefGHz)/3.0)+np.minimum(0.03*(5.0**1.72),10)*np.log10(d3D)-np.minimun(0.44*(5.0**1.72),14.77)+0.002*np.log10(5.0)*d3D
-        PL2= PL1 + 40.0*np.log10(d3D/dBp)
-        ploss = lambda d2D : PL1 if 10<=d2D<=dBp else PL2
+        if(d2D<dBp):
+            ploss = 20*np.log10((40.0*np.pi*d3D*self.frecRefGHz)/3.0)+np.minimum(0.03*(5.0**1.72),10)*np.log10(d3D)-np.minimum(0.44*(5.0**1.72),14.77)+0.002*np.log10(5.0)*d3D
+        else:
+            PL1 = 20*np.log10((40.0*np.pi*d3D*self.frecRefGHz)/3.0)+np.minimum(0.03*(5.0**1.72),10)*np.log10(d3D)-np.minimum(0.44*(5.0**1.72),14.77)+0.002*np.log10(5.0)*d3D
+            ploss = PL1*dBp + 40.0*np.log10(d3D/dBp)
         return(ploss)
-    def scenarioPlossRMaNLOS(self,d3D,d2D):
+    def scenarioPlossRMaNLOS(self,d3D,d2D,hut):
         PL1= 161.04 - 7.1*np.log10(20) - 7.5*np.log10(5) - (24.37 - 3.7*((5/35)**2))*np.log10(35) + (43.42 - 3.1*np.log10(35))*(np.log10(d3D)-3) + 20*np.log10(self.frecRefGHz) - (3.2*np.log10(11.75*1.5))**2 - 4.97 
-        PL2= self.scenarioPlossRMaLOS
-        ploss = np.maximun(PL1,PL2)
+        PL2= self.scenarioPlossRMaLOS(d3D,d2D,hut)
+        ploss = np.maximum(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossInLOS(self,d3d,d2D):
+    def scenarioPlossInLOS(self,d3D,d2D,hut):
         ploss= 32.4 + 17.3*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
         return(ploss)
-    def scenarioPlossInNLOS(self,d3D,d2D):
+    def scenarioPlossInNLOS(self,d3D,d2D,hut):
         PL1= 38.3*np.log10(d3D) + 17.30 + 24.9*np.log10(self.frecRefGHz)
-        PL2= self.scenarioPlossInLOS
+        PL2= self.scenarioPlossInLOS(d3D,d2D,hut)
         ploss= np.maximum(PL1,PL2)
         return(ploss)  
     
-    def ZSDUMiLOS(self,d3D,d2D):  
-        zsd_mu = np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(rxPos[2]-txPos[2]) +0.83)
+    def ZSDUMiLOS(self,d3D,d2D,hbs,hut):  
+        zsd_mu = np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-hbs) +0.83)
         zsd_sg = 0.35
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZSDUMaLOS(self,d3D,d2D):
-        zsd_mu = np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(rxPos[2]- 1.5) + 0.75)
+    def ZSDUMaLOS(self,d3D,d2D,hbs,hut):
+        zsd_mu = np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.75)
         zsd_sg = 0.40
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd) 
-    def ZSDRMaLOS(self,d3D,d2D):
-        zsd_mu = np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(rxPos[2]- 1.5) + 0.22)
+    def ZSDRMaLOS(self,d3D,d2D,hbs,hut):
+        zsd_mu = np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.22)
         zsd_sg = 0.34
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZSDInLOS(self,d3D,d2D):
+    def ZSDInLOS(self,d3D,d2D,hbs,hut):
         zsd_mu = -1.43*np.log10(1 + self.frecRefGHz) + 2.228
         zsd_sg = 0.13*np.log10(1 + self.frecRefGHz) + 0.30
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
     
-    def ZSDUMiNLOS(self,d3D,d2D):     
-        zsd_mu = np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(rxPos[2]-txPos[2],0.0) +0.2)
+    def ZSDUMiNLOS(self,d3D,d2D,hbs,hut):     
+        zsd_mu = np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(hut-hbs,0.0) +0.2)
         zsd_sg = 0.35
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZODUMiNLOS(self,d2D):
-        zod_offset_mu = -10.0**(-1.5*np.log10(np.maximum(10,d2D)) + 3.3)
-        return(zod_offset_mu)
-       
-    def ZSDUMaNLOS(self,d3D,d2D):     
-        zsd_mu = np.maximun(-0.5, -2.1*(d2D/1000.0) - 0.01*(rxPos[2] - 1.5) + 0.9)
+    def ZSDUMaNLOS(self,d3D,d2D,hbs,hut):     
+        zsd_mu = np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.9)
         zsd_sg = 0.49
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZODUMaNLOS(self,d2D):
-        zod_offset_mu= 7.66*np.log10(self.frecRefGHz) - 5.96 - 10**((0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(rxPos[2] - 1.5))
-        return(zod_offset_mu)
-      
-    def ZSDRMaNLOS(self,d3D,d2D):     
-        zsd_mu = np.maximum(-1, -0.19*(d2D/1000) - 0.01*(rxPs[2] - 1.5) + 0.28)
+    def ZSDRMaNLOS(self,d3D,d2D,hbs,hut):     
+        zsd_mu = np.maximum(-1, -0.19*(d2D/1000) - 0.01*(hut - 1.5) + 0.28)
         zsd_sg = 0.30
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
         return(zsd)
-    def ZODRMaNLOS(self,d2D):
-        zod_offset_mu= np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D)
-        return(zod_offset_mu)
- 
-    def ZSDInNLOS(self,d3D,d2D):     
+    def ZSDInNLOS(self,d3D,d2D,hbs,hut):     
         zsd_mu = 1.08
         zsd_sg = 0.36
         zsd = min( 10.0**( zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-    def ZODInNLOS(d2D):
-        return(0)
+        return(zsd)
     
+    def ZODUMiNLOS(self,d2D,hut):
+        zod_offset_mu = -10.0**(-1.5*np.log10(np.maximum(10,d2D)) + 3.3)
+        return(zod_offset_mu)
+    def ZODUMaNLOS(self,d2D,hut):
+        zod_offset_mu= 7.66*np.log10(self.frecRefGHz) - 5.96 - 10**((0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(hut - 1.5))
+        return(zod_offset_mu)
+    def ZODRMaNLOS(self,d2D,hut):
+        zod_offset_mu= np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D)
+        return(zod_offset_mu)
+   
     #Large Scale Parametres
-    def create_macro(self,txPos = (0,0), rxPos = (0,0)):
+    def create_macro(self,txPos = (0,0,0), rxPos = (0,0,0)):
         aPos = np.array(txPos) 
         bPos = np.array(rxPos) 
         d3D=np.linalg.norm(bPos-aPos) 
         d2D=np.sqrt((rxPos[0]-txPos[0])**2.0+(rxPos[1]-txPos[1])**2.0)
+        hbs = aPos[2]
+        hut = bPos[2]
         pLos=self.senarioLosProb(d2D)
         los = (np.random.rand(1) <= pLos)
         vIndep=np.random.randn(7,1)
@@ -464,23 +534,23 @@ class ThreeGPPMultipathChannelModel:
             asa = min( 10.0**( self.scenarioParamsLOS.asa_mu + self.scenarioParamsLOS.asa_sg * vDepLOS[4] ), 104.0)
             asd = min( 10.0**( self.scenarioParamsLOS.asd_mu + self.scenarioParamsLOS.asd_sg * vDepLOS[3] ), 104.0)
             zsa = min( 10.0**( self.scenarioParamsLOS.zsa_mu + self.scenarioParamsLOS.zsa_sg * vDepLOS[6] ), 52.0)
-            zsd = self.scenarioParamsLOS.zsdFun
+            zsd = self.scenarioParamsLOS.zsdFun(d3D,d2D,hbs,hut)
             zod_offset_mu = 0
             K= self.scenarioParamsLOS.K_mu
             sf = self.scenarioParamsNLOS.sf_sg*vDepLOS[0]
-            PLdB = self.scenarioParamsLOS.pLossFun(d3D,d2D)
+            PLdB = self.scenarioParamsLOS.pLossFun(d3D,d2D,hut)
             PL=PLdB+sf
         else:
             ds = 10.0**( self.scenarioParamsNLOS.ds_mu + self.scenarioParamsNLOS.ds_sg * vDepNLOS[2] )
             asa = min( 10.0**( self.scenarioParamsNLOS.asa_mu + self.scenarioParamsNLOS.asa_sg * vDepNLOS[4] ), 104.0)
             asd = min( 10.0**( self.scenarioParamsNLOS.asd_mu + self.scenarioParamsNLOS.asd_sg * vDepNLOS[3] ), 104.0)
             zsa = min( 10.0**( self.scenarioParamsNLOS.zsa_mu + self.scenarioParamsNLOS.zsa_sg * vDepNLOS[6] ), 52.0)
-            zsd = self.scenarioParamsNLOS.zsdFun
-            zod_offset_mu = self.scenarioParamsNLOS.zodFun 
+            zsd = self.scenarioParamsNLOS.zsdFun(d3D,d2D,hbs,hut)
+            zod_offset_mu = self.scenarioParamsNLOS.zodFun(d2D,hut)
             K= self.scenarioParamsNLOS.K_mu
             sf = self.scenarioParamsNLOS.sf_sg*vDepNLOS[0]
             sflos=self.scenarioParamsLOS.sf_sg*vDepLOS[0]
-            PLdB = self.scenarioParamsNLOS.pLossFun(d3D,d2D)
+            PLdB = self.scenarioParamsNLOS.pLossFun(d3D,d2D,hut)
             PL=np.maximum(PLdB + sf,PLdB + sflos)
         TgridXIndex= txPos[0] // self.corrDistance
         TgridYIndex= txPos[1] // self.corrDistance 
@@ -496,7 +566,11 @@ class ThreeGPPMultipathChannelModel:
             K=self.scenarioParamsLOS.k_mu
             ASA=self.scenarioParamsLOS.asa_mu
             ZSA=self.scenarioParamsLOS.zsa_mu
+            ASD=self.scenarioParamsLOS.asd_mu
+            ZOD=self.scenarioParamsLOS.zod_offset_mu
+            ZSD=self.scenarioParamsLOS.zsd
         #Generate cluster delays
+            tau_prima = np.array()
             for i in N:
                 X=np.random.rand(1)
                 tau_prima[i] = -rt*DS*np.log(X)
@@ -505,11 +579,13 @@ class ThreeGPPMultipathChannelModel:
             tau = tau / Ctau 
             #Generate cluster powers
             xi=self.scenarioParamLOS.xi
+            powPrima = np.array()
             for i in N:
                 Zn=xi*np.random.rand(N,1)
                 powPrima[i] = np.exp(-tau[i]*((rt-1)/(rt*DS)))*10**(-(Zn/10))
-            powC[0] = K/(K+1)
-            powC=(1/K+1)(powPrima/np.sum(powPrima))+powC[0]#*Crear función delta Dirac (rectangular??)
+            p1LOS = K/(K+1)
+            powC=(1/K+1)*(powPrima/np.sum(powPrima))
+            powC[0] = powC[0] + p1LOS
             #Remove clusters with less than -25 dB power compared to the maximum cluster power. The scaling factors need not be 
             #changed after cluster elimination
             maxP=np.max(powC)
@@ -518,15 +594,21 @@ class ThreeGPPMultipathChannelModel:
             nClusters=np.size(powC)
             #Generate arrival angles and departure angles for both azimuth and elevation     
             #Depende del número de clusters por lo que habríaque recorrer con un for?? 
-            Cphi = CphiNLOS[N]*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3)) 
+            Cphi = self.CphiNLOS.get('N')*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3)) 
             phiAOAprima = ((2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP)))/Cphi)
             Y=np.random.rand(0,(ASA/7)**2)
             X=np.random.rand(-1,1)
-            phiAOA = (X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1])#- phiLOSAOA) #Preguntar si en la teoria empieza en 0 o 1
-            phiAOA = phiAOA + self.scenarioParamsLOS.casa*alpham[M] #hay que pasar M? phiAOD = phiaAOA + self.scenarioParamsLOS.casa*alpham[M]
-            Cteta = CtetaNLOS[N]*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
+            phiAOA = (X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1])
+            mphiAOA = phiAOA + self.scenarioParamsLOS.casa*self.alpham.get('M')
+            Cteta = self.CtetaNLOS.get('N')*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
             tetaZOAprima = -((ZSA*np.log(powC/maxP)) / Cteta)
-            tetaZOA=(X*tetaZOAprima + Y) - (X[1]*tetaZOAprima[1] + Y[1])#- tetaLOSzOA)
+            Y1 = np.random.rand(0,(ZSA/7)**2)
+            tetaZOA=(X*tetaZOAprima + Y1) - (X[1]*tetaZOAprima[1] + Y[1])
+            mtetaZOA = tetaZOA + self.scenarioParamsLOS.czsa*self.alpham.get('M')
+            tetaZODprima = ((2*(ZSD/1.4)*np.sqrt(-np.log(powC/maxP)))/Cteta)
+            Y2 = np.random.rand(0,(ZSD/7)**2)
+            tetaZOD=(X*tetaZODprima + Y2 + ZOD) - (X[1]*tetaZODprima[1] + Y2[1])
+            mtetaZOD = tetaZOD + (3/8)*(10**ZSD)*self.alpham.get('M') #seria zsd_mu
         else:
             self.scenarioParamsNLOS.N
             rt=self.scenarioParamsNLOS.rt
@@ -534,6 +616,9 @@ class ThreeGPPMultipathChannelModel:
             K=self.scenarioParamsNLOS.k_mu
             ASA=self.scenarioParamsNLOS.asa_mu
             ZSA=self.scenarioParamsNLOS.zsa_mu
+            ASD=self.scenarioParamsNLOS.asd_mu
+            ZOD=self.scenarioParamsNLOS.zod_offset_mu
+            ZSD=self.scenarioParamsNLOS.zsd
             for i in N:
                 X=np.random.rand(1)
                 tau_prima[i] = -rt*ds*np.log(X)
@@ -551,15 +636,21 @@ class ThreeGPPMultipathChannelModel:
             nClusters=np.size(powC)
             #Generate arrival angles and departure angles for both azimuth and elevation     
             #Depende del número de clusters por lo que habríaque recorrer con un for?? 
-            phiAOAprima = ((2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP))) / CphiNLOS[N])
+            phiAOAprima = ((2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP))) / self.CphiNLOS.get(N))
             Y=np.random.rand(0,(ASA/7)**2)
             X=np.random.rand(-1,1)
             phiAOA = (X*phiAOAprima + Y) # + phiLOSAOA
-            mphiAOA = phiAOA + self.scenarioParamsNLOS.casa*alpham[M]
+            mphiAOA = phiAOA + self.scenarioParamsNLOS.casa*self.alpham.GET('M')
             #Hay que añadir el offset de los clusters M
-            tetaZOAprima = -((ZSA*np.log(powC/maxP)) / CtetaNLOS[N]) #hay que pasar N?
+            tetaZOAprima = -((ZSA*np.log(powC/maxP)) / self.CtetaNLOS.get('N'))
+            Y1 = np.random.rand(0,(ZSA/7)**2)
             tetaZOA=(X*tetaZOAprima + Y) #- tetaLOSzOA)
-            mtetaZOA=tetaZOA+self.scenarioParamsNLOS.czsa*alpham[M]
+            mtetaZOA=tetaZOA+self.scenarioParamsNLOS.czsa*self.alpham.get('M')
+            tetaZODprima = ((2*(ZSD/1.4)*np.sqrt(-np.log(powC/maxP))) / self.CtetaNLOS.get('N'))
+            Y2 = np.random.rand(0,(ZSD/7)**2)
+            tetaZOD=(X*tetaZODprima + Y2 + ZOD)
+            mtetaZOD = tetaZOD + (3/8)*(10**ZSD)*self.alpham.get('M') #seria zsd_mu
+            
     def create_channel(self,txPos = (0,0), rxPos = (0,0)):
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
