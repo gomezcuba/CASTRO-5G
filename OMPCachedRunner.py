@@ -236,7 +236,7 @@ class OMPCachedRunner:
             et=np.matmul(Rsupp[:,0:ctr+1], vflat_proj )
             r=vflat-et
 #            print(np.sum(np.abs(r)**2))
-            print('OMPBR %s ctr %d, |r|²= %f'%("accel" if (accelDel) else "normal",ctr,np.sum(np.abs(r)**2)))
+#            print('OMPBR %s ctr %d, |r|²= %f'%("accel" if (accelDel) else "normal",ctr,np.sum(np.abs(r)**2)))
             ctr=ctr+1
 #        print('OMPBR ctr %d'%ctr)        
         Isupp=OMPInfoSet(vflat_proj,delay_supp[0:ctr] , np.arcsin(np.clip( aod_supp[0:ctr], -1,1)) , np.arcsin(np.clip( aoa_supp[0:ctr], -1,1)) , Rsupp[:,0:ctr] , self.createOutDicCols( delay_supp[0:ctr] , aod_supp[0:ctr] , aoa_supp[0:ctr] , Nt,Nd,Na) )
