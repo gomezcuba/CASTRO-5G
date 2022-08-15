@@ -471,7 +471,7 @@ class MultipathLocationEstimator:
             
         Returns
         -------
-        Returns the mathematical polinomial function based in the minimum mean square error (MMSE) equation.
+        Returns the mathematical polinomial function based in the Minimum Mean Square Error (MMSE) equation.
 
         """
         
@@ -562,7 +562,7 @@ class MultipathLocationEstimator:
             return (np.array(0.0),np.inf)
     
     
-    def bisectPsi0ForAllPaths(self,AoD,AoA,dels,Npoint=None,Niter=None,Ndiv=None):
+    def bisectPsi0ForAllPaths(self,AoD,AoA,dels,Npoint=None):
         """Performs the estimation of the value of psi0 using the bisection method.
         
         The value of the estimated offset angle of the UE orientation is obtained by using the bisection algorithm.
@@ -584,20 +584,14 @@ class MultipathLocationEstimator:
         
         STEP (2):
             The function computePosFrom3PathsKnownPsi0 is called to compute the values of the posible x0, y0 and tauE
-            for the psi0 points.
+            values for the psi0 points.
             
         STEP (3):
-            The MMSE error is computed
+            The MMSE (Minimum Mean Square Error) error is computed
             
         STEP (4):
-            The point of the psi0 interval which the MMSE is minimized is obtained.
+            The value of psi0 where its error value is minimized is obtained.
             
-        STEP (5):
-            The search value range of psi0 around the calculated minimum point is reduced and divided again into
-            Ndivs points.
-        
-        STEP (6):
-            Return to STEP 2 for Niter
         
         ---------------------------------------------------------------------------------------------------------
         
@@ -613,6 +607,10 @@ class MultipathLocationEstimator:
         
         dels : ndarray
             Delays introduced by the NLOS ray propagations.
+            
+        Npoint : int, optional
+            Total point divisions in the minimization range of search.
+            ** The range of search is [0-2pi]
 
         Returns
         -------
@@ -626,21 +624,17 @@ class MultipathLocationEstimator:
 #        Ncurves=np.size(AoD)-2
         if not Npoint:
             Npoint=self.NLinePointsPerIteration
-        if not Niter:
-            Niter=self.NLineRefinementIterations
-        if not Ndiv:
-            Ndiv=self.NLineRefinementDivision
-        for nit in range(Niter):
-            interval=np.linspace(philow,phihigh,Npoint).reshape(-1,1)
+            
+        interval=np.linspace(philow,phihigh,Npoint).reshape(-1,1)
 #            x0all=np.zeros((Ncurves,Npoint))
 #            y0all=np.zeros((Ncurves,Npoint))
 #            for npath in range(Ncurves):
 #                (x0all[npath,:],y0all[npath,:])= self.computePosFrom3PathsKnownPsi0(AoD[npath:npath+3],AoA[npath:npath+3],dels[npath:npath+3],interval)
-            (x0all,y0all,tauEall)=self.computePosFrom3PathsKnownPsi0(AoD,AoA,dels,interval)
-            dist=np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1)
-            distint=np.argmin(dist)
-            philow=interval[distint]-np.pi/(Ndiv**nit)
-            phihigh=interval[distint]+np.pi/(Ndiv**nit)
+        (x0all,y0all,tauEall)=self.computePosFrom3PathsKnownPsi0(AoD,AoA,dels,interval)
+        dist=np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1)
+        distint=np.argmin(dist)
+            #philow=interval[distint]-np.pi/(Ndiv**nit)
+            #phihigh=interval[distint]+np.pi/(Ndiv**nit)
 #        if (dist[distint]>1):
 #            print("ERROR: psi0 recovery algorithm converged loosely psi0: %.2f d: %.2f"%((np.mod(interval[distint],2*np.pi),dist[distint])))
         return(interval[distint])
@@ -812,7 +806,7 @@ class MultipathLocationEstimator:
         
         if (hint_psi0==None):
             #coarse linear approximation for initialization
-            init_psi0=self.bisectPsi0ForAllPaths(AoD,AoA,dels,Npoint=1000,Niter=1,Ndiv=2)
+            init_psi0=self.bisectPsi0ForAllPaths(AoD,AoA,dels,Npoint=1000)
         else:
             init_psi0=hint_psi0
         if method=='fsolve':
