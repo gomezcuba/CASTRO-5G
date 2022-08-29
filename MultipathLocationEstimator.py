@@ -6,9 +6,12 @@ import scipy.optimize as opt
 class MultipathLocationEstimator:
     """Class used to perform the calculation and estimation of the UE (User Equipment) position in 2D. 
     
-    The main goal of the MultipathLocationEstimator class is try to recover the UE position, define as (x0, y0), 
-    estimating the value of user offset (psi_0) from the knowledge of the set of the Angles Of Departure (AoD), 
-    Angles Of Arrival (AoA) and the delays introduced by the multipath channels.
+    The main goal of the MultipathLocationEstimator class is try to recover the UE position trigonometrically, 
+    defined as (x0, y0), estimating the value of user offset orientation (psi_0) from the knowledge of the set of the 
+    Angles Of Departure (AoD), Angles Of Arrival (AoA) and delays introduced by the multipath channels.
+    This class includes several algorithms to obtain the value of psi_0, from a brute force searching method to a 
+    non-linear system ecuation solver. Also differents methods have been included to find the UE position dealing
+    with clock and orientation error.
     
     ...
     
@@ -52,7 +55,7 @@ class MultipathLocationEstimator:
         Performs the estimation of the value of psi0 using the scipy.optimize.root method and 
         feval_wrapper_AllPathsLinear_drop1 function.
     
-    bisectPsi0ForAllPaths(self,AoD,AoA,dels,Npoint=None,Niter=None,Ndiv=None)
+    bisectPsi0ForAllPaths(self,AoD,AoA,dels,Npoint=None)
         Performs the estimation of the value of psi0 using the bisection method.
     
     feval_wrapper_3PathPosFun(self,x,AoD,AoA,dels)
@@ -86,7 +89,7 @@ class MultipathLocationEstimator:
 
         RootMethod: str, optional
             Type of solver.
-            ** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
+            *** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
         
         """
         
@@ -101,7 +104,7 @@ class MultipathLocationEstimator:
         """Performs the calculation of all the posible UE vector positions using the 3-path method.
         
         The value of the UE position is obtained by using the 3-path algorithm estimation. For this purpose the 
-        algorithm takes the sets of the AoA, AoD and delays values of 3 different NLOS paths and obtaine all 
+        algorithm takes the sets of the AoA, AoD and delays values of 3 different NLOS paths and obtain all 
         the posibles position vectors (x0, y0) of the UE, for the range of values especified by psi0_est.
         
         --------------------------------------    3-PATH METHOD    ----------------------------------------
@@ -110,20 +113,20 @@ class MultipathLocationEstimator:
         divided in the following steps:
         
         STEP (1):
-            Obtain the unknown values for T, S, P, Q and Dl for the Npaths.
+            Obtain the unknown values for T, S, P, Q and Dl unknowns for the Npaths.
         
         STEP (2):
-        To understand how to compute Idp, Slp and y0 we define:
+            To understand how to compute Idp, Slp and y0 we define:
             i = 1,2, . . ., Npath-2
             j = 2,3, . . ., Npath-1
             k = 3,4, . . ., Npath
-                
+
             To compute Idp:
             Idp(i,j) = (Dl(i) - Dl(j)) / (P(i) - P(j))
-            
+
             To compute Slp:
             Slp(i,j) = (Q(j) - Q(i)) / (P(i) - P(j))
-            
+
             With this, we obtain the values from the combination of 2 paths:
             e.g: 
                 Idp{1,2}, Idp{2,3} ... Idp{Npath-1,Npath}
@@ -139,8 +142,10 @@ class MultipathLocationEstimator:
             e.g: 
                 y0{1,2,3}, y0{2,3,4} ... Idp{Npath-2,Npath-1,Npath}
                         
-        ** For Npaths we can obtain Npath-2 posible positions estimation, because paths parameters are agruped by 3
-    
+        *** For Npaths we can obtain Npath-2 posible positions estimations, because paths parameters are grouped by 3.
+        
+        --------------------------------------------------------------------------------------------------------
+        
         Parameters
         ----------
         AoD  : ndarray
@@ -155,15 +160,15 @@ class MultipathLocationEstimator:
             Delays introduced by the NLOS ray propagations.
             
         psi0_est: ndarray
-            Offset angle of the UE orientation in the clockwise sense.
+            Offset angle of the UE orientation in the non-clockwise sense.
 
         Returns
         -------
         x0 : ndarray
-            Array with all the posibles x-coordinate componets of the posible position of the UE.
+            Array with all the x-coordinate of the posible position of the UE.
             
         y0 : ndarray
-            Array with all the posibles y-coordinate componets of the posible position of the UE.
+            Array with all the y-coordinate  of the posible position of the UE.
             
         tauE : ndarray
             Delay difference between the LOS path and the NLOS path propagation.
@@ -199,7 +204,7 @@ class MultipathLocationEstimator:
     
     
     def computeAllPathsWithParams(self,AoD,AoA,dels,x0,y0,psi0_est):
-        """Performs the calculation of all the scatters vector positions.
+        """Performs the calculation of all the scatters vector positions (vx, vy).
         
         Parameters
         ----------
@@ -221,7 +226,7 @@ class MultipathLocationEstimator:
             y-coordinate of the posible position of the of UE.
             
         psi0_est: ndarray
-            Offset angle of the UE orientation in the clockwise sense.
+            Offset angle of the UE orientation in the non-clockwise sense.
 
         Returns
         -------
@@ -253,10 +258,14 @@ class MultipathLocationEstimator:
         
         ----------------------------------    GENERALIZED LINEAR METHOD    -------------------------------------
 
-        The generalized linear method is divided into the following steps:
+        Considering having the AoA, AoD and delays values for Npaths: {1,2,3, . . . , Npath}, generalized linear method 
+        is divided into the following steps:
         
-        STEP (1): 
-            With Npaths, the totaL number of NLOS paths it, can be wrotten the following system of linear equations:
+        STEP (1):
+            Obtain the unknown values for P, Q and Dl unknowns for the Npaths.
+        
+        STEP (2): 
+            With Npaths, it can be wrotten the following system of linear equations:
             
                                                             A @ x = b      (1)
             
@@ -271,10 +280,10 @@ class MultipathLocationEstimator:
                                     | P{Npath} P{Npath} -1|             |Dl[Npath]|
 
 
-        STEP (2):
-            Compute the minimun least-squares solution:
+        STEP (3):
+            Compute the minimun least-squares solution.
             
-            The method numpy.linalg.lstsq: compute least-squares solution to equation . What means that obtains
+            *** The method "numpy.linalg.lstsq", computes the least-squares solution. What means that obtains
             the vector x that approximately solves the equation (1). 
             In this case, the system is over-determined (the number of linearly independent rows of a can be less than, 
             equal to, or greater than its number of linearly independent columns). So if there are multiple minimizing 
@@ -297,24 +306,24 @@ class MultipathLocationEstimator:
             Delays introduced by the NLOS ray propagations.
             
         psi0_est: ndarray
-            Offset angle of the UE orientation in the clockwise sense.
+            Offset angle of the UE orientation in the non-clockwise sense.
 
         Returns
         -------
         x0est : ndarray
-            Array with all the posibles x-coordinate componets of the posible position of the UE.
+            Array with all the x-coordinate of the posible position of the UE.
             
         y0est : ndarray
-           Array with all the posibles y-coordinate componets of the posible position of the UE.
+           Array with all the s y-coordinate of the posible position of the UE.
             
         tauEest : ndarray
             Delay difference between the LOS path and the NLOS path propagation.
             
         vyest : ndarray
-           Array with all the posibles x-coordinate componets of the posible position of the scatters.
+           Array with all the x-coordinate of the posible position of the scatters.
             
         vxest : ndarray
-            Array with all the posibles x-coordinate componets of the posible position of the scatters.
+            Array with all the x-coordinate of the posible position of the scatters.
 
         """
         
@@ -354,7 +363,7 @@ class MultipathLocationEstimator:
         The value of the UE position is obtained by using the linear algorithm estimation. For this purpose the 
         algorithm takes the sets of the AoA, AoD and delays values of the all the NLOS (Npath-1) paths combinations 
         and obtained all the posibles position vectors (x0, y0) of the UE, for the range of values especified by 
-        psi_0 and returns the value of the function with the non-linear MMSE.
+        psi_0. It returns the value of the function with the non-linear MMSE.
         
         
         -------------------------    WRAPPING AND DROP ONE PATH LINEAR METHOD    ----------------------------
@@ -378,14 +387,10 @@ class MultipathLocationEstimator:
         
         STEP (3):
             Find the non-linear MMSE solution
-
-        ----------------------------------------    ADVANTAGES    -------------------------------------------
-        
-        * Better position estimation than the 3-path algorithm.
-        * The algorithm does not diverge as sharply as 3paths.
         
         
         -----------------------------------------------------------------------------------------------------
+        
         
         Parameters
         ----------
@@ -426,7 +431,7 @@ class MultipathLocationEstimator:
         The value of the UE position is obtained by using the linear algorithm estimation. For this purpose the 
         algorithm takes the sets of the AoA, AoD and delays values of the (Npath//2) NLOS random paths combinations 
         and obtained all the posibles position vectors (x0, y0) of the UE, for the range of values especified by 
-        psi_0 and returns the value of the function with the non-linear MMSE.
+        psi_0. It returns the value of the function with the non-linear MMSE.
         
         
         -------------------------    RANDOM WRAPPING PATH LINEAR METHOD    ----------------------------------
@@ -452,6 +457,7 @@ class MultipathLocationEstimator:
             Find the non-linear MMSE solution
         
         -----------------------------------------------------------------------------------------------------
+        
         
         Parameters
         ----------
@@ -492,8 +498,8 @@ class MultipathLocationEstimator:
         feval_wrapper_AllPathsLinear_drop1 function.
         
         The value of the estimated offset angle of the UE orientation is obtained by finding the zeros of the 
-        given vector function defined by feval_wrapper_AllPathsLinear_drop1. For this purpose, we use the method 
-        root() which is used to find the solutions of the this vector function.
+        Minimum Mean Square Error (MMSE) equation defined by feval_wrapper_AllPathsLinear_drop1. For this purpose, 
+        it is used the method root() to find the solutions of this function.
 
 
         ---------------------------------    MULTIDIMENSIONAL ROOT METHOD    ------------------------------------
@@ -502,7 +508,7 @@ class MultipathLocationEstimator:
         with parameters.
         
         TO USE THE METHOD:
-        sol = scipy.optimize.root(fun, x0, args=(), method='hybr', jac=None, tol=None, callback=None, options=None).
+        sol = scipy.optimize.root(fun, x0, args=(), method='lm', jac=None, tol=None, callback=None, options=None).
         
         Parameters
         ----------
@@ -522,6 +528,7 @@ class MultipathLocationEstimator:
         
         
         ---------------------------------------------------------------------------------------------------------
+        
         
         Parameters
         ----------
@@ -545,6 +552,7 @@ class MultipathLocationEstimator:
             Offset angle estimated of the UE orientation.
         
         """
+        
     
         res=opt.root(self.feval_wrapper_AllPathsLinear_drop1,x0=init_psi0,args=(AoD,AoA,dels),method=self.RootMethod)
         #print(res)
@@ -566,13 +574,13 @@ class MultipathLocationEstimator:
         """Performs the estimation of the value of psi0 using the bisection method.
         
         The value of the estimated offset angle of the UE orientation is obtained by using the bisection algorithm.
-        For this purpose the method divides the range of the posible values of psi0, among 0 and 2pi into Npoints 
-        and minimize the error. The method reduces recurrently the range till minimize the error in psi0.
+        For this purpose the method divides the range of the posible values of psi_0, among 0 and 2pi into Npoints 
+        and minimize the error. The method reduces recurrently the range till minimize the error in psi_0 estimation.
         
         ----------------------------------------   BRUTE FORCE SEARCH    ----------------------------------------
         
         The brute force solution generates thousands os points in the interval (0, 2pi) and picks the one with the
-        lowest minimun square error (MSE)
+        lowest minimun square error (MSE).
         
         
         ----------------------------------------    BISECTION METHOD    ------------------------------------------
@@ -594,6 +602,7 @@ class MultipathLocationEstimator:
             
         
         ---------------------------------------------------------------------------------------------------------
+        
         
         Parameters
         ----------
@@ -674,17 +683,16 @@ class MultipathLocationEstimator:
         feval_wrapper_3PathPosFun function.
         
         The value of the estimated offset angle of the UE orientation is obtained by finding the zeros of the 
-        given vector function defined by feval_wrapper_3PathPosFun. For this purpose, we use the method root()
-        which is used to find the solutions of the this vector function.
+        minimum mean square error (MMSE) equation defined by feval_wrapper_3PathPosFun. For this purpose, it is used
+        the method root() to find the solutions of this function.
 
 
         ---------------------------------    MULTIDIMENSIONAL ROOT METHOD    ------------------------------------
         
-        In this case we make use of the root method of scipy.optimize.root(), used to solving a non-linear equation 
-        with parameters.
+        In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.
         
         TO USE THE METHOD:
-        sol = scipy.optimize.root(fun, x0, args=(), method='hybr', jac=None, tol=None, callback=None, options=None).
+        sol = scipy.optimize.root(fun, x0, args=(), method='lm').
         
         Parameters
         ----------
@@ -700,10 +708,11 @@ class MultipathLocationEstimator:
             
         method : str
             Type of solver.
-            *lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
+            *** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
         
         
         ---------------------------------------------------------------------------------------------------------
+        
         
         Parameters
         ----------
@@ -744,14 +753,14 @@ class MultipathLocationEstimator:
             return (np.array(0.0),np.inf)
     
     def computeAllLocationsFromPaths(self,AoD,AoA,dels,method='fsolve',hint_psi0=None):
-        """Performs the estimation of the psi0 especified by the parameter method, and returns the position 
+        """Performs the estimation of the psi_0 especified by the parameter method, and returns the position 
         of the UE for this angle.
 
         The parameter method calls:
         - 'fsolve' : 
             solvePsi0ForAllPaths() to estimate psi0 and computePosFrom3PathsKnownPsi0 to return the UE position.
 
-        - 'biscec' : 
+        - 'bisec' : 
             bisectPsi0ForAllPaths() to estimate psi0 and computePosFrom3PathsKnownPsi0 to return the UE position.
 
         - 'fsolve_linear' : 
@@ -773,8 +782,8 @@ class MultipathLocationEstimator:
     
         method: str, optional
             Method used to performs the value estimation of psi0.
-            ** Options: 'fsolve', 'bisec', 'fsolve_linear'
-            ** Default value is 'fsolve'.
+            *** Options: 'fsolve', 'bisec', 'fsolve_linear'
+            *** Default value is 'fsolve'.
         
         hint_psi0 : ndarray, optional
             Hint or guess about the value of psi0.   
@@ -798,9 +807,7 @@ class MultipathLocationEstimator:
             x-coordinate of the reflector position in the NLOS path.
             
         cov_psi0: ndarray
-            The inverse of the Hessian matrix of psi0. A value of None indicates a singular matrix, which means the 
-            curvature in parameter psi0 is numerically flat. To obtain the covariance matrix of the parameter psi0, cov_x 
-            must be multiplied by the variance of the residuals.
+            The inverse of the Hessian matrix of psi0.
                         
         """
         

@@ -45,9 +45,12 @@
 &nbsp;<br>
 Class&nbsp;used&nbsp;to&nbsp;perform&nbsp;the&nbsp;calculation&nbsp;and&nbsp;estimation&nbsp;of&nbsp;the&nbsp;UE&nbsp;(User&nbsp;Equipment)&nbsp;position&nbsp;in&nbsp;2D.&nbsp;<br>
 &nbsp;<br>
-The&nbsp;main&nbsp;goal&nbsp;of&nbsp;the&nbsp;<a href="#MultipathLocationEstimator">MultipathLocationEstimator</a>&nbsp;class&nbsp;is&nbsp;try&nbsp;to&nbsp;recover&nbsp;the&nbsp;UE&nbsp;position,&nbsp;define&nbsp;as&nbsp;(x0,&nbsp;y0),&nbsp;<br>
-estimating&nbsp;the&nbsp;value&nbsp;of&nbsp;user&nbsp;offset&nbsp;(psi_0)&nbsp;from&nbsp;the&nbsp;knowledge&nbsp;of&nbsp;the&nbsp;set&nbsp;of&nbsp;the&nbsp;Angles&nbsp;Of&nbsp;Departure&nbsp;(AoD),&nbsp;<br>
-Angles&nbsp;Of&nbsp;Arrival&nbsp;(AoA)&nbsp;and&nbsp;the&nbsp;delays&nbsp;introduced&nbsp;by&nbsp;the&nbsp;multipath&nbsp;channels.<br>
+The&nbsp;main&nbsp;goal&nbsp;of&nbsp;the&nbsp;<a href="#MultipathLocationEstimator">MultipathLocationEstimator</a>&nbsp;class&nbsp;is&nbsp;try&nbsp;to&nbsp;recover&nbsp;the&nbsp;UE&nbsp;position&nbsp;trigonometrically,&nbsp;<br>
+defined&nbsp;as&nbsp;(x0,&nbsp;y0),&nbsp;estimating&nbsp;the&nbsp;value&nbsp;of&nbsp;user&nbsp;offset&nbsp;orientation&nbsp;(psi_0)&nbsp;from&nbsp;the&nbsp;knowledge&nbsp;of&nbsp;the&nbsp;set&nbsp;of&nbsp;the&nbsp;<br>
+Angles&nbsp;Of&nbsp;Departure&nbsp;(AoD),&nbsp;Angles&nbsp;Of&nbsp;Arrival&nbsp;(AoA)&nbsp;and&nbsp;delays&nbsp;introduced&nbsp;by&nbsp;the&nbsp;multipath&nbsp;channels.<br>
+This&nbsp;class&nbsp;includes&nbsp;several&nbsp;algorithms&nbsp;to&nbsp;obtain&nbsp;the&nbsp;value&nbsp;of&nbsp;psi_0,&nbsp;from&nbsp;a&nbsp;brute&nbsp;force&nbsp;searching&nbsp;method&nbsp;to&nbsp;a&nbsp;<br>
+non-linear&nbsp;system&nbsp;ecuation&nbsp;solver.&nbsp;Also&nbsp;differents&nbsp;methods&nbsp;have&nbsp;been&nbsp;included&nbsp;to&nbsp;find&nbsp;the&nbsp;UE&nbsp;position&nbsp;dealing<br>
+with&nbsp;clock&nbsp;and&nbsp;orientation&nbsp;error.<br>
 &nbsp;<br>
 ...<br>
 &nbsp;<br>
@@ -91,7 +94,7 @@ Methods<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Performs&nbsp;the&nbsp;estimation&nbsp;of&nbsp;the&nbsp;value&nbsp;of&nbsp;psi0&nbsp;using&nbsp;the&nbsp;scipy.optimize.root&nbsp;method&nbsp;and&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;feval_wrapper_AllPathsLinear_drop1&nbsp;function.<br>
 &nbsp;<br>
-<a href="#MultipathLocationEstimator-bisectPsi0ForAllPaths">bisectPsi0ForAllPaths</a>(self,AoD,AoA,dels,Npoint=None,Niter=None,Ndiv=None)<br>
+<a href="#MultipathLocationEstimator-bisectPsi0ForAllPaths">bisectPsi0ForAllPaths</a>(self,AoD,AoA,dels,Npoint=None)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Performs&nbsp;the&nbsp;estimation&nbsp;of&nbsp;the&nbsp;value&nbsp;of&nbsp;psi0&nbsp;using&nbsp;the&nbsp;bisection&nbsp;method.<br>
 &nbsp;<br>
 <a href="#MultipathLocationEstimator-feval_wrapper_3PathPosFun">feval_wrapper_3PathPosFun</a>(self,x,AoD,AoA,dels)<br>
@@ -122,18 +125,18 @@ Ndiv&nbsp;:&nbsp;int,&nbsp;optional<br>
 &nbsp;<br>
 RootMethod:&nbsp;str,&nbsp;optional<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Type&nbsp;of&nbsp;solver.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;**&nbsp;lm&nbsp;(Levenberg–Marquardt&nbsp;algorithm):&nbsp;especified&nbsp;for&nbsp;solving&nbsp;non-linear&nbsp;least&nbsp;squares&nbsp;problems.</tt></dd></dl>
+&nbsp;&nbsp;&nbsp;&nbsp;***&nbsp;lm&nbsp;(Levenberg–Marquardt&nbsp;algorithm):&nbsp;especified&nbsp;for&nbsp;solving&nbsp;non-linear&nbsp;least&nbsp;squares&nbsp;problems.</tt></dd></dl>
 
-<dl><dt><a name="MultipathLocationEstimator-bisectPsi0ForAllPaths"><strong>bisectPsi0ForAllPaths</strong></a>(self, AoD, AoA, dels, Npoint=None, Niter=None, Ndiv=None)</dt><dd><tt>Performs&nbsp;the&nbsp;estimation&nbsp;of&nbsp;the&nbsp;value&nbsp;of&nbsp;psi0&nbsp;using&nbsp;the&nbsp;bisection&nbsp;method.<br>
+<dl><dt><a name="MultipathLocationEstimator-bisectPsi0ForAllPaths"><strong>bisectPsi0ForAllPaths</strong></a>(self, AoD, AoA, dels, Npoint=None)</dt><dd><tt>Performs&nbsp;the&nbsp;estimation&nbsp;of&nbsp;the&nbsp;value&nbsp;of&nbsp;psi0&nbsp;using&nbsp;the&nbsp;bisection&nbsp;method.<br>
 &nbsp;<br>
 The&nbsp;value&nbsp;of&nbsp;the&nbsp;estimated&nbsp;offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;is&nbsp;obtained&nbsp;by&nbsp;using&nbsp;the&nbsp;bisection&nbsp;algorithm.<br>
-For&nbsp;this&nbsp;purpose&nbsp;the&nbsp;method&nbsp;divides&nbsp;the&nbsp;range&nbsp;of&nbsp;the&nbsp;posible&nbsp;values&nbsp;of&nbsp;psi0,&nbsp;among&nbsp;0&nbsp;and&nbsp;2pi&nbsp;into&nbsp;Npoints&nbsp;<br>
-and&nbsp;minimize&nbsp;the&nbsp;error.&nbsp;The&nbsp;method&nbsp;reduces&nbsp;recurrently&nbsp;the&nbsp;range&nbsp;till&nbsp;minimize&nbsp;the&nbsp;error&nbsp;in&nbsp;psi0.<br>
+For&nbsp;this&nbsp;purpose&nbsp;the&nbsp;method&nbsp;divides&nbsp;the&nbsp;range&nbsp;of&nbsp;the&nbsp;posible&nbsp;values&nbsp;of&nbsp;psi_0,&nbsp;among&nbsp;0&nbsp;and&nbsp;2pi&nbsp;into&nbsp;Npoints&nbsp;<br>
+and&nbsp;minimize&nbsp;the&nbsp;error.&nbsp;The&nbsp;method&nbsp;reduces&nbsp;recurrently&nbsp;the&nbsp;range&nbsp;till&nbsp;minimize&nbsp;the&nbsp;error&nbsp;in&nbsp;psi_0&nbsp;estimation.<br>
 &nbsp;<br>
 ----------------------------------------&nbsp;&nbsp;&nbsp;BRUTE&nbsp;FORCE&nbsp;SEARCH&nbsp;&nbsp;&nbsp;&nbsp;----------------------------------------<br>
 &nbsp;<br>
 The&nbsp;brute&nbsp;force&nbsp;solution&nbsp;generates&nbsp;thousands&nbsp;os&nbsp;points&nbsp;in&nbsp;the&nbsp;interval&nbsp;(0,&nbsp;2pi)&nbsp;and&nbsp;picks&nbsp;the&nbsp;one&nbsp;with&nbsp;the<br>
-lowest&nbsp;minimun&nbsp;square&nbsp;error&nbsp;(MSE)<br>
+lowest&nbsp;minimun&nbsp;square&nbsp;error&nbsp;(MSE).<br>
 &nbsp;<br>
 &nbsp;<br>
 ----------------------------------------&nbsp;&nbsp;&nbsp;&nbsp;BISECTION&nbsp;METHOD&nbsp;&nbsp;&nbsp;&nbsp;------------------------------------------<br>
@@ -145,22 +148,17 @@ STEP&nbsp;(1):<br>
 &nbsp;<br>
 STEP&nbsp;(2):<br>
 &nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;function&nbsp;computePosFrom3PathsKnownPsi0&nbsp;is&nbsp;called&nbsp;to&nbsp;compute&nbsp;the&nbsp;values&nbsp;of&nbsp;the&nbsp;posible&nbsp;x0,&nbsp;y0&nbsp;and&nbsp;tauE<br>
-&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;the&nbsp;psi0&nbsp;points.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;values&nbsp;for&nbsp;the&nbsp;psi0&nbsp;points.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 STEP&nbsp;(3):<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;MMSE&nbsp;error&nbsp;is&nbsp;computed<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;MMSE&nbsp;(Minimum&nbsp;Mean&nbsp;Square&nbsp;Error)&nbsp;error&nbsp;is&nbsp;computed<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 STEP&nbsp;(4):<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;point&nbsp;of&nbsp;the&nbsp;psi0&nbsp;interval&nbsp;which&nbsp;the&nbsp;MMSE&nbsp;is&nbsp;minimized&nbsp;is&nbsp;obtained.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;value&nbsp;of&nbsp;psi0&nbsp;where&nbsp;its&nbsp;error&nbsp;value&nbsp;is&nbsp;minimized&nbsp;is&nbsp;obtained.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
-STEP&nbsp;(5):<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;search&nbsp;value&nbsp;range&nbsp;of&nbsp;psi0&nbsp;around&nbsp;the&nbsp;calculated&nbsp;minimum&nbsp;point&nbsp;is&nbsp;reduced&nbsp;and&nbsp;divided&nbsp;again&nbsp;into<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Ndivs&nbsp;points.<br>
-&nbsp;<br>
-STEP&nbsp;(6):<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Return&nbsp;to&nbsp;STEP&nbsp;2&nbsp;for&nbsp;Niter<br>
 &nbsp;<br>
 ---------------------------------------------------------------------------------------------------------<br>
+&nbsp;<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
@@ -174,20 +172,24 @@ AoA&nbsp;&nbsp;:&nbsp;ndarray<br>
 &nbsp;<br>
 dels&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Delays&nbsp;introduced&nbsp;by&nbsp;the&nbsp;NLOS&nbsp;ray&nbsp;propagations.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+Npoint&nbsp;:&nbsp;int,&nbsp;optional<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Total&nbsp;point&nbsp;divisions&nbsp;in&nbsp;the&nbsp;minimization&nbsp;range&nbsp;of&nbsp;search.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;**&nbsp;The&nbsp;range&nbsp;of&nbsp;search&nbsp;is&nbsp;[0-2pi]<br>
 &nbsp;<br>
 Returns<br>
 -------<br>
 psi0_est:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Offset&nbsp;angle&nbsp;estimated&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation.</tt></dd></dl>
 
-<dl><dt><a name="MultipathLocationEstimator-computeAllLocationsFromPaths"><strong>computeAllLocationsFromPaths</strong></a>(self, AoD, AoA, dels, method='fsolve', hint_psi0=None)</dt><dd><tt>Performs&nbsp;the&nbsp;estimation&nbsp;of&nbsp;the&nbsp;psi0&nbsp;especified&nbsp;by&nbsp;the&nbsp;parameter&nbsp;method,&nbsp;and&nbsp;returns&nbsp;the&nbsp;position&nbsp;<br>
+<dl><dt><a name="MultipathLocationEstimator-computeAllLocationsFromPaths"><strong>computeAllLocationsFromPaths</strong></a>(self, AoD, AoA, dels, method='fsolve', hint_psi0=None)</dt><dd><tt>Performs&nbsp;the&nbsp;estimation&nbsp;of&nbsp;the&nbsp;psi_0&nbsp;especified&nbsp;by&nbsp;the&nbsp;parameter&nbsp;method,&nbsp;and&nbsp;returns&nbsp;the&nbsp;position&nbsp;<br>
 of&nbsp;the&nbsp;UE&nbsp;for&nbsp;this&nbsp;angle.<br>
 &nbsp;<br>
 The&nbsp;parameter&nbsp;method&nbsp;calls:<br>
 -&nbsp;'fsolve'&nbsp;:&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#MultipathLocationEstimator-solvePsi0ForAllPaths">solvePsi0ForAllPaths</a>()&nbsp;to&nbsp;estimate&nbsp;psi0&nbsp;and&nbsp;computePosFrom3PathsKnownPsi0&nbsp;to&nbsp;return&nbsp;the&nbsp;UE&nbsp;position.<br>
 &nbsp;<br>
--&nbsp;'biscec'&nbsp;:&nbsp;<br>
+-&nbsp;'bisec'&nbsp;:&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="#MultipathLocationEstimator-bisectPsi0ForAllPaths">bisectPsi0ForAllPaths</a>()&nbsp;to&nbsp;estimate&nbsp;psi0&nbsp;and&nbsp;computePosFrom3PathsKnownPsi0&nbsp;to&nbsp;return&nbsp;the&nbsp;UE&nbsp;position.<br>
 &nbsp;<br>
 -&nbsp;'fsolve_linear'&nbsp;:&nbsp;<br>
@@ -209,8 +211,8 @@ dels&nbsp;:&nbsp;ndarray<br>
 &nbsp;<br>
 method:&nbsp;str,&nbsp;optional<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Method&nbsp;used&nbsp;to&nbsp;performs&nbsp;the&nbsp;value&nbsp;estimation&nbsp;of&nbsp;psi0.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;**&nbsp;Options:&nbsp;'fsolve',&nbsp;'bisec',&nbsp;'fsolve_linear'<br>
-&nbsp;&nbsp;&nbsp;&nbsp;**&nbsp;Default&nbsp;value&nbsp;is&nbsp;'fsolve'.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;***&nbsp;Options:&nbsp;'fsolve',&nbsp;'bisec',&nbsp;'fsolve_linear'<br>
+&nbsp;&nbsp;&nbsp;&nbsp;***&nbsp;Default&nbsp;value&nbsp;is&nbsp;'fsolve'.<br>
 &nbsp;<br>
 hint_psi0&nbsp;:&nbsp;ndarray,&nbsp;optional<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Hint&nbsp;or&nbsp;guess&nbsp;about&nbsp;the&nbsp;value&nbsp;of&nbsp;psi0.&nbsp;&nbsp;&nbsp;<br>
@@ -234,9 +236,7 @@ vx&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;x-coordinate&nbsp;of&nbsp;the&nbsp;reflector&nbsp;position&nbsp;in&nbsp;the&nbsp;NLOS&nbsp;path.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 cov_psi0:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;inverse&nbsp;of&nbsp;the&nbsp;Hessian&nbsp;matrix&nbsp;of&nbsp;psi0.&nbsp;A&nbsp;value&nbsp;of&nbsp;None&nbsp;indicates&nbsp;a&nbsp;singular&nbsp;matrix,&nbsp;which&nbsp;means&nbsp;the&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;curvature&nbsp;in&nbsp;parameter&nbsp;psi0&nbsp;is&nbsp;numerically&nbsp;flat.&nbsp;To&nbsp;obtain&nbsp;the&nbsp;covariance&nbsp;matrix&nbsp;of&nbsp;the&nbsp;parameter&nbsp;psi0,&nbsp;cov_x&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;must&nbsp;be&nbsp;multiplied&nbsp;by&nbsp;the&nbsp;variance&nbsp;of&nbsp;the&nbsp;residuals.</tt></dd></dl>
+&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;inverse&nbsp;of&nbsp;the&nbsp;Hessian&nbsp;matrix&nbsp;of&nbsp;psi0.</tt></dd></dl>
 
 <dl><dt><a name="MultipathLocationEstimator-computeAllPathsLinear"><strong>computeAllPathsLinear</strong></a>(self, AoD, AoA, dels, psi0_est)</dt><dd><tt>Performs&nbsp;the&nbsp;calculation&nbsp;of&nbsp;all&nbsp;the&nbsp;posible&nbsp;UE&nbsp;vector&nbsp;positions&nbsp;using&nbsp;the&nbsp;linear&nbsp;method.<br>
 &nbsp;<br>
@@ -246,10 +246,14 @@ the&nbsp;posibles&nbsp;position&nbsp;vectors&nbsp;(x0,&nbsp;y0)&nbsp;of&nbsp;the
 &nbsp;<br>
 ----------------------------------&nbsp;&nbsp;&nbsp;&nbsp;GENERALIZED&nbsp;LINEAR&nbsp;METHOD&nbsp;&nbsp;&nbsp;&nbsp;-------------------------------------<br>
 &nbsp;<br>
-The&nbsp;generalized&nbsp;linear&nbsp;method&nbsp;is&nbsp;divided&nbsp;into&nbsp;the&nbsp;following&nbsp;steps:<br>
+Considering&nbsp;having&nbsp;the&nbsp;AoA,&nbsp;AoD&nbsp;and&nbsp;delays&nbsp;values&nbsp;for&nbsp;Npaths:&nbsp;{1,2,3,&nbsp;.&nbsp;.&nbsp;.&nbsp;,&nbsp;Npath},&nbsp;generalized&nbsp;linear&nbsp;method&nbsp;<br>
+is&nbsp;divided&nbsp;into&nbsp;the&nbsp;following&nbsp;steps:<br>
 &nbsp;<br>
-STEP&nbsp;(1):&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;With&nbsp;Npaths,&nbsp;the&nbsp;totaL&nbsp;number&nbsp;of&nbsp;NLOS&nbsp;paths&nbsp;it,&nbsp;can&nbsp;be&nbsp;wrotten&nbsp;the&nbsp;following&nbsp;system&nbsp;of&nbsp;linear&nbsp;equations:<br>
+STEP&nbsp;(1):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Obtain&nbsp;the&nbsp;unknown&nbsp;values&nbsp;for&nbsp;P,&nbsp;Q&nbsp;and&nbsp;Dl&nbsp;unknowns&nbsp;for&nbsp;the&nbsp;Npaths.<br>
+&nbsp;<br>
+STEP&nbsp;(2):&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;With&nbsp;Npaths,&nbsp;it&nbsp;can&nbsp;be&nbsp;wrotten&nbsp;the&nbsp;following&nbsp;system&nbsp;of&nbsp;linear&nbsp;equations:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A&nbsp;@&nbsp;x&nbsp;=&nbsp;b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(1)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
@@ -264,10 +268,10 @@ STEP&nbsp;(1):&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;P{Npath}&nbsp;P{Npath}&nbsp;-1|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|Dl[Npath]|<br>
 &nbsp;<br>
 &nbsp;<br>
-STEP&nbsp;(2):<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Compute&nbsp;the&nbsp;minimun&nbsp;least-squares&nbsp;solution:<br>
+STEP&nbsp;(3):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Compute&nbsp;the&nbsp;minimun&nbsp;least-squares&nbsp;solution.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;The&nbsp;method&nbsp;numpy.linalg.lstsq:&nbsp;compute&nbsp;least-squares&nbsp;solution&nbsp;to&nbsp;equation&nbsp;.&nbsp;What&nbsp;means&nbsp;that&nbsp;obtains<br>
+&nbsp;&nbsp;&nbsp;&nbsp;***&nbsp;The&nbsp;method&nbsp;"numpy.linalg.lstsq",&nbsp;computes&nbsp;the&nbsp;least-squares&nbsp;solution.&nbsp;What&nbsp;means&nbsp;that&nbsp;obtains<br>
 &nbsp;&nbsp;&nbsp;&nbsp;the&nbsp;vector&nbsp;x&nbsp;that&nbsp;approximately&nbsp;solves&nbsp;the&nbsp;equation&nbsp;(1).&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;In&nbsp;this&nbsp;case,&nbsp;the&nbsp;system&nbsp;is&nbsp;over-determined&nbsp;(the&nbsp;number&nbsp;of&nbsp;linearly&nbsp;independent&nbsp;rows&nbsp;of&nbsp;a&nbsp;can&nbsp;be&nbsp;less&nbsp;than,&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;equal&nbsp;to,&nbsp;or&nbsp;greater&nbsp;than&nbsp;its&nbsp;number&nbsp;of&nbsp;linearly&nbsp;independent&nbsp;columns).&nbsp;So&nbsp;if&nbsp;there&nbsp;are&nbsp;multiple&nbsp;minimizing&nbsp;<br>
@@ -290,26 +294,26 @@ dels&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Delays&nbsp;introduced&nbsp;by&nbsp;the&nbsp;NLOS&nbsp;ray&nbsp;propagations.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 psi0_est:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;in&nbsp;the&nbsp;clockwise&nbsp;sense.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;in&nbsp;the&nbsp;non-clockwise&nbsp;sense.<br>
 &nbsp;<br>
 Returns<br>
 -------<br>
 x0est&nbsp;:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;posibles&nbsp;x-coordinate&nbsp;componets&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;x-coordinate&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 y0est&nbsp;:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;posibles&nbsp;y-coordinate&nbsp;componets&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
+&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;s&nbsp;y-coordinate&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 tauEest&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Delay&nbsp;difference&nbsp;between&nbsp;the&nbsp;LOS&nbsp;path&nbsp;and&nbsp;the&nbsp;NLOS&nbsp;path&nbsp;propagation.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 vyest&nbsp;:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;posibles&nbsp;x-coordinate&nbsp;componets&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;scatters.<br>
+&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;x-coordinate&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;scatters.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 vxest&nbsp;:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;posibles&nbsp;x-coordinate&nbsp;componets&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;scatters.</tt></dd></dl>
+&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;x-coordinate&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;scatters.</tt></dd></dl>
 
-<dl><dt><a name="MultipathLocationEstimator-computeAllPathsWithParams"><strong>computeAllPathsWithParams</strong></a>(self, AoD, AoA, dels, x0, y0, psi0_est)</dt><dd><tt>Performs&nbsp;the&nbsp;calculation&nbsp;of&nbsp;all&nbsp;the&nbsp;scatters&nbsp;vector&nbsp;positions.<br>
+<dl><dt><a name="MultipathLocationEstimator-computeAllPathsWithParams"><strong>computeAllPathsWithParams</strong></a>(self, AoD, AoA, dels, x0, y0, psi0_est)</dt><dd><tt>Performs&nbsp;the&nbsp;calculation&nbsp;of&nbsp;all&nbsp;the&nbsp;scatters&nbsp;vector&nbsp;positions&nbsp;(vx,&nbsp;vy).<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
@@ -331,7 +335,7 @@ y0&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;y-coordinate&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;of&nbsp;UE.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 psi0_est:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;in&nbsp;the&nbsp;clockwise&nbsp;sense.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;in&nbsp;the&nbsp;non-clockwise&nbsp;sense.<br>
 &nbsp;<br>
 Returns<br>
 -------<br>
@@ -344,7 +348,7 @@ vx&nbsp;:&nbsp;ndarray<br>
 <dl><dt><a name="MultipathLocationEstimator-computePosFrom3PathsKnownPsi0"><strong>computePosFrom3PathsKnownPsi0</strong></a>(self, AoD, AoA, dels, psi0_est)</dt><dd><tt>Performs&nbsp;the&nbsp;calculation&nbsp;of&nbsp;all&nbsp;the&nbsp;posible&nbsp;UE&nbsp;vector&nbsp;positions&nbsp;using&nbsp;the&nbsp;3-path&nbsp;method.<br>
 &nbsp;<br>
 The&nbsp;value&nbsp;of&nbsp;the&nbsp;UE&nbsp;position&nbsp;is&nbsp;obtained&nbsp;by&nbsp;using&nbsp;the&nbsp;3-path&nbsp;algorithm&nbsp;estimation.&nbsp;For&nbsp;this&nbsp;purpose&nbsp;the&nbsp;<br>
-algorithm&nbsp;takes&nbsp;the&nbsp;sets&nbsp;of&nbsp;the&nbsp;AoA,&nbsp;AoD&nbsp;and&nbsp;delays&nbsp;values&nbsp;of&nbsp;3&nbsp;different&nbsp;NLOS&nbsp;paths&nbsp;and&nbsp;obtaine&nbsp;all&nbsp;<br>
+algorithm&nbsp;takes&nbsp;the&nbsp;sets&nbsp;of&nbsp;the&nbsp;AoA,&nbsp;AoD&nbsp;and&nbsp;delays&nbsp;values&nbsp;of&nbsp;3&nbsp;different&nbsp;NLOS&nbsp;paths&nbsp;and&nbsp;obtain&nbsp;all&nbsp;<br>
 the&nbsp;posibles&nbsp;position&nbsp;vectors&nbsp;(x0,&nbsp;y0)&nbsp;of&nbsp;the&nbsp;UE,&nbsp;for&nbsp;the&nbsp;range&nbsp;of&nbsp;values&nbsp;especified&nbsp;by&nbsp;psi0_est.<br>
 &nbsp;<br>
 --------------------------------------&nbsp;&nbsp;&nbsp;&nbsp;3-PATH&nbsp;METHOD&nbsp;&nbsp;&nbsp;&nbsp;----------------------------------------<br>
@@ -353,20 +357,20 @@ Considering&nbsp;having&nbsp;the&nbsp;AoA,&nbsp;AoD&nbsp;and&nbsp;delays&nbsp;va
 divided&nbsp;in&nbsp;the&nbsp;following&nbsp;steps:<br>
 &nbsp;<br>
 STEP&nbsp;(1):<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Obtain&nbsp;the&nbsp;unknown&nbsp;values&nbsp;for&nbsp;T,&nbsp;S,&nbsp;P,&nbsp;Q&nbsp;and&nbsp;Dl&nbsp;for&nbsp;the&nbsp;Npaths.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Obtain&nbsp;the&nbsp;unknown&nbsp;values&nbsp;for&nbsp;T,&nbsp;S,&nbsp;P,&nbsp;Q&nbsp;and&nbsp;Dl&nbsp;unknowns&nbsp;for&nbsp;the&nbsp;Npaths.<br>
 &nbsp;<br>
 STEP&nbsp;(2):<br>
-To&nbsp;understand&nbsp;how&nbsp;to&nbsp;compute&nbsp;Idp,&nbsp;Slp&nbsp;and&nbsp;y0&nbsp;we&nbsp;define:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;To&nbsp;understand&nbsp;how&nbsp;to&nbsp;compute&nbsp;Idp,&nbsp;Slp&nbsp;and&nbsp;y0&nbsp;we&nbsp;define:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;i&nbsp;=&nbsp;1,2,&nbsp;.&nbsp;.&nbsp;.,&nbsp;Npath-2<br>
 &nbsp;&nbsp;&nbsp;&nbsp;j&nbsp;=&nbsp;2,3,&nbsp;.&nbsp;.&nbsp;.,&nbsp;Npath-1<br>
 &nbsp;&nbsp;&nbsp;&nbsp;k&nbsp;=&nbsp;3,4,&nbsp;.&nbsp;.&nbsp;.,&nbsp;Npath<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;To&nbsp;compute&nbsp;Idp:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Idp(i,j)&nbsp;=&nbsp;(Dl(i)&nbsp;-&nbsp;Dl(j))&nbsp;/&nbsp;(P(i)&nbsp;-&nbsp;P(j))<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;To&nbsp;compute&nbsp;Slp:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Slp(i,j)&nbsp;=&nbsp;(Q(j)&nbsp;-&nbsp;Q(i))&nbsp;/&nbsp;(P(i)&nbsp;-&nbsp;P(j))<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;With&nbsp;this,&nbsp;we&nbsp;obtain&nbsp;the&nbsp;values&nbsp;from&nbsp;the&nbsp;combination&nbsp;of&nbsp;2&nbsp;paths:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;e.g:&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Idp{1,2},&nbsp;Idp{2,3}&nbsp;...&nbsp;Idp{Npath-1,Npath}<br>
@@ -382,7 +386,9 @@ STEP&nbsp;(3):&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;e.g:&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;y0{1,2,3},&nbsp;y0{2,3,4}&nbsp;...&nbsp;Idp{Npath-2,Npath-1,Npath}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
-**&nbsp;For&nbsp;Npaths&nbsp;we&nbsp;can&nbsp;obtain&nbsp;Npath-2&nbsp;posible&nbsp;positions&nbsp;estimation,&nbsp;because&nbsp;paths&nbsp;parameters&nbsp;are&nbsp;agruped&nbsp;by&nbsp;3<br>
+***&nbsp;For&nbsp;Npaths&nbsp;we&nbsp;can&nbsp;obtain&nbsp;Npath-2&nbsp;posible&nbsp;positions&nbsp;estimations,&nbsp;because&nbsp;paths&nbsp;parameters&nbsp;are&nbsp;grouped&nbsp;by&nbsp;3.<br>
+&nbsp;<br>
+--------------------------------------------------------------------------------------------------------<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
@@ -398,15 +404,15 @@ dels&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Delays&nbsp;introduced&nbsp;by&nbsp;the&nbsp;NLOS&nbsp;ray&nbsp;propagations.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 psi0_est:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;in&nbsp;the&nbsp;clockwise&nbsp;sense.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;in&nbsp;the&nbsp;non-clockwise&nbsp;sense.<br>
 &nbsp;<br>
 Returns<br>
 -------<br>
 x0&nbsp;:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;posibles&nbsp;x-coordinate&nbsp;componets&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;x-coordinate&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 y0&nbsp;:&nbsp;ndarray<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;posibles&nbsp;y-coordinate&nbsp;componets&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Array&nbsp;with&nbsp;all&nbsp;the&nbsp;y-coordinate&nbsp;&nbsp;of&nbsp;the&nbsp;posible&nbsp;position&nbsp;of&nbsp;the&nbsp;UE.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 tauE&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Delay&nbsp;difference&nbsp;between&nbsp;the&nbsp;LOS&nbsp;path&nbsp;and&nbsp;the&nbsp;NLOS&nbsp;path&nbsp;propagation.</tt></dd></dl>
@@ -439,7 +445,7 @@ the&nbsp;paths&nbsp;into&nbsp;sets&nbsp;of&nbsp;(Npath-1)&nbsp;paths&nbsp;to&nbs
 The&nbsp;value&nbsp;of&nbsp;the&nbsp;UE&nbsp;position&nbsp;is&nbsp;obtained&nbsp;by&nbsp;using&nbsp;the&nbsp;linear&nbsp;algorithm&nbsp;estimation.&nbsp;For&nbsp;this&nbsp;purpose&nbsp;the&nbsp;<br>
 algorithm&nbsp;takes&nbsp;the&nbsp;sets&nbsp;of&nbsp;the&nbsp;AoA,&nbsp;AoD&nbsp;and&nbsp;delays&nbsp;values&nbsp;of&nbsp;the&nbsp;all&nbsp;the&nbsp;NLOS&nbsp;(Npath-1)&nbsp;paths&nbsp;combinations&nbsp;<br>
 and&nbsp;obtained&nbsp;all&nbsp;the&nbsp;posibles&nbsp;position&nbsp;vectors&nbsp;(x0,&nbsp;y0)&nbsp;of&nbsp;the&nbsp;UE,&nbsp;for&nbsp;the&nbsp;range&nbsp;of&nbsp;values&nbsp;especified&nbsp;by&nbsp;<br>
-psi_0&nbsp;and&nbsp;returns&nbsp;the&nbsp;value&nbsp;of&nbsp;the&nbsp;function&nbsp;with&nbsp;the&nbsp;non-linear&nbsp;MMSE.<br>
+psi_0.&nbsp;It&nbsp;returns&nbsp;the&nbsp;value&nbsp;of&nbsp;the&nbsp;function&nbsp;with&nbsp;the&nbsp;non-linear&nbsp;MMSE.<br>
 &nbsp;<br>
 &nbsp;<br>
 -------------------------&nbsp;&nbsp;&nbsp;&nbsp;WRAPPING&nbsp;AND&nbsp;DROP&nbsp;ONE&nbsp;PATH&nbsp;LINEAR&nbsp;METHOD&nbsp;&nbsp;&nbsp;&nbsp;----------------------------<br>
@@ -464,13 +470,9 @@ STEP&nbsp;(2):<br>
 STEP&nbsp;(3):<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Find&nbsp;the&nbsp;non-linear&nbsp;MMSE&nbsp;solution<br>
 &nbsp;<br>
-----------------------------------------&nbsp;&nbsp;&nbsp;&nbsp;ADVANTAGES&nbsp;&nbsp;&nbsp;&nbsp;-------------------------------------------<br>
-&nbsp;<br>
-*&nbsp;Better&nbsp;position&nbsp;estimation&nbsp;than&nbsp;the&nbsp;3-path&nbsp;algorithm.<br>
-*&nbsp;The&nbsp;algorithm&nbsp;does&nbsp;not&nbsp;diverge&nbsp;as&nbsp;sharply&nbsp;as&nbsp;3paths.<br>
-&nbsp;<br>
 &nbsp;<br>
 -----------------------------------------------------------------------------------------------------<br>
+&nbsp;<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
@@ -498,7 +500,7 @@ the&nbsp;paths&nbsp;into&nbsp;sets&nbsp;of&nbsp;(Npath//2)&nbsp;random&nbsp;path
 The&nbsp;value&nbsp;of&nbsp;the&nbsp;UE&nbsp;position&nbsp;is&nbsp;obtained&nbsp;by&nbsp;using&nbsp;the&nbsp;linear&nbsp;algorithm&nbsp;estimation.&nbsp;For&nbsp;this&nbsp;purpose&nbsp;the&nbsp;<br>
 algorithm&nbsp;takes&nbsp;the&nbsp;sets&nbsp;of&nbsp;the&nbsp;AoA,&nbsp;AoD&nbsp;and&nbsp;delays&nbsp;values&nbsp;of&nbsp;the&nbsp;(Npath//2)&nbsp;NLOS&nbsp;random&nbsp;paths&nbsp;combinations&nbsp;<br>
 and&nbsp;obtained&nbsp;all&nbsp;the&nbsp;posibles&nbsp;position&nbsp;vectors&nbsp;(x0,&nbsp;y0)&nbsp;of&nbsp;the&nbsp;UE,&nbsp;for&nbsp;the&nbsp;range&nbsp;of&nbsp;values&nbsp;especified&nbsp;by&nbsp;<br>
-psi_0&nbsp;and&nbsp;returns&nbsp;the&nbsp;value&nbsp;of&nbsp;the&nbsp;function&nbsp;with&nbsp;the&nbsp;non-linear&nbsp;MMSE.<br>
+psi_0.&nbsp;It&nbsp;returns&nbsp;the&nbsp;value&nbsp;of&nbsp;the&nbsp;function&nbsp;with&nbsp;the&nbsp;non-linear&nbsp;MMSE.<br>
 &nbsp;<br>
 &nbsp;<br>
 -------------------------&nbsp;&nbsp;&nbsp;&nbsp;RANDOM&nbsp;WRAPPING&nbsp;PATH&nbsp;LINEAR&nbsp;METHOD&nbsp;&nbsp;&nbsp;&nbsp;----------------------------------<br>
@@ -525,6 +527,7 @@ STEP&nbsp;(3):<br>
 &nbsp;<br>
 -----------------------------------------------------------------------------------------------------<br>
 &nbsp;<br>
+&nbsp;<br>
 Parameters<br>
 ----------<br>
 x&nbsp;:&nbsp;ndarray<br>
@@ -543,23 +546,22 @@ dels&nbsp;:&nbsp;ndarray<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 Returns<br>
 -------<br>
-Returns&nbsp;the&nbsp;mathematical&nbsp;polinomial&nbsp;function&nbsp;based&nbsp;in&nbsp;the&nbsp;minimum&nbsp;mean&nbsp;square&nbsp;error&nbsp;(MMSE)&nbsp;equation.</tt></dd></dl>
+Returns&nbsp;the&nbsp;mathematical&nbsp;polinomial&nbsp;function&nbsp;based&nbsp;in&nbsp;the&nbsp;Minimum&nbsp;Mean&nbsp;Square&nbsp;Error&nbsp;(MMSE)&nbsp;equation.</tt></dd></dl>
 
 <dl><dt><a name="MultipathLocationEstimator-solvePsi0ForAllPaths"><strong>solvePsi0ForAllPaths</strong></a>(self, AoD, AoA, dels, init_psi0)</dt><dd><tt>Performs&nbsp;the&nbsp;estimation&nbsp;of&nbsp;the&nbsp;value&nbsp;of&nbsp;psi0&nbsp;using&nbsp;the&nbsp;scipy.optimize.root&nbsp;method&nbsp;and<br>
 feval_wrapper_3PathPosFun&nbsp;function.<br>
 &nbsp;<br>
 The&nbsp;value&nbsp;of&nbsp;the&nbsp;estimated&nbsp;offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;is&nbsp;obtained&nbsp;by&nbsp;finding&nbsp;the&nbsp;zeros&nbsp;of&nbsp;the&nbsp;<br>
-given&nbsp;vector&nbsp;function&nbsp;defined&nbsp;by&nbsp;feval_wrapper_3PathPosFun.&nbsp;For&nbsp;this&nbsp;purpose,&nbsp;we&nbsp;use&nbsp;the&nbsp;method&nbsp;root()<br>
-which&nbsp;is&nbsp;used&nbsp;to&nbsp;find&nbsp;the&nbsp;solutions&nbsp;of&nbsp;the&nbsp;this&nbsp;vector&nbsp;function.<br>
+minimum&nbsp;mean&nbsp;square&nbsp;error&nbsp;(MMSE)&nbsp;equation&nbsp;defined&nbsp;by&nbsp;feval_wrapper_3PathPosFun.&nbsp;For&nbsp;this&nbsp;purpose,&nbsp;it&nbsp;is&nbsp;used<br>
+the&nbsp;method&nbsp;root()&nbsp;to&nbsp;find&nbsp;the&nbsp;solutions&nbsp;of&nbsp;this&nbsp;function.<br>
 &nbsp;<br>
 &nbsp;<br>
 ---------------------------------&nbsp;&nbsp;&nbsp;&nbsp;MULTIDIMENSIONAL&nbsp;ROOT&nbsp;METHOD&nbsp;&nbsp;&nbsp;&nbsp;------------------------------------<br>
 &nbsp;<br>
-In&nbsp;this&nbsp;case&nbsp;we&nbsp;make&nbsp;use&nbsp;of&nbsp;the&nbsp;root&nbsp;method&nbsp;of&nbsp;scipy.optimize.root(),&nbsp;used&nbsp;to&nbsp;solving&nbsp;a&nbsp;non-linear&nbsp;equation&nbsp;<br>
-with&nbsp;parameters.<br>
+In&nbsp;this&nbsp;case,&nbsp;it&nbsp;is&nbsp;used&nbsp;the&nbsp;root&nbsp;method&nbsp;of&nbsp;scipy.optimize.root()&nbsp;to&nbsp;solve&nbsp;a&nbsp;non-linear&nbsp;equation&nbsp;with&nbsp;parameters.<br>
 &nbsp;<br>
 TO&nbsp;USE&nbsp;THE&nbsp;METHOD:<br>
-sol&nbsp;=&nbsp;scipy.optimize.root(fun,&nbsp;x0,&nbsp;args=(),&nbsp;method='hybr',&nbsp;jac=None,&nbsp;tol=None,&nbsp;callback=None,&nbsp;options=None).<br>
+sol&nbsp;=&nbsp;scipy.optimize.root(fun,&nbsp;x0,&nbsp;args=(),&nbsp;method='lm').<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
@@ -575,10 +577,11 @@ args&nbsp;:&nbsp;tuple,&nbsp;optional<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 method&nbsp;:&nbsp;str<br>
 &nbsp;&nbsp;&nbsp;&nbsp;Type&nbsp;of&nbsp;solver.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;*lm&nbsp;(Levenberg–Marquardt&nbsp;algorithm):&nbsp;especified&nbsp;for&nbsp;solving&nbsp;non-linear&nbsp;least&nbsp;squares&nbsp;problems.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;***&nbsp;lm&nbsp;(Levenberg–Marquardt&nbsp;algorithm):&nbsp;especified&nbsp;for&nbsp;solving&nbsp;non-linear&nbsp;least&nbsp;squares&nbsp;problems.<br>
 &nbsp;<br>
 &nbsp;<br>
 ---------------------------------------------------------------------------------------------------------<br>
+&nbsp;<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
@@ -606,8 +609,8 @@ psi0_est:&nbsp;ndarray<br>
 feval_wrapper_AllPathsLinear_drop1&nbsp;function.<br>
 &nbsp;<br>
 The&nbsp;value&nbsp;of&nbsp;the&nbsp;estimated&nbsp;offset&nbsp;angle&nbsp;of&nbsp;the&nbsp;UE&nbsp;orientation&nbsp;is&nbsp;obtained&nbsp;by&nbsp;finding&nbsp;the&nbsp;zeros&nbsp;of&nbsp;the&nbsp;<br>
-given&nbsp;vector&nbsp;function&nbsp;defined&nbsp;by&nbsp;feval_wrapper_AllPathsLinear_drop1.&nbsp;For&nbsp;this&nbsp;purpose,&nbsp;we&nbsp;use&nbsp;the&nbsp;method&nbsp;<br>
-root()&nbsp;which&nbsp;is&nbsp;used&nbsp;to&nbsp;find&nbsp;the&nbsp;solutions&nbsp;of&nbsp;the&nbsp;this&nbsp;vector&nbsp;function.<br>
+Minimum&nbsp;Mean&nbsp;Square&nbsp;Error&nbsp;(MMSE)&nbsp;equation&nbsp;defined&nbsp;by&nbsp;feval_wrapper_AllPathsLinear_drop1.&nbsp;For&nbsp;this&nbsp;purpose,&nbsp;<br>
+it&nbsp;is&nbsp;used&nbsp;the&nbsp;method&nbsp;root()&nbsp;to&nbsp;find&nbsp;the&nbsp;solutions&nbsp;of&nbsp;this&nbsp;function.<br>
 &nbsp;<br>
 &nbsp;<br>
 ---------------------------------&nbsp;&nbsp;&nbsp;&nbsp;MULTIDIMENSIONAL&nbsp;ROOT&nbsp;METHOD&nbsp;&nbsp;&nbsp;&nbsp;------------------------------------<br>
@@ -616,7 +619,7 @@ In&nbsp;this&nbsp;case&nbsp;we&nbsp;make&nbsp;use&nbsp;of&nbsp;the&nbsp;root&nbs
 with&nbsp;parameters.<br>
 &nbsp;<br>
 TO&nbsp;USE&nbsp;THE&nbsp;METHOD:<br>
-sol&nbsp;=&nbsp;scipy.optimize.root(fun,&nbsp;x0,&nbsp;args=(),&nbsp;method='hybr',&nbsp;jac=None,&nbsp;tol=None,&nbsp;callback=None,&nbsp;options=None).<br>
+sol&nbsp;=&nbsp;scipy.optimize.root(fun,&nbsp;x0,&nbsp;args=(),&nbsp;method='lm',&nbsp;jac=None,&nbsp;tol=None,&nbsp;callback=None,&nbsp;options=None).<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
@@ -636,6 +639,7 @@ method&nbsp;:&nbsp;str<br>
 &nbsp;<br>
 &nbsp;<br>
 ---------------------------------------------------------------------------------------------------------<br>
+&nbsp;<br>
 &nbsp;<br>
 Parameters<br>
 ----------<br>
