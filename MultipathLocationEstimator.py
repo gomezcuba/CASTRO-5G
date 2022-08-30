@@ -431,7 +431,7 @@ class MultipathLocationEstimator:
         The value of the UE position is obtained by using the linear algorithm estimation. For this purpose the 
         algorithm takes the sets of the AoA, AoD and delays values of the (Npath//2) NLOS random paths combinations 
         and obtained all the posibles position vectors (x0, y0) of the UE, for the range of values especified by 
-        psi_0. It returns the value of the function with the non-linear MMSE.
+        psi_0. It returns the value of the function with the non-linear minimun square error (NMSE).
         
         
         -------------------------    RANDOM WRAPPING PATH LINEAR METHOD    ----------------------------------
