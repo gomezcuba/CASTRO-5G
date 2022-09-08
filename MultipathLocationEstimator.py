@@ -12,6 +12,8 @@ class MultipathLocationEstimator:
         self.RootMethod=RootMethod
         self.c=3e8
         
+    
+        
     def computePosFrom3PathsKnownPhi0(self,AoD,AoA,dels,phi0_est):
         tgD = np.tan(AoD)
         tgA = np.tan(np.pi-AoA-phi0_est)
@@ -61,7 +63,7 @@ class MultipathLocationEstimator:
         
 #        T=(1/tgD+1/tgA)
 #        S=(1/siD+1/siA)
-#        P=S/T
+#        P=S/T        
         P=(siD+siA)/(coD*siA+coA*siD)
         P[np.isnan(P)]=1
         Q=P/tgA-1/siA
@@ -160,7 +162,15 @@ class MultipathLocationEstimator:
             print("ERROR: Phi0 root not found")
             return (np.array(0.0),np.inf)
    
-    def computeAllLocationsFromPaths(self,AoD,AoA,dels,method='fsolve',hint_phi0=None):        
+    def computeAllLocationsFromPaths(self,AoD,AoA,dels,method='fsolve',group_method='drop1',hint_phi0=None):
+#        if group_method=='3path':
+#            group_table=genGrou3Path()
+#        elif group_method=='drop1':
+#            group_table=genGrouDrop1()
+#        elif group_method=='random':
+#            group_table=genGrouRandom()
+#        else:
+#            group_table=group_method
         if (hint_phi0==None):
             #coarse linear approximation for initialization
             init_phi0=self.bisectPhi0ForAllPaths(AoD,AoA,dels,Npoint=1000,Niter=1,Ndiv=2)
@@ -185,3 +195,6 @@ class MultipathLocationEstimator:
             y0=np.mean(y0all,1)
             (vx,vy)= self.computeAllPathsWithParams(AoD,AoA,dels,x0,y0,phi0_est)
         return(phi0_est,x0,y0,vx,vy,cov_phi0)
+
+if __name__ == "__main__":
+    print("holamundo")

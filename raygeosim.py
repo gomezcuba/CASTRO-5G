@@ -47,7 +47,7 @@ clock_error=(40/c)*np.random.rand(1,Nsims) #delay estimation error
 del_error=(Tserr)*np.random.randn(Npath,Nsims) #delay estimation error
 dels = tau-tau0+clock_error+del_error
 
-loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
+loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=1000,Nref=1,Ndiv=2,RootMethod='lm')
 
 
 t_start_b = time.time()
