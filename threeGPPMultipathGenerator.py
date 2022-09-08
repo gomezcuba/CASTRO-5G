@@ -45,22 +45,22 @@ class ThreeGPPMultipathChannelModel:
         'zodFun'
     ])
     #Crear diccionarios
-    CphiNLOS = {'4' : 0.779, '5' : 0.860 , '8' : 1.018, '10' : 1.090, 
-                '11' : 1.123, '12': 1.146, '14' : 1.190, '15' : 1.211, '16' : 1.226, 
-                '19' : 1.273, '20' : 1.289, '25' : 1.358}
-    CtetaNLOS = {'8' : 0.889, '10' : 0.957, '11' : 1.031, '12' : 1.104, 
-                 '15' : 1.1088, '19' : 1.184, '20' : 1.178, '25' : 1.282}
-    alpham = {'1' : 0.0447, '2' : 0.0447, '3' : 0.1413, '4' : 0.1413, '5' : 0.2492,
-              '6' : 0.2492, '7' :  0.3715, '8' :  0.3715, '9' : 0.5129, '10' : 0.5129,
-              '11' : 0.6797, '12' : 0.6797, '13' :  0.8844, '14' :  0.8844, '15' : 1.1481,
-              '16' : 1.1481, '17' : 1.5195, '18' : 1.5195, '19' : 2.1551, '20' : 2.1551}
+    CphiNLOS = {4 : 0.779, 5 : 0.860 , 8 : 1.018, 10 : 1.090, 
+                11 : 1.123, 12 : 1.146, 14 : 1.190, 15 : 1.211, 16 : 1.226, 
+                19 : 1.273, 20 : 1.289, 25 : 1.358}
+    CtetaNLOS = {8 : 0.889, 10 : 0.957, 11 : 1.031, 12 : 1.104, 
+                 15 : 1.1088, 19 : 1.184, 20 : 1.178, 25 : 1.282}
+    alpham = {1 : 0.0447, 2 : 0.0447, 3 : 0.1413, 4 : 0.1413, 5 : 0.2492,
+              6 : 0.2492, 7 :  0.3715, 8 :  0.3715, 9 : 0.5129, 10 : 0.5129,
+              11 : 0.6797, 12 : 0.6797, 13 :  0.8844, 14 :  0.8844, 15 : 1.1481,
+              16 : 1.1481, 17 : 1.5195, 18 : 1.5195, 19 : 2.1551, 20 : 2.1551}
     def __init__(self, fc = 28, sce = "UMi", corrDistance = 5.0):
         self.frecRefGHz = fc
         self.scenario = sce
         self.corrDistance = corrDistance
         self.dMacrosGenerated = {}
         self.dChansGenerated = {}
-        self.bLargeBandwidthOption = False
+        self.bLargeBandwidthOption = False 
         self.clight=3e8
         if sce.find("UMi")>=0:
             #LOS Probability (distance is in meters)
@@ -396,9 +396,10 @@ class ThreeGPPMultipathChannelModel:
             n=np.ramdon.rand(1,Nf)
         hut= 3*(n-1) + 1.5
         prima_dBP = (4*10.0*hut*self.frecRefGHz) / self.clight
-        PL1 = 32.4 + 21.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
-        PL2 = 32.4 + 40*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.5*np.log10(prima_dBP**2+(10.0-hut)**2)
-        ploss = lambda d2D : PL1 if 10<=d2D<=prima_dBP else PL2
+        if(d2D<prima_dBP):
+            ploss = 32.4 + 21.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
+        else:
+            ploss = 32.4 + 40*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.5*np.log10(prima_dBP**2+(10.0-hut)**2)
         return(ploss)
     def scenarioPlossUMiNLOS(self,d3D,d2D,hut):
         outdoor = True
@@ -410,7 +411,7 @@ class ThreeGPPMultipathChannelModel:
         hut= 3*(n-1) + 1.5
         PL1 = 35.3*np.log10(d3D) + 22.4 + 21.3*np.log10(self.frecRefGHz)-0.3*(hut - 1.5)
         PL2 = self.scenarioPlossUMiLOS(d3D,d2D,hut)
-        ploss = np.maximum(PL1,PL2)#da fallo
+        ploss = np.maximum(PL1,PL2)
         return(ploss)
     
     def scenarioPlossUMaLOS(self,d3D,d2D,hut):
@@ -558,105 +559,219 @@ class ThreeGPPMultipathChannelModel:
         RgridYIndex= rxPos[1] //self.corrDistance 
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         self.dMacrosGenerated[key]=self.ThreeGPPMacroParams(los,PL,ds,asa,asd,zsa,zsd,K,sf,zod_offset_mu)
-    def create_small_param(self,los):
+   
+    def create_small_param(self, los, txPos = (0,0,0), rxPos = (0,0,0)):
+        aPos = np.array(txPos) 
+        bPos = np.array(rxPos) 
+        d3D = np.linalg.norm(bPos-aPos) 
+        d2D = np.sqrt((rxPos[0]-txPos[0])**2.0+(rxPos[1]-txPos[1])**2.0)
+        hbs = aPos[2]
+        hut = bPos[2]
         if los:
             N=self.scenarioParamsLOS.N
+            M=self.scenarioParamsLOS.M
             rt=self.scenarioParamsLOS.rt
             DS=self.scenarioParamsLOS.ds_mu
-            K=self.scenarioParamsLOS.k_mu
+            K=self.scenarioParamsLOS.K_mu
             ASA=self.scenarioParamsLOS.asa_mu
             ZSA=self.scenarioParamsLOS.zsa_mu
             ASD=self.scenarioParamsLOS.asd_mu
-            ZOD=self.scenarioParamsLOS.zod_offset_mu
-            ZSD=self.scenarioParamsLOS.zsd
+            ZOD=0
+            ZSD=self.scenarioParamsLOS.zsdFun(d3D,d2D,hbs,hut)
         #Generate cluster delays
-            tau_prima = np.array()
-            for i in N:
+            aux = []
+            for i in range(N):
                 X=np.random.rand(1)
-                tau_prima[i] = -rt*DS*np.log(X)
-            tau = sorted(tau_prima[i]-np.minimun(tau_prima))
+                aux.append(-rt*DS*np.log(X))
+            tau_prima = np.array(aux)
+            tau_prima = tau_prima-np.amin(tau_prima)
+            tau = np.array(sorted(tau_prima))
             Ctau = 0.7705 - 0.0433*K + 0.0002*K**2 + 0.000017*K**3
             tau = tau / Ctau 
             #Generate cluster powers
-            xi=self.scenarioParamLOS.xi
-            powPrima = np.array()
-            for i in N:
-                Zn=xi*np.random.rand(N,1)
-                powPrima[i] = np.exp(-tau[i]*((rt-1)/(rt*DS)))*10**(-(Zn/10))
+            xi = self.scenarioParamsLOS.xi
+            aux1 = []
+            for i in range(N):
+                Zn = xi*np.random.rand(N,1)
+                aux1.append(np.exp(-tau[i]*((rt-1)/(rt*DS)))*10**(-(Zn/10)))
+            powPrima = np.array(aux1)
             p1LOS = K/(K+1)
             powC=(1/K+1)*(powPrima/np.sum(powPrima))
             powC[0] = powC[0] + p1LOS
             #Remove clusters with less than -25 dB power compared to the maximum cluster power. The scaling factors need not be 
             #changed after cluster elimination
             maxP=np.max(powC)
-            tau = np.array([tau[x] for x in range(0,len(tau)) if powC[x]>maxP*(10**-2.5)])
-            powC = np.array([x for x in powC if x>maxP*(10**-2.5)])
+            #------------------------------------------------
+            #print('mas',maxP)
+            #print('1',powC)
+            for i in range(len(tau)):
+                if (powC[i] < (maxP-(10**-2.5))).any():
+                    np.delete(powC,i)
+            #Hay que eliminar también en el array de retardos tau?????
+            #tau = np.array([tau[x] for x in range(0,len(tau)) if powC[x]>maxP*(10**-2.5)])
+            #powC = np.array([x for x in powC if x>maxP*(10**-2.5)])
             nClusters=np.size(powC)
-            #Generate arrival angles and departure angles for both azimuth and elevation     
-            #Depende del número de clusters por lo que habríaque recorrer con un for?? 
-            Cphi = self.CphiNLOS.get('N')*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3)) 
-            phiAOAprima = ((2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP)))/Cphi)
-            Y=np.random.rand(0,(ASA/7)**2)
-            X=np.random.rand(-1,1)
-            phiAOA = (X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1])
-            mphiAOA = phiAOA + self.scenarioParamsLOS.casa*self.alpham.get('M')
-            Cteta = self.CtetaNLOS.get('N')*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
-            tetaZOAprima = -((ZSA*np.log(powC/maxP)) / Cteta)
-            Y1 = np.random.rand(0,(ZSA/7)**2)
-            tetaZOA=(X*tetaZOAprima + Y1) - (X[1]*tetaZOAprima[1] + Y[1])
-            mtetaZOA = tetaZOA + self.scenarioParamsLOS.czsa*self.alpham.get('M')
-            tetaZODprima = ((2*(ZSD/1.4)*np.sqrt(-np.log(powC/maxP)))/Cteta)
-            Y2 = np.random.rand(0,(ZSD/7)**2)
-            tetaZOD=(X*tetaZODprima + Y2 + ZOD) - (X[1]*tetaZODprima[1] + Y2[1])
-            mtetaZOD = tetaZOD + (3/8)*(10**ZSD)*self.alpham.get('M') #seria zsd_mu
+            #----------------------------------------------
+            #Generate arrival angles and departure angles for both azimuth and elevation    
+            Cphi = self.CphiNLOS.get(N)*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3)) 
+            auxPhi = []
+            auxPhi2 = []
+            Y = []
+            X = []
+            for i in range(N):
+                auxPhi.append(((2*(ASA/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
+                auxPhi2.append(((2*(ASD/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
+                Y.append(np.random.normal(0,(ASA/7)**2))
+                X.append(np.random.rand())#tiene que ser entre -1 y 1
+            phiAOAprima = np.array(auxPhi)
+            phiAODprima = np.array(auxPhi2)
+            auxphiAOA = []
+            auxphiAOD = []
+            for i in range(N):
+                auxphiAOA.append((X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1])) #- phiLOSAOA
+                auxphiAOD.append((X*phiAODprima + Y) - (X[1]*phiAODprima[1] + Y[1])) #-phiLOSAOD
+            phiAOA = np.array(auxphiAOA)
+            phiAOD = np.array(auxphiAOD)
+            auxmphiAOA = []
+            auxmphiAOD = []
+            for i in range(N):
+                for j in range(M):
+                    auxmphiAOA.append(phiAOA[i] + self.scenarioParamsLOS.casa*self.alpham.get(j+1))
+                    auxmphiAOD.append(phiAOD[i] + self.scenarioParamsLOS.casa*self.alpham.get(j+1))
+            mphiAOA = np.array(auxmphiAOA)
+            mphiAOD = np.array(auxmphiAOD)
+            #-------------------------------------------------------------------
+            Cteta = self.CtetaNLOS.get(N)*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
+            auxtetaZOAprima = []
+            auxtetaZODprima = []
+            X2 = []
+            Y1 = []
+            Y2 = []
+            for i in range(N):
+                auxtetaZOAprima.append(-((ZSA*np.log(powC[i]/maxP)) / Cteta))
+                auxtetaZODprima.append(-((ZSD*np.log(powC[i]/maxP)) / Cteta))
+                Y1.append(np.random.normal(0,(ZSA/7)**2))
+                Y2.append(np.random.normal(0,(ZSD/7)**2))
+                X2.append(np.random.rand())
+            tetaZOAprima = np.array(auxtetaZOAprima)
+            tetaZODprima = np.array(auxtetaZODprima)
+            auxtetaZOA = []
+            auxtetaZOD = []
+            for i in range(N):
+                auxtetaZOA.append((X2[i]*tetaZOAprima[i] + Y1[i]) - (X2[1]*tetaZOAprima[1] + Y1[1])) #-tetaLOSZOA
+                auxtetaZOD.append((X2[i]*tetaZODprima[i] + Y2[i] + ZOD) - (X2[1]*tetaZODprima[1] + Y2[1]))
+            tetaZOA = np.array(auxtetaZOA)
+            tetaZOD = np.array(auxtetaZOD)
+            auxmtetaZOA = []
+            auxmtetaZOD = []
+            for i in range(N):
+                for j in range(M):
+                    auxmtetaZOA.append(tetaZOA[i] + self.scenarioParamsLOS.czsa*self.alpham.get(j+1))
+                    auxmtetaZOD.append(tetaZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j+1))
+            mtetaZOA = np.array(auxmtetaZOA)
+            mtetaZOD = np.array(auxmtetaZOD)
         else:
-            self.scenarioParamsNLOS.N
+            N=self.scenarioParamsNLOS.N
+            M=self.scenarioParamsNLOS.M
             rt=self.scenarioParamsNLOS.rt
-            ds=self.scenarioParamsNLOS.ds_mu
-            K=self.scenarioParamsNLOS.k_mu
+            DS=self.scenarioParamsNLOS.ds_mu
+            K=self.scenarioParamsNLOS.K_mu
             ASA=self.scenarioParamsNLOS.asa_mu
             ZSA=self.scenarioParamsNLOS.zsa_mu
             ASD=self.scenarioParamsNLOS.asd_mu
-            ZOD=self.scenarioParamsNLOS.zod_offset_mu
-            ZSD=self.scenarioParamsNLOS.zsd
-            for i in N:
+            ZOD=self.scenarioParamsNLOS.zodFun(d2D,hut)
+            ZSD=self.scenarioParamsNLOS.zsdFun(d3D,d2D,hbs,hut)
+            aux = []
+            for i in range(N):
                 X=np.random.rand(1)
-                tau_prima[i] = -rt*ds*np.log(X)
-            tau = sorted(tau_prima[i]-np.min(tau_prima))
-            xi=self.scenarioParamLOS.xi
-            for i in N:
-                Zn=xi*np.random.randn(N,1)
-                powPrima[i] = np.exp(-tau[i]*((rt-1)/(rt*DS)))*10**(-(Zn/10))
-            powC=(powPrima/np.sum(powPrima))
+                aux.append(-rt*DS*np.log(X))
+            tau_prima = np.array(aux)
+            tau_prima = tau_prima-np.amin(tau_prima)
+            tau = np.array(sorted(tau_prima))
+            xi = self.scenarioParamsLOS.xi
+            aux1 = []
+            for i in range(N):
+                Zn = xi*np.random.rand(N,1)
+                aux1.append(np.exp(-tau[i]*((rt-1)/(rt*DS)))*10**(-(Zn/10)))
+            powPrima = np.array(aux1)
+            powC = powPrima/np.sum(powPrima)            
             #Remove clusters with less than -25 dB power compared to the maximum cluster power. The scaling factors need not be 
             #changed after cluster elimination
             maxP=np.max(powC)
-            tau = np.array([tau[x] for x in range(0,len(tau)) if powC[x]>maxP*(10**-2.5)])
-            powC = np.array([x for x in powC if x>maxP*(10**-2.5)])
+            #------------------------------------------------
+            #print('mas',maxP)
+            for i in range(len(tau)):
+                if (powC[i] < (maxP-(10**-2.5))).any():
+                    np.delete(powC,i)
+            #tau = np.array([tau[x] for x in range(0,len(tau)) if powC[x]>maxP*(10**-2.5)])
+            #powC = np.array([x for x in powC if x>maxP*(10**-2.5)])
             nClusters=np.size(powC)
+            #----------------------------------------------
             #Generate arrival angles and departure angles for both azimuth and elevation     
-            #Depende del número de clusters por lo que habríaque recorrer con un for?? 
-            phiAOAprima = ((2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP))) / self.CphiNLOS.get(N))
-            Y=np.random.rand(0,(ASA/7)**2)
-            X=np.random.rand(-1,1)
-            phiAOA = (X*phiAOAprima + Y) # + phiLOSAOA
-            mphiAOA = phiAOA + self.scenarioParamsNLOS.casa*self.alpham.GET('M')
-            #Hay que añadir el offset de los clusters M
-            tetaZOAprima = -((ZSA*np.log(powC/maxP)) / self.CtetaNLOS.get('N'))
-            Y1 = np.random.rand(0,(ZSA/7)**2)
-            tetaZOA=(X*tetaZOAprima + Y) #- tetaLOSzOA)
-            mtetaZOA=tetaZOA+self.scenarioParamsNLOS.czsa*self.alpham.get('M')
-            tetaZODprima = ((2*(ZSD/1.4)*np.sqrt(-np.log(powC/maxP))) / self.CtetaNLOS.get('N'))
-            Y2 = np.random.rand(0,(ZSD/7)**2)
-            tetaZOD=(X*tetaZODprima + Y2 + ZOD)
-            mtetaZOD = tetaZOD + (3/8)*(10**ZSD)*self.alpham.get('M') #seria zsd_mu
+            Cphi = self.CphiNLOS.get(N) 
+            auxPhi = []
+            auxPhi2 = []
+            Y = []
+            X = []
+            for i in range(N):
+                auxPhi.append(((2*(ASA/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
+                auxPhi2.append(((2*(ASD/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
+                Y.append(np.random.normal(0,(ASA/7)**2))
+                X.append(np.random.rand())#tiene que ser entre -1 y 1
+            phiAOAprima = np.array(auxPhi)
+            phiAODprima = np.array(auxPhi2)
+            auxphiAOA = []
+            auxphiAOD = []
+            for i in range(N):
+                auxphiAOA.append((X*phiAOAprima + Y))
+                auxphiAOD.append((X*phiAODprima + Y))
+            phiAOA = np.array(auxphiAOA)
+            phiAOD = np.array(auxphiAOD)
+            auxmphiAOA = []
+            auxmphiAOD = []
+            for i in range(N):
+                for j in range(M):
+                    auxmphiAOA.append(phiAOA[i] + self.scenarioParamsNLOS.casa*self.alpham.get(j+1))
+                    auxmphiAOD.append(phiAOD[i] + self.scenarioParamsNLOS.casa*self.alpham.get(j+1))
+            mphiAOA = np.array(auxmphiAOA)
+            mphiAOD = np.array(auxmphiAOD)
+        #-------------------------------------------------------------------
+        Cteta = self.CtetaNLOS.get(N)
+        auxtetaZOAprima = []
+        auxtetaZODprima = []
+        for i in range(N):
+            auxtetaZOAprima.append(-((ZSA*np.log(powC[i]/maxP)) / Cteta))
+            auxtetaZODprima.append(-((ZSD*np.log(powC[i]/maxP)) / Cteta))
+        tetaZOAprima = np.array(auxtetaZOAprima)
+        tetaZODprima = np.array(auxtetaZODprima)
+        auxtetaZOA = []
+        auxtetaZOD = []
+        Y1 = []
+        Y2 = []
+        for i in range(N):
+            Y1.append(np.random.normal(0,(ZSA/7)**2))
+            Y2.append(np.random.normal(0,(ZSD/7)**2))
+            auxtetaZOA.append((X[i]*tetaZOAprima[i] + Y1[i]))
+            auxtetaZOD.append((X[i]*tetaZODprima[i] + Y2[i] + ZOD))
+        tetaZOA = np.array(auxtetaZOA)
+        tetaZOD = np.array(auxtetaZOD)
+        auxmtetaZOA = []
+        auxmtetaZOD = []
+        for i in range(N):
+            for j in range(M):
+                auxmtetaZOA.append(tetaZOA[i] + self.scenarioParamsNLOS.czsa*self.alpham.get(j+1))
+                auxmtetaZOD.append(tetaZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j+1))
+        mtetaZOA = np.array(auxmtetaZOA)
+        mtetaZOD = np.array(auxmtetaZOD)
             
-    def create_channel(self,txPos = (0,0), rxPos = (0,0)):
+        
+    def create_channel(self,txPos = (0,0,0), rxPos = (0,0,0)):
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
         vLOS = bPos-aPos
         d3D=np.linalg.norm(bPos-aPos) 
         d2D=np.sqrt((rxPos[0]-txPos[0])**2.0+(rxPos[1]-txPos[1])**2.0)
+        hut=txPos[2]
         d=np.linalg.norm(vLOS)
         losphiAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
         losphiAoA=np.mod(np.pi+losphiAoD, 2*np.pi ) # revise
@@ -689,13 +804,14 @@ class ThreeGPPMultipathChannelModel:
         ds = macro.ds
         rt = param.rt
         M=param.M
+        N=param.N
         nClusters = param.N
-        CphiNLOS = 1.273 #por que usó 19 
-        CthetaNLOS = 1.184
+        CphiNLOS = param.CphiNLOS.get(N)
+        CthetaNLOS = param.CthetaNLOS.get(N)
         #placeholders
-        pldB= -120
+       # pldB= -120
         
-        pldB = macro.pLossFun(d3D,d2D)
+        pldB = macro.pLossFun(d3D,d2D,hut)
         
         tauCs= np.random.exponential(scale=ds*rt, size=(nClusters,1))
         tauCs= np.sort(tauCs - np.min(tauCs),axis=0)
