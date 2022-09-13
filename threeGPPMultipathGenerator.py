@@ -518,7 +518,7 @@ class ThreeGPPMultipathChannelModel:
         return(zod_offset_mu)
    
     #Large Scale Parametres
-    def create_macro(self,txPos = (0,0,0), rxPos = (0,0,0)):
+    def create_macro(self, txPos, rxPos):
         aPos = np.array(txPos) 
         bPos = np.array(rxPos) 
         d3D=np.linalg.norm(bPos-aPos) 
@@ -560,25 +560,21 @@ class ThreeGPPMultipathChannelModel:
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         self.dMacrosGenerated[key]=self.ThreeGPPMacroParams(los,PL,ds,asa,asd,zsa,zsd,K,sf,zod_offset_mu)
    
-    def create_small_param(self, los, txPos = (0,0,0), rxPos = (0,0,0)):
-        aPos = np.array(txPos) 
-        bPos = np.array(rxPos) 
-        d3D = np.linalg.norm(bPos-aPos) 
-        d2D = np.sqrt((rxPos[0]-txPos[0])**2.0+(rxPos[1]-txPos[1])**2.0)
-        hbs = aPos[2]
-        hut = bPos[2]
+    def create_small_param(self, angles, macro):
+        los = macro.los
         if los:
-            N=self.scenarioParamsLOS.N
-            M=self.scenarioParamsLOS.M
-            rt=self.scenarioParamsLOS.rt
-            DS=self.scenarioParamsLOS.ds_mu
-            K=self.scenarioParamsLOS.K_mu
-            ASA=self.scenarioParamsLOS.asa_mu
-            ZSA=self.scenarioParamsLOS.zsa_mu
-            ASD=self.scenarioParamsLOS.asd_mu
-            ZOD=0
-            ZSD=self.scenarioParamsLOS.zsdFun(d3D,d2D,hbs,hut)
-        #Generate cluster delays
+            N = self.scenarioParamsLOS.N
+            M = self.scenarioParamsLOS.M
+            rt = self.scenarioParamsLOS.rt
+            DS = macro.ds
+            ASA = macro.asa
+            ASD = macro.asd
+            ZSA = macro.zsa
+            ZSD = macro.zsd
+            K = macro.K
+            #SF = macro.sf
+            ZOD = 0
+            #Generate cluster delays
             aux = []
             for i in range(N):
                 X=np.random.rand(1)
@@ -596,7 +592,7 @@ class ThreeGPPMultipathChannelModel:
                 aux1.append(np.exp(-tau[i]*((rt-1)/(rt*DS)))*10**(-(Zn/10)))
             powPrima = np.array(aux1)
             p1LOS = K/(K+1)
-            powC=(1/K+1)*(powPrima/np.sum(powPrima))
+            powC = (1/K+1)*(powPrima/np.sum(powPrima))
             powC[0] = powC[0] + p1LOS
             #Remove clusters with less than -25 dB power compared to the maximum cluster power. The scaling factors need not be 
             #changed after cluster elimination
@@ -612,7 +608,8 @@ class ThreeGPPMultipathChannelModel:
             #powC = np.array([x for x in powC if x>maxP*(10**-2.5)])
             nClusters=np.size(powC)
             #----------------------------------------------
-            #Generate arrival angles and departure angles for both azimuth and elevation    
+            #Generate arrival angles and departure angles for both azimuth and elevation   
+            #azimut
             Cphi = self.CphiNLOS.get(N)*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3)) 
             auxPhi = []
             auxPhi2 = []
@@ -628,8 +625,8 @@ class ThreeGPPMultipathChannelModel:
             auxphiAOA = []
             auxphiAOD = []
             for i in range(N):
-                auxphiAOA.append((X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1])) #- phiLOSAOA
-                auxphiAOD.append((X*phiAODprima + Y) - (X[1]*phiAODprima[1] + Y[1])) #-phiLOSAOD
+                auxphiAOA.append((X*phiAOAprima + Y) - (X[1]*phiAOAprima[1] + Y[1] - angles[1])) 
+                auxphiAOD.append((X*phiAODprima + Y) - (X[1]*phiAODprima[1] + Y[1] - angles[0])) 
             phiAOA = np.array(auxphiAOA)
             phiAOD = np.array(auxphiAOD)
             auxmphiAOA = []
@@ -641,6 +638,7 @@ class ThreeGPPMultipathChannelModel:
             mphiAOA = np.array(auxmphiAOA)
             mphiAOD = np.array(auxmphiAOD)
             #-------------------------------------------------------------------
+            #zenith (elevation)
             Cteta = self.CtetaNLOS.get(N)*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
             auxtetaZOAprima = []
             auxtetaZODprima = []
@@ -658,8 +656,8 @@ class ThreeGPPMultipathChannelModel:
             auxtetaZOA = []
             auxtetaZOD = []
             for i in range(N):
-                auxtetaZOA.append((X2[i]*tetaZOAprima[i] + Y1[i]) - (X2[1]*tetaZOAprima[1] + Y1[1])) #-tetaLOSZOA
-                auxtetaZOD.append((X2[i]*tetaZODprima[i] + Y2[i] + ZOD) - (X2[1]*tetaZODprima[1] + Y2[1]))
+                auxtetaZOA.append((X2[i]*tetaZOAprima[i] + Y1[i]) - (X2[1]*tetaZOAprima[1] + Y1[1] - angles[3]))
+                auxtetaZOD.append((X2[i]*tetaZODprima[i] + Y2[i] + ZOD) - (X2[1]*tetaZODprima[1] + Y2[1] - angles[2]))
             tetaZOA = np.array(auxtetaZOA)
             tetaZOD = np.array(auxtetaZOD)
             auxmtetaZOA = []
@@ -671,16 +669,17 @@ class ThreeGPPMultipathChannelModel:
             mtetaZOA = np.array(auxmtetaZOA)
             mtetaZOD = np.array(auxmtetaZOD)
         else:
-            N=self.scenarioParamsNLOS.N
-            M=self.scenarioParamsNLOS.M
-            rt=self.scenarioParamsNLOS.rt
-            DS=self.scenarioParamsNLOS.ds_mu
-            K=self.scenarioParamsNLOS.K_mu
-            ASA=self.scenarioParamsNLOS.asa_mu
-            ZSA=self.scenarioParamsNLOS.zsa_mu
-            ASD=self.scenarioParamsNLOS.asd_mu
-            ZOD=self.scenarioParamsNLOS.zodFun(d2D,hut)
-            ZSD=self.scenarioParamsNLOS.zsdFun(d3D,d2D,hbs,hut)
+            N = self.scenarioParamsNLOS.N
+            M = self.scenarioParamsNLOS.M
+            rt = self.scenarioParamsNLOS.rt
+            DS = macro.ds
+            ASA = macro.asa
+            ASD = macro.asd
+            ZSA = macro.zsa
+            ZSD = macro.zsd
+            K = macro.K
+            #SF = macro.sf
+            ZOD = macro.zod_offset_mu
             aux = []
             for i in range(N):
                 X=np.random.rand(1)
@@ -708,6 +707,7 @@ class ThreeGPPMultipathChannelModel:
             nClusters=np.size(powC)
             #----------------------------------------------
             #Generate arrival angles and departure angles for both azimuth and elevation     
+            #azimut
             Cphi = self.CphiNLOS.get(N) 
             auxPhi = []
             auxPhi2 = []
@@ -723,8 +723,8 @@ class ThreeGPPMultipathChannelModel:
             auxphiAOA = []
             auxphiAOD = []
             for i in range(N):
-                auxphiAOA.append((X*phiAOAprima + Y))
-                auxphiAOD.append((X*phiAODprima + Y))
+                auxphiAOA.append((X*phiAOAprima + Y + angles[1]))
+                auxphiAOD.append((X*phiAODprima + Y + angles[0]))
             phiAOA = np.array(auxphiAOA)
             phiAOD = np.array(auxphiAOD)
             auxmphiAOA = []
@@ -735,37 +735,37 @@ class ThreeGPPMultipathChannelModel:
                     auxmphiAOD.append(phiAOD[i] + self.scenarioParamsNLOS.casa*self.alpham.get(j+1))
             mphiAOA = np.array(auxmphiAOA)
             mphiAOD = np.array(auxmphiAOD)
-        #-------------------------------------------------------------------
-        Cteta = self.CtetaNLOS.get(N)
-        auxtetaZOAprima = []
-        auxtetaZODprima = []
-        for i in range(N):
-            auxtetaZOAprima.append(-((ZSA*np.log(powC[i]/maxP)) / Cteta))
-            auxtetaZODprima.append(-((ZSD*np.log(powC[i]/maxP)) / Cteta))
-        tetaZOAprima = np.array(auxtetaZOAprima)
-        tetaZODprima = np.array(auxtetaZODprima)
-        auxtetaZOA = []
-        auxtetaZOD = []
-        Y1 = []
-        Y2 = []
-        for i in range(N):
-            Y1.append(np.random.normal(0,(ZSA/7)**2))
-            Y2.append(np.random.normal(0,(ZSD/7)**2))
-            auxtetaZOA.append((X[i]*tetaZOAprima[i] + Y1[i]))
-            auxtetaZOD.append((X[i]*tetaZODprima[i] + Y2[i] + ZOD))
-        tetaZOA = np.array(auxtetaZOA)
-        tetaZOD = np.array(auxtetaZOD)
-        auxmtetaZOA = []
-        auxmtetaZOD = []
-        for i in range(N):
-            for j in range(M):
-                auxmtetaZOA.append(tetaZOA[i] + self.scenarioParamsNLOS.czsa*self.alpham.get(j+1))
-                auxmtetaZOD.append(tetaZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j+1))
-        mtetaZOA = np.array(auxmtetaZOA)
-        mtetaZOD = np.array(auxmtetaZOD)
-            
+            #-------------------------------------------------------------------
+            #zenith (elevation)
+            Cteta = self.CtetaNLOS.get(N)
+            auxtetaZOAprima = []
+            auxtetaZODprima = []
+            for i in range(N):
+                auxtetaZOAprima.append(-((ZSA*np.log(powC[i]/maxP)) / Cteta))
+                auxtetaZODprima.append(-((ZSD*np.log(powC[i]/maxP)) / Cteta))
+            tetaZOAprima = np.array(auxtetaZOAprima)
+            tetaZODprima = np.array(auxtetaZODprima)
+            auxtetaZOA = []
+            auxtetaZOD = []
+            Y1 = []
+            Y2 = []
+            for i in range(N):
+                Y1.append(np.random.normal(0,(ZSA/7)**2))
+                Y2.append(np.random.normal(0,(ZSD/7)**2))
+                auxtetaZOA.append((X[i]*tetaZOAprima[i] + Y1[i])) #ZOA pero hay que diferenciar entre O2I y O2O
+                auxtetaZOD.append((X[i]*tetaZODprima[i] + Y2[i] + angles[2] + ZOD))
+            tetaZOA = np.array(auxtetaZOA)
+            tetaZOD = np.array(auxtetaZOD)
+            auxmtetaZOA = []
+            auxmtetaZOD = []
+            for i in range(N):
+                for j in range(M):
+                    auxmtetaZOA.append(tetaZOA[i] + self.scenarioParamsNLOS.czsa*self.alpham.get(j+1))
+                    auxmtetaZOD.append(tetaZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j+1))
+            mtetaZOA = np.array(auxmtetaZOA)
+            mtetaZOD = np.array(auxmtetaZOD)
         
-    def create_channel(self,txPos = (0,0,0), rxPos = (0,0,0)):
+    def create_channel(self, txPos, rxPos):
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
         vLOS = bPos-aPos
@@ -779,159 +779,25 @@ class ThreeGPPMultipathChannelModel:
         losthetaAoD=np.pi/2-np.arctan( vaux[1] / vaux[0] )
         losthetaAoA=np.pi-losthetaAoD # revise
         #3GPP model is in degrees but numpy uses radians
-        losphiAoD=(180.0/np.pi)*losphiAoD #angle of departure 
-        losthetaAoD=(180.0/np.pi)*losthetaAoD 
-        losphiAoA=(180.0/np.pi)*losphiAoA #angle of aperture
-        losthetaAoA=(180.0/np.pi)*losthetaAoA
+        #losphiAoD=(180.0/np.pi)*losphiAoD #angle of departure 
+        #losthetaAoD=(180.0/np.pi)*losthetaAoD 
+        #losphiAoA=(180.0/np.pi)*losphiAoA #angle of aperture
+        #losthetaAoA=(180.0/np.pi)*losthetaAoA
+        angles = [losphiAoD,losphiAoA,losthetaAoD,losthetaAoA]
         TgridXIndex= txPos[0] // self.corrDistance
         TgridYIndex= txPos[1] // self.corrDistance 
         RgridXIndex= (rxPos[0]-txPos[0]) // self.corrDistance 
         RgridYIndex= (rxPos[1]-txPos[1]) //self.corrDistance 
         macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         key = (txPos[0],txPos[1],rxPos[0],rxPos[1])
-
-#        if not self.dMacrosGenerated.has_key(key):
+        
         if not macrokey in self.dMacrosGenerated:
             self.create_macro(txPos,rxPos)
         macro = self.dMacrosGenerated[macrokey]
-
-        bLOS = macro.los
-        if bLOS:
-            param = self.scenarioParamsLOS
-        else:
-            param = self.scenarioParamsNLOS
-            
-        ds = macro.ds
-        rt = param.rt
-        M=param.M
-        N=param.N
-        nClusters = param.N
-        CphiNLOS = param.CphiNLOS.get(N)
-        CthetaNLOS = param.CthetaNLOS.get(N)
-        #placeholders
-       # pldB= -120
         
-        pldB = macro.pLossFun(d3D,d2D,hut)
-        
-        tauCs= np.random.exponential(scale=ds*rt, size=(nClusters,1))
-        tauCs= np.sort(tauCs - np.min(tauCs),axis=0)
-        Zn = param.xi*np.random.randn(nClusters,1)
-        powCs=np.exp(-tauCs*(rt-1)/(rt*ds))*(10**( (-Zn) /10 ))
-        powCs=powCs/np.sum(powCs)
-        if (bLOS):
-            K=macro.K
-            Ctau = 0.7705 - 0.0433*K + 0.0002*(K**2) + 0.000017*(K**3) 
-            powCs=powCs/(K+1)
-            powCs[0]=powCs[0]+K/(K+1)
-            tauCs=tauCs / Ctau
-            Cphi = CphiNLOS*( 1.1035 - 0.028*K + 0.002*(K**2) + 0.0001*(K**3) ) #7.5-10
-            Ctheta = CthetaNLOS*(  1.3086 - 0.0339*K + 0.0077*(K**2) +  0.0002*(K**3) ) #7.5-15
-        else:
-            Ctau = 1
-            Cphi = CphiNLOS
-            Ctheta = CthetaNLOS
-        maxP=np.max(powCs)
-        tauCs = np.array([tauCs[x] for x in range(0,len(tauCs)) if powCs[x]>maxP*(10**-2.5)])
-        powCs = np.array([x for x in powCs if x>maxP*(10**-2.5)])
-        nClusters=np.size(powCs)
+        los = macro.los
 
-        #azimut
-        mphiCsA = 2* macro.asa/1.4 * np.sqrt(-np.log(powCs/maxP)) / Cphi
-        sphiCsA = 2.0*np.random.randint(0,2,(nClusters,1))-1.0
-        vphiCsA = macro.asa/7 * np.random.randn(nClusters,1)
-        if (bLOS):
-            phiCsA = losphiAoA + sphiCsA*mphiCsA + vphiCsA - sphiCsA[0]*mphiCsA[0] - vphiCsA[0]
-        else:
-            phiCsA = losphiAoA + sphiCsA*mphiCsA + vphiCsA
-        mphiCsD = 2* macro.asd/1.4 * np.sqrt(-np.log(powCs/maxP)) / Cphi
-        sphiCsD = 2.0*np.random.randint(0,2,(nClusters,1))-1.0
-        vphiCsD = macro.asd/7 * np.random.randn(nClusters,1)
-        if (bLOS):
-            phiCsD = losphiAoD + sphiCsD*mphiCsD + vphiCsD - sphiCsD[0]*mphiCsD[0] - vphiCsD[0]
-        else:
-            phiCsD = losphiAoD + sphiCsD*mphiCsD + vphiCsD
-        #zenith (elevation)
-        mthetaCsA = -macro.zsa *np.log(powCs/maxP) / Ctheta
-        sthetaCsA = 2.0*np.random.randint(0,2,(nClusters,1))-1.0
-        vthetaCsA = macro.zsa/7 * np.random.randn(nClusters,1)
-        if (bLOS):
-            thetaCsA = losthetaAoA + sthetaCsA*mthetaCsA + vthetaCsA - sthetaCsA[0]*mthetaCsA[0] - vthetaCsA[0]
-        else:
-            thetaCsA = losthetaAoA + sthetaCsA*mthetaCsA + vthetaCsA + macro.zod_offset_mu
-        mthetaCsD = -macro.zsd *np.log(powCs/maxP) / Ctheta
-        sthetaCsD = 2.0*np.random.randint(0,2,(nClusters,1))-1.0
-        vthetaCsD = macro.zsd/7 * np.random.randn(nClusters,1)
-        if (bLOS):
-            thetaCsD = losthetaAoD + sthetaCsD*mthetaCsD + vthetaCsD - sthetaCsD[0]*mthetaCsD[0] - vthetaCsD[0]
-        else:
-            thetaCsD = losthetaAoD + sthetaCsD*mthetaCsD + vthetaCsD
-        lp=[]
-        if self.bLargeBandwidthOption: #7.6-2
-            phiOffsetD=4*np.random.rand(nClusters,M)-2
-            phiOffsetA=4*np.random.rand(nClusters,M)-2
-            thetaOffsetD=4*np.random.rand(nClusters,M)-2
-            thetaOffsetA=4*np.random.rand(nClusters,M)-2
-            delayOffset=2*param.cds*np.random.rand(nClusters,M)
-            delayOffset=delayOffset-np.min(delayOffset,axis=1).reshape(nClusters,1)
-            czsd_aux=(3.0/8.0)*(10.0**macro.zsd_mu)
-            powOffset=np.exp(-(delayOffset/param.cds
-                                + np.abs(phiOffsetA)*np.sqrt(2)/param.casa
-                                + np.abs(phiOffsetD)*np.sqrt(2)/param.casd
-                                + np.abs(thetaOffsetA)*np.sqrt(2)/param.czsa
-                                + np.abs(thetaOffsetD)*np.sqrt(2)/czsd_aux
-                                ))
-            powOffset = powOffset / np.sum(powOffset,axis=1).reshape(nClusters,1)
-            for nc in range(0,nClusters):
-                for indp in range(0,M):
-                    phase= 2*np.pi*np.random.rand(1)
-                    amp = np.sqrt(powCs[nc]*powOffset[nc,indp])*np.exp(1j*phase)
-                    tau=tauCs[nc]*1e9+delayOffset[nc,indp]
-                    phiD=phiCsD[nc]+param.casd*phiOffsetD[nc,indp]
-                    phiA=phiCsA[nc]+param.casa*phiOffsetA[nc,indp]
-                    thetaA=thetaCsA[nc]+param.czsa*thetaOffsetA[nc,indp]
-                    if bLOS:
-                        thetaD=thetaCsD[nc]+param.czsa*thetaOffsetD[nc,indp]
-                    else:
-                        czsd_aux=(3.0/8.0)*(10.0**macro.zsd_mu)
-                        thetaD=thetaCsD[nc]+czsd_aux*thetaOffsetD[nc,indp]
-                    pathInfo = ch.ParametricPath(amp,tau,phiD*np.pi/180.0,phiA*np.pi/180.0,thetaD*np.pi/180.0,thetaA*np.pi/180.0,0)
-                    lp.append(pathInfo)
-        else:
-            alpham=[
-                0.0447,
-                0.1413,
-                0.2492,
-                0.3715,
-                0.5129,
-                0.6797,
-                0.8844,
-                1.1481,
-                1.5195,
-                2.1551
-            ]
-            for nc in range(0,nClusters):
-                for indp in range(0,M):
-                    phase= 2*np.pi*np.random.rand(1)
-                    amp = np.sqrt(powCs[nc]/M)*np.exp(1j*phase)
-                    secondMaxP=np.max([x for x in powCs if x < maxP])
-                    if powCs[nc]>=secondMaxP:
-                        if indp in [9,10,11,12,17,18]:
-                            tau=tauCs[nc]*1e9+param.cds*1.28
-                        elif indp in [13,14,15,16]:
-                            tau=tauCs[nc]*1e9+param.cds*2.56
-                        else:
-                            tau=tauCs[nc]*1e9
-                    else:
-                        tau=tauCs[nc]*1e9
-                    phiD=phiCsD[nc]+param.casd*alpham[indp//2]*(-1 if (indp%2)==1 else 1)
-                    phiA=phiCsA[nc]+param.casa*alpham[indp//2]*(-1 if (indp%2)==1 else 1)
-                    thetaA=thetaCsA[nc]+param.czsa*alpham[indp//2]*(-1 if (indp%2)==1 else 1)
-                    if bLOS:
-                        thetaD=thetaCsD[nc]+param.czsa*alpham[indp//2]*(-1 if (indp%2)==1 else 1)
-                    else:
-                        czsd_aux=(3.0/8.0)*(10.0**macro.zsd_mu)
-                        thetaD=thetaCsD[nc]+czsd_aux*alpham[indp//2]*(-1 if (indp%2)==1 else 1)
-                    pathInfo = ch.ParametricPath(amp,tau,phiD*np.pi/180.0,phiA*np.pi/180.0,thetaD*np.pi/180.0,thetaA*np.pi/180.0,0)
-                    lp.append(pathInfo)
-        self.dChansGenerated[key] = ch.MultipathChannel(txPos,rxPos,lp)
-        return(self.dChansGenerated[key])
+        self.create_small_param(angles,macro)
+
+        
+        return(True)
