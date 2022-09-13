@@ -22,12 +22,17 @@ class MultipathLocationEstimator:
         coD = np.cos(AoD)
         coA = np.cos(np.pi-AoA-phi0_est)
         
-        T=(1/tgD+1/tgA)
-        S=(1/siD+1/siA)
-        P=S/T
-        Q=P/tgA-1/siA
-#        P=(siD+siA)/(coD*siA+coA*siD)
-#        Q=((siA-coD*tgA)/(coD*coA+siD*siA))
+#        T=(1/tgD+1/tgA)
+#        S=(1/siD+1/siA)
+#        P=S/T
+#        Q=P/tgA-1/siA
+        P=(siD+siA)/(coD*siA+coA*siD)
+        P[np.isnan(P)]=1
+        P[np.isinf(P)]=np.sign(P[np.isinf(P)])/np.sqrt(2)
+#        Q=P/tgA-1/siA
+        Q=(coA-coD)/(coD*siA+coA*siD)
+        Q[np.isnan(Q)]=1
+        Q[np.isinf(Q)]=np.sign(Q[np.isinf(Q)])/np.sqrt(2)
         Dl = dels*self.c
         
         Idp=(Dl[0:-1]-Dl[1:])/(P[...,0:-1]-P[...,1:])
@@ -66,7 +71,11 @@ class MultipathLocationEstimator:
 #        P=S/T        
         P=(siD+siA)/(coD*siA+coA*siD)
         P[np.isnan(P)]=1
-        Q=P/tgA-1/siA
+        P[np.isinf(P)]=np.sign(P[np.isinf(P)])/np.sqrt(2)
+#        Q=P/tgA-1/siA
+        Q=(coA-coD)/(coD*siA+coA*siD)
+        Q[np.isnan(Q)]=1
+        Q[np.isinf(Q)]=np.sign(Q[np.isinf(Q)])/np.sqrt(2)
         Dl = dels*self.c
         
         result=np.linalg.lstsq(np.column_stack([P,Q,-np.ones_like(P)]),Dl,rcond=None)

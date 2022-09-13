@@ -18,10 +18,11 @@ parser = argparse.ArgumentParser(description='Multipath Location Estimation Simu
 #parameters that affect number of simulations
 parser.add_argument('-N', type=int,help='No. simulated channels')
 #parameters that affect error
-parser.add_argument('-S', type=int,help='No. error Std. points')
+parser.add_argument('--noerror', help='Add zero error case', action='store_true')
+parser.add_argument('-S', type=int,help='Add S normalized error Std. points')
 parser.add_argument('--minstd', help='Minimum error std in dB')
 parser.add_argument('--maxstd', help='Maximum error std in dB')
-parser.add_argument('--noerror', help='Add zero error case', action='store_true')
+parser.add_argument('-D', type=str,help='Add dictionary-based error models, comma separated')
 #parameters that affect multipath generator
 parser.add_argument('-G', type=int,help='Type of generator')
 parser.add_argument('--npathgeo', type=int,help='No. paths per channel (Geo only)')
@@ -35,21 +36,24 @@ parser.add_argument('--noloc',help='Do not perform location estimation, load pri
 parser.add_argument('--show', help='Open plot figures in window', action='store_true')
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
-args = parser.parse_args("--nompg --noloc -N 100 -S 7 --noerror --label test --show --print".split(' '))
+args = parser.parse_args("--nompg --noloc -N 100 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
 Nsims=args.N if args.N else 100
+if args.noerror:
+    lErrMod=[('no',0,0,0)]
+else:
+    lSTD=[]
 if args.S:
     minStd = args.minstd if args.minstd else -7
     maxStd = args.maxstd if args.maxstd else -1
-    lSTD = np.logspace(minStd,maxStd,args.S)
     stepStd=(maxStd-minStd)/(args.S-1)
-    if args.noerror:
-        lSTD = np.concatenate([[0],lSTD])
-elif args.noerror:
-    lSTD=np.array([0])
-else:
-    print("ERROR: neither multipath error std nor no-error case specified")
-Nstds=len(lSTD)
+    lSTD=np.logspace(minStd,maxStd,args.S) 
+    lErrMod = lErrMod+[('std',x,x,x) for x in lSTD]
+if args.D:
+    lDicSizes=[tuple(['dic']+[x for x in y.split(':')]) for y in args.D.split(',') ]
+    lErrMod = lErrMod+lDicSizes    
+#TODO add ifs etc. to make this selectable with OMP
+NerrMod=len(lErrMod)
 mpgen = args.G if args.G else 'Geo'
 
 if args.algs:
@@ -76,9 +80,9 @@ else:
 Ncases =len(lCases)
 
 if args.label:
-    outfoldername="./MPRayLocresults%s-%d-%d-%s"%(args.label,Nstds,Nsims,mpgen)
+    outfoldername="./MPRayLocresults%s-%d-%d-%s"%(args.label,NerrMod,Nsims,mpgen)
 else:
-    outfoldername="./MPRayLocresults-%d-%d-%s"%(Nstds,Nsims,mpgen)
+    outfoldername="./MPRayLocresults-%d-%d-%s"%(NerrMod,Nsims,mpgen)
 if not os.path.isdir(outfoldername):
     os.mkdir(outfoldername)
 
@@ -87,7 +91,7 @@ Xmax=50
 Xmin=-50
 Ymax=50
 Ymin=-50
-mpEstErrModel='Gaussian' #TODO add ifs etc. to make this selectable with OMP
+
 phi0GyrQuant=2*np.pi/64
 
 if args.nompg:
@@ -103,6 +107,7 @@ if args.nompg:
     c=3e8
     tau0=y0/np.sin(theta0)/c
     tau=data["tau"]
+    tauE=data["tauE"]
     theta_est=data["theta_est"]
     phi_est=data["phi_est"]
     tau_est=data["tau_est"]
@@ -127,22 +132,43 @@ else:
         c=3e8
         tau0=y0/np.sin(theta0)/c
         tau=(np.abs(y/np.sin(theta))+np.abs((y-y0)/np.sin(phi)))/c
+        tauE=np.random.randn(1,Nsims)*40e-9
     elif mpgen == "3gpp":
         #TBW
         print("MultiPath generation method %s to be written"%mpgen)
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
     
-    theta_est=np.zeros((Nstds,Npath,Nsims))
-    phi_est=np.zeros((Nstds,Npath,Nsims))
-    tau_est=np.zeros((Nstds,Npath,Nsims))
-    if mpEstErrModel=='Gaussian':
-        for nv in range(Nstds):
-            theta_est[nv,:,:]=np.mod(theta+lSTD[nv]*2*np.pi*np.random.rand(Npath,Nsims),2*np.pi)
-            phi_est[nv,:,:]=np.mod(phi-phi0+lSTD[nv]*2*np.pi*np.random.rand(Npath,Nsims),2*np.pi)
-            tau_est[nv,:,:]=tau+lSTD[nv]*40e-9*np.random.rand(Npath,Nsims)
-    else:
-        print("Multipath estimation error model %s to be written"%mpEstErrModel)
+    theta_est=np.zeros((NerrMod,Npath,Nsims))
+    phi_est=np.zeros((NerrMod,Npath,Nsims))
+    tau_est=np.zeros((NerrMod,Npath,Nsims))
+    for nv in range(NerrMod):
+        (errType,c1,c2,c3)=lErrMod[nv]
+        if errType=='no':
+            theta_est[nv,:,:]=np.mod(theta,2*np.pi)
+            phi_est[nv,:,:]=np.mod(phi-phi0,2*np.pi)
+            tau_est[nv,:,:]=tau-tauE
+        elif errType=='std': 
+            theta_est[nv,:,:]=np.mod(theta+c1*2*np.pi*np.random.rand(Npath,Nsims),2*np.pi)
+            phi_est[nv,:,:]=np.mod(phi-phi0+c2*2*np.pi*np.random.rand(Npath,Nsims),2*np.pi)
+            tau_est[nv,:,:]=tau-tauE+c3*320e-9*np.random.rand(Npath,Nsims)
+        elif errType=='dic':
+            if c1=='inf':
+                theta_est[nv,:,:]=np.mod(theta,2*np.pi)
+            else:
+                theta_est[nv,:,:]=np.mod(np.round(theta*int(c1)/2/np.pi)*2*np.pi/int(c1),2*np.pi)
+            if c2=='inf':
+                phi_est[nv,:,:]=np.mod(phi-phi0,2*np.pi)
+            else:
+                phi_est[nv,:,:]=np.mod(np.round((phi-phi0)*int(c2)/2/np.pi)*2*np.pi/int(c2),2*np.pi)
+            if c3=='inf':
+                tau_est[nv,:,:]=tau-tauE
+            else:
+                Ts=1.0/400e6#2.5ns
+                Ds=320e-9#Ts*128 FIR filter
+                tau_est[nv,:,:]=np.round((tau-tauE)*int(c3)/Ds)*Ds/int(c3)
+        else:
+            print("Multipath estimation error model %s to be written"%errType)
     if not args.nosave: 
         np.savez(outfoldername+'/chanGenData.npz',
                  x=x,
@@ -153,6 +179,7 @@ else:
                  phi0=phi0,
                  phi=phi,
                  tau=tau,
+                 tauE=tauE,
                  theta_est=theta_est,
                  phi_est=phi_est,
                  tau_est=tau_est)
@@ -168,19 +195,19 @@ if args.noloc:
     run_time=data["run_time"]
 else:        
     t_start_loc=time.time() 
-    phi0_est=np.zeros((Ncases,Nstds,Nsims))
-    x0_est=np.zeros((Ncases,Nstds,Nsims))
-    y0_est=np.zeros((Ncases,Nstds,Nsims))
-    x_est=np.zeros((Ncases,Nstds,Npath,Nsims))
-    y_est=np.zeros((Ncases,Nstds,Npath,Nsims))
-    run_time=np.zeros((Ncases,Nstds))
+    phi0_est=np.zeros((Ncases,NerrMod,Nsims))
+    x0_est=np.zeros((Ncases,NerrMod,Nsims))
+    y0_est=np.zeros((Ncases,NerrMod,Nsims))
+    x_est=np.zeros((Ncases,NerrMod,Npath,Nsims))
+    y_est=np.zeros((Ncases,NerrMod,Npath,Nsims))
+    run_time=np.zeros((Ncases,NerrMod))
     
     loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
     
     for nc in range(Ncases):
         (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
-        for nv in range(Nstds):
-            bar = Bar("Case phi known:%s phi0quant: %s grouping:%s optimMthd:%s Var=%.3f"%(phi0Apriori,phi0Quant,grouping,optimMthd,10*np.log10(lSTD[nv])), max=Nsims)
+        for nv in range(NerrMod):
+            bar = Bar("Case phi known:%s phi0quant: %s grouping:%s optimMthd:%s err=%s"%(phi0Apriori,phi0Quant,grouping,optimMthd,lErrMod[nv]), max=Nsims)
             bar.check_tty = False        
             t_start_point = time.time()
             for ns in range(Nsims):
@@ -228,8 +255,8 @@ for nc in range(Ncases):
         marker='x' if phi0Quant else 's'
         line=':'
     else:
-        caseStr="%s - %s - %shint"%(grouping,optimMthd,'' if phi0Quant else 'no-')
-        line='-.' if grouping=='3P' else '-'
+        caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+        line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
         marker='*' if phi0Quant else 'o'
         color='b' if optimMthd=='brute' else 'g'
     plt.semilogx(np.percentile(location_error[nc,0,:],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
@@ -242,7 +269,7 @@ if args.print:
     plt.savefig(outfoldername+'/cdflocerr_noerr.eps')
 
 plt.figure(2)
-P1pos=np.argmax(lSTD==1e-3)
+P1pos=np.argmax([x[1]==1e-3 and x[0]=='std' for x in lErrMod])
 for nc in range(Ncases):
     (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
     if phi0Apriori:
@@ -251,8 +278,8 @@ for nc in range(Ncases):
         marker='x' if phi0Quant else 's'
         line=':'
     else:
-        caseStr="%s - %s - %shint"%(grouping,optimMthd,'' if phi0Quant else 'no-')
-        line='-.' if grouping=='3P' else '-'
+        caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+        line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
         marker='*' if phi0Quant else 'o'
         color='b' if optimMthd=='brute' else 'g'
         
@@ -266,8 +293,7 @@ if args.print:
     plt.savefig(outfoldername+'/cdflocerr_1Perr.eps')
 
 plt.figure(3)
-lSTDaxis=lSTD
-lSTDaxis[lSTD==0]=10**(minStd-stepStd)
+stdCaseMask=[x[0]=='std' for x in lErrMod]
 for nc in range(Ncases):
     (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
     if phi0Apriori:
@@ -276,16 +302,15 @@ for nc in range(Ncases):
         marker='x' if phi0Quant else 's'
         line=':'
     else:
-        caseStr="%s - %s - %shint"%(grouping,optimMthd,'' if phi0Quant else 'no-')
-        line='-.' if grouping=='3P' else '-'
+        caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+        line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
         marker='*' if phi0Quant else 'o'
         color='b' if optimMthd=='brute' else 'g'
-    plt.loglog(lSTDaxis,np.percentile(location_error[nc,:,:],80,axis=1),line+marker+color,label=caseStr)
-plt.loglog(lSTDaxis,np.ones_like(lSTD)*np.percentile(error_dumb,80),':k',label="random guess")
+    plt.loglog(lSTD,np.percentile(location_error[nc,stdCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
+plt.loglog(lSTD,np.ones_like(lSTD)*np.percentile(error_dumb,80),':k',label="random guess")
 plt.xlabel('Error std.')
-plt.ylabel('95\%tile location error(m)')
+plt.ylabel('80\%tile location error(m)')
 plt.legend()
-plt.xticks(ticks=lSTDaxis,labels=['0']+['$10^{%d}$'%x for x in np.log10(lSTDaxis[1:])])
 if args.print:
     plt.savefig(outfoldername+'/err_vs_std.eps')
 
@@ -299,8 +324,8 @@ for nc in range(Ncases):
             marker='x' if phi0Quant else 's'
             line=':'
         else:
-            caseStr="%s - %s - %shint"%(grouping,optimMthd,'' if phi0Quant else 'no-')
-            line='-.' if grouping=='3P' else '-'
+            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='*' if phi0Quant else 'o'
             color='b' if optimMthd=='brute' else 'g'
         plt.plot(np.vstack((x0[0,:],x0_est[nc,P1pos,:])),np.vstack((y0[0,:],y0_est[nc,P1pos,:])),line+marker+color,label=caseStr)
@@ -322,8 +347,8 @@ for nc in range(Ncases):
             marker='x' if phi0Quant else 's'
             line=':'
         else:
-            caseStr="%s - %s - %shint"%(grouping,optimMthd,'' if phi0Quant else 'no-')
-            line='-.' if grouping=='3P' else '-'
+            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='*' if phi0Quant else 'o'
             color='b' if optimMthd=='brute' else 'g'
         plt.loglog(np.abs(phi0_est[nc,0,:]-phi0[0,:]),location_error[nc,0,:],marker+color,label=caseStr)
@@ -343,8 +368,8 @@ for nc in range(Ncases):
             marker='x' if phi0Quant else 's'
             line=':'
         else:
-            caseStr="%s - %s - %shint"%(grouping,optimMthd,'' if phi0Quant else 'no-')
-            line='-.' if grouping=='3P' else '-'
+            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='*' if phi0Quant else 'o'
             color='b' if optimMthd=='brute' else 'g'
         plt.loglog(np.abs(phi0_est[nc,P1pos,:]-phi0[0,:]),location_error[nc,P1pos,:],marker+color,label=caseStr)
@@ -353,6 +378,79 @@ plt.ylabel('Location error (m)')
 plt.legend()
 if args.print:
     plt.savefig(outfoldername+'/err_vs_phi0_inperf.eps')
+
+
+plt.figure(7)
+dicCaseMask=[x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]
+lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='dic' and x[2]=='inf' and x[3]=='inf'])
+for nc in range(Ncases):
+    (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
+    if phi0Apriori:
+        caseStr="phi0 quantized sensor" if phi0Quant else "phi0 known"
+        color='r'
+        marker='x' if phi0Quant else 's'
+        line=':'
+    else:
+        caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+        line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
+        marker='*' if phi0Quant else 'o'
+        color='b' if optimMthd=='brute' else 'g'
+    plt.semilogy(np.log2(lNant),np.percentile(location_error[nc,dicCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
+plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(error_dumb,80),':k',label="random guess")
+plt.xlabel('$K_{\\theta}$')
+plt.ylabel('80\%tile location error(m)')
+plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
+plt.legend()
+if args.print:
+    plt.savefig(outfoldername+'/err_vs_ntant.eps')
+    
+plt.figure(8)
+dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]
+lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf'])
+for nc in range(Ncases):
+    (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
+    if phi0Apriori:
+        caseStr="phi0 quantized sensor" if phi0Quant else "phi0 known"
+        color='r'
+        marker='x' if phi0Quant else 's'
+        line=':'
+    else:
+        caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+        line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
+        marker='*' if phi0Quant else 'o'
+        color='b' if optimMthd=='brute' else 'g'
+    plt.semilogy(np.log2(lNant),np.percentile(location_error[nc,dicCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
+plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(error_dumb,80),':k',label="random guess")
+plt.xlabel('$K_{\\phi}$')
+plt.ylabel('80\%tile location error(m)')
+plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
+plt.legend()
+if args.print:
+    plt.savefig(outfoldername+'/err_vs_nrant.eps')    
+    
+plt.figure(9)
+dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[2]=='inf' for x in lErrMod]
+lNant=np.array([float(x[3]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[2]=='inf'])
+for nc in range(Ncases):
+    (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
+    if phi0Apriori:
+        caseStr="phi0 quantized sensor" if phi0Quant else "phi0 known"
+        color='r'
+        marker='x' if phi0Quant else 's'
+        line=':'
+    else:
+        caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+        line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
+        marker='*' if phi0Quant else 'o'
+        color='b' if optimMthd=='brute' else 'g'
+    plt.semilogy(np.log2(lNant),np.percentile(location_error[nc,dicCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
+plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(error_dumb,80),':k',label="random guess")
+plt.xlabel('$K_{\\tau}$')
+plt.ylabel('80\%tile location error(m)')
+plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
+plt.legend()
+if args.print:
+    plt.savefig(outfoldername+'/err_vs_ntau.eps')
 
 if args.show:
     plt.show()
