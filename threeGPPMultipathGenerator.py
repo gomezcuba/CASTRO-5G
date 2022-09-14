@@ -387,62 +387,57 @@ class ThreeGPPMultipathChannelModel:
             )
             
 
-    def scenarioPlossUMiLOS(self,d3D,d2D,hut):
-        outdoor = True
-        if outdoor:
+    def scenarioPlossUMiLOS(self,d3D,d2D,hut,O2I):        
+        if not O2I:
             n=1
         else:
-            Nf=np.ramdon.rand(4,8)
-            n=np.ramdon.rand(1,Nf)
-        hut= 3*(n-1) + 1.5
+            Nf = np.random.uniform(4,8)
+            n=np.random.uniform(1,Nf)
+        hut = 3*(n-1) + 1.5
         prima_dBP = (4*10.0*hut*self.frecRefGHz) / self.clight
         if(d2D<prima_dBP):
             ploss = 32.4 + 21.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
         else:
             ploss = 32.4 + 40*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.5*np.log10(prima_dBP**2+(10.0-hut)**2)
         return(ploss)
-    def scenarioPlossUMiNLOS(self,d3D,d2D,hut):
-        outdoor = True
-        if outdoor:
-            n=1
+    def scenarioPlossUMiNLOS(self,d3D,d2D,hut,O2I):
+        if not O2I:
+            n = 1
         else:
-            Nf=np.ramdon.rand(4,8)
-            n=np.ramdon.rand(1,Nf)
-        hut= 3*(n-1) + 1.5
+            Nf = np.random.uniform(4,8)
+            n = np.random.uniform(1,Nf)
+        hut = 3*(n-1) + 1.5
         PL1 = 35.3*np.log10(d3D) + 22.4 + 21.3*np.log10(self.frecRefGHz)-0.3*(hut - 1.5)
-        PL2 = self.scenarioPlossUMiLOS(d3D,d2D,hut)
+        PL2 = self.scenarioPlossUMiLOS(d3D,d2D,hut,O2I)
         ploss = np.maximum(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossUMaLOS(self,d3D,d2D,hut):
-        #Hay que diferenciar entre outdoor e indoor
-        outdoor = True
-        if outdoor:
-            n=1
+    def scenarioPlossUMaLOS(self,d3D,d2D,hut,O2I):
+        if not O2I:
+            n = 1
         else:
-            Nf=np.ramdon.rand(4,8)
-            n=np.ramdon.rand(1,Nf)
-        hut_aux= 3*(n-1) + 1.5
+            Nf = np.random.uniform(4,8)
+            n = np.random.uniform(1,Nf)
+        hut_aux = 3*(n-1) + 1.5
         prima_dBP = (4*25.0*hut_aux*self.frecRefGHz) / self.clight
         if(d2D<prima_dBP):
             ploss = 28.0 + 22.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
         else:
             ploss = 28.0 + 40.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.0*np.log10(np.exp(prima_dBP)+np.exp(25.0-hut_aux))
         return(ploss)
-    def scenarioPlossUMaNLOS(self,d3D,d2D,hut):
-        outdoor = True
-        if outdoor:
-            n=1
+    def scenarioPlossUMaNLOS(self,d3D,d2D,hut,O2I):
+        if not O2I:
+            n = 1
         else:
-            Nf=np.ramdon.rand(4,8)
-            n=np.ramdon.rand(1,Nf)
-        hut_aux= 3*(n-1) + 1.5
+            Nf = np.random.uniform(4,8)
+            n = np.random.uniform(1,Nf)
+        hut_aux = 3*(n-1) + 1.5
         PL1 = 13.54 + 39.08*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz) - 0.6*(hut_aux - 1.5)
-        PL2 = self.scenarioPlossUMaLOS(d3D,d2D,hut)
+        PL2 = self.scenarioPlossUMaLOS(d3D,d2D,hut,O2I)
         ploss = np.maximum(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossRMaLOS(self,d3D,d2D,hut):
+    def scenarioPlossRMaLOS(self,d3D,d2D,hut,O2I):
         dBp = (2*np.pi*35.0*1.5*self.frecRefGHz)/self.clight
         if(d2D<dBp):
             ploss = 20*np.log10((40.0*np.pi*d3D*self.frecRefGHz)/3.0)+np.minimum(0.03*(5.0**1.72),10)*np.log10(d3D)-np.minimum(0.44*(5.0**1.72),14.77)+0.002*np.log10(5.0)*d3D
@@ -450,18 +445,18 @@ class ThreeGPPMultipathChannelModel:
             PL1 = 20*np.log10((40.0*np.pi*d3D*self.frecRefGHz)/3.0)+np.minimum(0.03*(5.0**1.72),10)*np.log10(d3D)-np.minimum(0.44*(5.0**1.72),14.77)+0.002*np.log10(5.0)*d3D
             ploss = PL1*dBp + 40.0*np.log10(d3D/dBp)
         return(ploss)
-    def scenarioPlossRMaNLOS(self,d3D,d2D,hut):
+    def scenarioPlossRMaNLOS(self,d3D,d2D,hut,O2I):
         PL1= 161.04 - 7.1*np.log10(20) - 7.5*np.log10(5) - (24.37 - 3.7*((5/35)**2))*np.log10(35) + (43.42 - 3.1*np.log10(35))*(np.log10(d3D)-3) + 20*np.log10(self.frecRefGHz) - (3.2*np.log10(11.75*1.5))**2 - 4.97 
-        PL2= self.scenarioPlossRMaLOS(d3D,d2D,hut)
+        PL2= self.scenarioPlossRMaLOS(d3D,d2D,hut,O2I)
         ploss = np.maximum(PL1,PL2)
         return(ploss)
     
-    def scenarioPlossInLOS(self,d3D,d2D,hut):
+    def scenarioPlossInLOS(self,d3D,d2D,hut,O2I):
         ploss= 32.4 + 17.3*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
         return(ploss)
-    def scenarioPlossInNLOS(self,d3D,d2D,hut):
+    def scenarioPlossInNLOS(self,d3D,d2D,hut,O2I):
         PL1= 38.3*np.log10(d3D) + 17.30 + 24.9*np.log10(self.frecRefGHz)
-        PL2= self.scenarioPlossInLOS(d3D,d2D,hut)
+        PL2= self.scenarioPlossInLOS(d3D,d2D,hut,O2I)
         ploss= np.maximum(PL1,PL2)
         return(ploss)  
     
@@ -539,7 +534,7 @@ class ThreeGPPMultipathChannelModel:
             zod_offset_mu = 0
             K= self.scenarioParamsLOS.K_mu
             sf = self.scenarioParamsNLOS.sf_sg*vDepLOS[0]
-            PLdB = self.scenarioParamsLOS.pLossFun(d3D,d2D,hut)
+            PLdB = self.scenarioParamsLOS.pLossFun(d3D,d2D,hut,False)
             PL=PLdB+sf
         else:
             ds = 10.0**( self.scenarioParamsNLOS.ds_mu + self.scenarioParamsNLOS.ds_sg * vDepNLOS[2] )
@@ -551,7 +546,7 @@ class ThreeGPPMultipathChannelModel:
             K= self.scenarioParamsNLOS.K_mu
             sf = self.scenarioParamsNLOS.sf_sg*vDepNLOS[0]
             sflos=self.scenarioParamsLOS.sf_sg*vDepLOS[0]
-            PLdB = self.scenarioParamsNLOS.pLossFun(d3D,d2D,hut)
+            PLdB = self.scenarioParamsNLOS.pLossFun(d3D,d2D,hut,True)
             PL=np.maximum(PLdB + sf,PLdB + sflos)
         TgridXIndex= txPos[0] // self.corrDistance
         TgridYIndex= txPos[1] // self.corrDistance 
@@ -560,19 +555,20 @@ class ThreeGPPMultipathChannelModel:
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         self.dMacrosGenerated[key]=self.ThreeGPPMacroParams(los,PL,ds,asa,asd,zsa,zsd,K,sf,zod_offset_mu)
    
-    def create_small_param(self, angles, macro):
+    def create_small_param(self, angles, macro, O2I):
         los = macro.los
+        DS = macro.ds
+        ASA = macro.asa
+        ASD = macro.asd
+        ZSA = macro.zsa
+        ZSD = macro.zsd
+        K = macro.K
+        #SF = macro.sf
+        #O2I = macro.O2I
         if los:
             N = self.scenarioParamsLOS.N
             M = self.scenarioParamsLOS.M
             rt = self.scenarioParamsLOS.rt
-            DS = macro.ds
-            ASA = macro.asa
-            ASD = macro.asd
-            ZSA = macro.zsa
-            ZSD = macro.zsd
-            K = macro.K
-            #SF = macro.sf
             ZOD = 0
             #Generate cluster delays
             aux = []
@@ -619,7 +615,7 @@ class ThreeGPPMultipathChannelModel:
                 auxPhi.append(((2*(ASA/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
                 auxPhi2.append(((2*(ASD/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
                 Y.append(np.random.normal(0,(ASA/7)**2))
-                X.append(np.random.rand())#tiene que ser entre -1 y 1
+                X.append(np.random.uniform(-1,1))
             phiAOAprima = np.array(auxPhi)
             phiAODprima = np.array(auxPhi2)
             auxphiAOA = []
@@ -650,7 +646,7 @@ class ThreeGPPMultipathChannelModel:
                 auxtetaZODprima.append(-((ZSD*np.log(powC[i]/maxP)) / Cteta))
                 Y1.append(np.random.normal(0,(ZSA/7)**2))
                 Y2.append(np.random.normal(0,(ZSD/7)**2))
-                X2.append(np.random.rand())
+                X2.append(np.random.uniform(-1,1))
             tetaZOAprima = np.array(auxtetaZOAprima)
             tetaZODprima = np.array(auxtetaZODprima)
             auxtetaZOA = []
@@ -672,13 +668,6 @@ class ThreeGPPMultipathChannelModel:
             N = self.scenarioParamsNLOS.N
             M = self.scenarioParamsNLOS.M
             rt = self.scenarioParamsNLOS.rt
-            DS = macro.ds
-            ASA = macro.asa
-            ASD = macro.asd
-            ZSA = macro.zsa
-            ZSD = macro.zsd
-            K = macro.K
-            #SF = macro.sf
             ZOD = macro.zod_offset_mu
             aux = []
             for i in range(N):
@@ -717,7 +706,7 @@ class ThreeGPPMultipathChannelModel:
                 auxPhi.append(((2*(ASA/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
                 auxPhi2.append(((2*(ASD/1.4)*np.sqrt(-np.log(powC[i]/maxP)))/Cphi))
                 Y.append(np.random.normal(0,(ASA/7)**2))
-                X.append(np.random.rand())#tiene que ser entre -1 y 1
+                X.append(np.random.uniform(-1,1))
             phiAOAprima = np.array(auxPhi)
             phiAODprima = np.array(auxPhi2)
             auxphiAOA = []
@@ -749,10 +738,14 @@ class ThreeGPPMultipathChannelModel:
             auxtetaZOD = []
             Y1 = []
             Y2 = []
+            if O2I:
+                tetaZOA_mu = 90
+            else:
+                tetaZOA_mu = angles[3]
             for i in range(N):
                 Y1.append(np.random.normal(0,(ZSA/7)**2))
                 Y2.append(np.random.normal(0,(ZSD/7)**2))
-                auxtetaZOA.append((X[i]*tetaZOAprima[i] + Y1[i])) #ZOA pero hay que diferenciar entre O2I y O2O
+                auxtetaZOA.append((X[i]*tetaZOAprima[i] + Y1[i] + tetaZOA_mu)) 
                 auxtetaZOD.append((X[i]*tetaZODprima[i] + Y2[i] + angles[2] + ZOD))
             tetaZOA = np.array(auxtetaZOA)
             tetaZOD = np.array(auxtetaZOD)
@@ -764,8 +757,10 @@ class ThreeGPPMultipathChannelModel:
                     auxmtetaZOD.append(tetaZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j+1))
             mtetaZOA = np.array(auxmtetaZOA)
             mtetaZOD = np.array(auxmtetaZOD)
+        #if 180 < mtetaZOA < 360:
+         #   mtetaZOA = 360 - mtetaZOA
         
-    def create_channel(self, txPos, rxPos):
+    def create_channel(self, txPos, rxPos, O2I):
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
         vLOS = bPos-aPos
@@ -779,10 +774,10 @@ class ThreeGPPMultipathChannelModel:
         losthetaAoD=np.pi/2-np.arctan( vaux[1] / vaux[0] )
         losthetaAoA=np.pi-losthetaAoD # revise
         #3GPP model is in degrees but numpy uses radians
-        #losphiAoD=(180.0/np.pi)*losphiAoD #angle of departure 
-        #losthetaAoD=(180.0/np.pi)*losthetaAoD 
-        #losphiAoA=(180.0/np.pi)*losphiAoA #angle of aperture
-        #losthetaAoA=(180.0/np.pi)*losthetaAoA
+        losphiAoD=(180.0/np.pi)*losphiAoD #angle of departure 
+        losthetaAoD=(180.0/np.pi)*losthetaAoD 
+        losphiAoA=(180.0/np.pi)*losphiAoA #angle of aperture
+        losthetaAoA=(180.0/np.pi)*losthetaAoA
         angles = [losphiAoD,losphiAoA,losthetaAoD,losthetaAoA]
         TgridXIndex= txPos[0] // self.corrDistance
         TgridYIndex= txPos[1] // self.corrDistance 
@@ -794,10 +789,10 @@ class ThreeGPPMultipathChannelModel:
         if not macrokey in self.dMacrosGenerated:
             self.create_macro(txPos,rxPos)
         macro = self.dMacrosGenerated[macrokey]
-        
-        los = macro.los
-
-        self.create_small_param(angles,macro)
-
-        
+        #create_small_params necesita O2I, por lo que convertimos macro a lista y añadimos O2I
+        #para poder enviarlo ya desde macro
+        #lst = list(macro)
+        #lst.append(O2I)
+        #macro = tuple(lst)
+        self.create_small_param(angles,macro,O2I)
         return(True)
