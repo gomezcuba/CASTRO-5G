@@ -2,9 +2,10 @@
 
 import numpy as np
 import scipy.optimize as opt
+import argparse
 
 class MultipathLocationEstimator:
-"""Class used to perform the calculation and estimation of the UE (User Equipment) position in 2D. 
+    """Class used to perform the calculation and estimation of the UE (User Equipment) position in 2D. 
     
     The main goal of the MultipathLocationEstimator class is try to recover the UE position trigonometrically, defined as 
     (x0, y0), estimating the value of user offset orientation (psi_0) from the knowledge of the set of the Angles Of Departure 
@@ -33,14 +34,15 @@ class MultipathLocationEstimator:
         Performs the calculation of the posible UE vector positions using the linear method.
      
     gen3PathGroup(Npath)
-        Returns the table with the groups using the 3-path method.
+        Returns the table with the path groups using the 3-path method.
     
     genDrop1Group(Npath)
-        Returns the table with the groups using the drop1 method.
+        Returns the table with the path groups using the drop1 method.
     
     genRandomGroup(Npath, Nlines)
+        Returns the table with the path groups using the random method.
     
-    feval_wrapper_AllPathsByGroups(x, AoD, AoA, dels, group_method='drop1')
+    feval_wrapper_AllPathsByGroupsFun(x, AoD, AoA, dels, group_method='drop1')
         Defines the minimum mean squared (MSE) distance function to solve all the posible UE vector positions using the 
         linear method by grouping the paths into sets defined by the group_method.
     
@@ -50,14 +52,14 @@ class MultipathLocationEstimator:
     solvePsi0ForAllPaths(self, AoD, AoA, dels, init_psi0, group_method='drop1', RootMethod='lm')
         Performs the estimation of the value of psi0 using the scipy.optimize.root function.
     
-    computeAllLocationsFromPaths(self, AoD, AoA, dels, hint_psi0=None, psi0_method='fsolve', group_method='drop1', RootMethod='lm')
+    computeAllLocationsFromPaths(self, AoD, AoA, dels, Npoint, hint_psi0=None, psi0_method='fsolve', group_method='drop1', RootMethod='lm')
         Performs the estimation of the psi_0 especified by the parameter method, and returns the position 
         of the UE for this angle.
     
     """
    
     def __init__(self, Npoint=1000, RootMethod='lm'):
-         """Constructs all the attributes for the MultipathLocationEstimator object.
+        """Constructs all the attributes for the MultipathLocationEstimator object.
 
         Parameters
         ----------
@@ -186,11 +188,11 @@ class MultipathLocationEstimator:
         return(x0est, y0est, tauEest, vxest, vyest)
     
     def gen3PathGroup(self, Npath):
-        """Returns the table with the groups using the 3-path method.
+        """Returns the table with the path groups using the 3-path method.
         
-        This function divides the set {1, 2, 3 . . . Npath}, where Npath is the total number of NLOS paths into several groups 
-        of paths G1(1, 2, 3), G2(2, 3, 4) , G3(3, 4, 5) . . . Gm(Npath-2, Npath-1, Npath). Each group is defined as the result 
-        of combination of 3 paths in a total of (Npath-2) groups
+        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
+        groups of paths G1(1, 2, 3), G2(2, 3, 4) , G3(3, 4, 5), . . ., Gm(Npath-2, Npath-1, Npath). Each group is defined as 
+        the result of combination of 3 paths in a total of (Npath-2) groups.
           
         E.g.:
         The total number of paths, Npath = 10, so groups includes paths as:
@@ -234,11 +236,11 @@ class MultipathLocationEstimator:
         return table_group
 
     def genDrop1Group(self, Npath):
-        """Returns the table with the groups using the drop1 method.
+        """Returns the table with the path groups using the drop1 method.
         
-        This function divides the set {1, 2, 3 . . . Npath}, where Npath is the total number of NLOS paths into several groups 
-        of paths of paths G1, G2 , G3. . . Gm. Each group is defined as the group of all paths except de m-th one.
-        So the Gm group will inclue: Gm = {1, . . . ,m-1 , m+1, . . . ,Npath}
+        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
+        groups of paths of paths G1, G2 , G3, . . ., Gm. Each group is defined as the group of all paths except de m-th one.
+        So the Gm group will inclue: Gm = {1, . . . ,m-1 , m+1, . . ., Npath}
           
         E.g.:
         The total number of paths, Npath = 10, so groups includes paths as:
@@ -283,6 +285,41 @@ class MultipathLocationEstimator:
         return table_group
 
     def genRandomGroup(self, Npath, Nlines):
+        """Returns the table with the path groups using the random method.
+        
+        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
+        groups of paths G1, G2 , G3, . . ., Gm. So the table will include Nlines groups with random Npath values.
+          
+        E.g.:
+        With Npath = 10 and Nlines = 5, groups could be generated as:
+        
+                                                    G1 = {2,6,7}       
+                                                    G2 = {1,3,8,9}       
+                                                    G3 = {1,2,5,9,10}       
+                                                    G4 = {1,3,5,8,9}
+                                                    G5 = {1,3,4}
+        
+        For this examples, the table is generated as:
+        
+                                |False True False False False True True False False False]
+                                |True False True False False False False  True True False]
+                                |True   True False False True False False False True True]
+                                |True False   True False True False False True True False]
+                                |True False True True False False False False False False]
+        
+        ---------------------------------------------------------------------------------------------------------
+
+        Parameters
+        ----------
+        Npath  : int
+            Total number of NLOS paths.
+
+        Returns
+        -------
+        table_group : ndarray
+            Boolean array that contains all the 3-path groups.
+           
+        """
         path_indices = np.random.choice(Npath,(Nlines, Npath//2))
         table_group = np.empty((Nlines, Npath), dtype=bool)
         
@@ -291,7 +328,7 @@ class MultipathLocationEstimator:
         
         return table_group
 
-    def feval_wrapper_AllPathsByGroups(self, x, AoD, AoA, dels, group_method='drop1'):
+    def feval_wrapper_AllPathsByGroupsFun(self, x, AoD, AoA, dels, group_method='drop1'):
         """Defines the minimum mean squared (MSE) distance function to solve all the posible UE vector positions using the 
         linear method by grouping the paths into sets defined by the group_method.
         
@@ -403,14 +440,14 @@ class MultipathLocationEstimator:
         
         if not Npoint:
             Npoint = self.NLinePointsPerIteration
-
-        dist = np.zeros(Npoint)
+            
         philow = 0
         phihigh = 2*np.pi
         interval = np.linspace(philow, phihigh, Npoint).reshape(-1,1)
+        dist = np.zeros(Npoint)
 
         for npoint in range(Npoint):
-            dist[npoint] = self.feval_wrapper_AllPathsByGroups(interval[npoint], AoD, AoA, dels, group_method)
+            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFun(interval[npoint], AoD, AoA, dels, group_method)
         
         distint = np.argmin(dist)
 
@@ -484,12 +521,12 @@ class MultipathLocationEstimator:
                   
         """
        
-        res = opt.root(self.feval_wrapper_AllPathsByGroups, x0=init_psi0, args=(AoD, AoA, dels, group_method), method=self.RootMethod)
+        res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=init_psi0, args=(AoD, AoA, dels, group_method), method=self.RootMethod)
         if not res.success:
         #print("Attempting to correct initialization problem")
             niter = 0 
             while (not res.success) and (niter<1000):
-                res = opt.root(self.feval_wrapper_AllPathsByGroups, x0=2*np.pi*np.random.rand(1), args=(AoD, AoA, dels, group_method), method=self.RootMethod)
+                res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=2*np.pi*np.random.rand(1), args=(AoD, AoA, dels, group_method), method=self.RootMethod)
                 niter += 1
         #print("Final Niter %d"%niter)
         if res.success:
@@ -498,7 +535,7 @@ class MultipathLocationEstimator:
             print("ERROR: Psi0 root not found")
             return (np.array(0.0),np.inf)
 
-    def computeAllLocationsFromPaths(self, AoD, AoA, dels, hint_psi0=None, psi0_method='fsolve', group_method='drop1', RootMethod='lm'):
+    def computeAllLocationsFromPaths(self, AoD, AoA, dels, Npoint=None, hint_psi0=None, psi0_method='fsolve', group_method='drop1', RootMethod='lm'):
         """Performs the estimation of the psi_0 especified by the parameter method, and returns the position 
         of the UE for this angle.
 
@@ -559,17 +596,19 @@ class MultipathLocationEstimator:
                         
         """
 
-        if (hint_psi0 == None):
-            #coarse linear approximation for initialization
-            init_psi0 = self.brutePsi0ForAllPaths(AoD, AoA, dels, group_method)
-        else:
-            init_psi0 = hint_psi0
-
         if psi0_method == 'fsolve':
-            (psi0_est,cov_psi0) = self.solvePsi0ForAllPaths(AoD, AoA, dels, init_psi0, group_method, RootMethod)
+            
+            if (hint_psi0 == None):
+                #coarse linear approximation for initialization
+                init_psi0 = self.brutePsi0ForAllPaths(AoD, AoA, dels, Npoint, group_method)
+                (psi0_est,cov_psi0) = self.solvePsi0ForAllPaths(AoD, AoA, dels, init_psi0, group_method, RootMethod)
+
+            else:
+                init_psi0 = hint_psi0
+                (psi0_est, cov_psi0) = self.solvePsi0ForAllPaths(AoD, AoA, dels, init_psi0, group_method, RootMethod)
 
         elif psi0_method == 'brute':
-            psi0_est = self.brutePsi0ForAllPaths(AoD, AoA, dels, group_method)
+            psi0_est = self.brutePsi0ForAllPaths(AoD, AoA, dels, Npoint, group_method)
             cov_psi0 = np.pi/self.NLinePointsPerIteration
         else:
             print("unsupported method")
@@ -578,3 +617,19 @@ class MultipathLocationEstimator:
         (x0, y0, tauerr, vx, vy) = self.computeAllPaths(AoD, AoA, dels, psi0_est)
 
         return(psi0_est, x0, y0, vx, vy, cov_psi0)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--load',  help='CVS name file lo load channel parameters')
+    #parser.add_argument('--AoD', help='Array with Angle of Departure values')
+    #parser.add_argument('--AoA', help='Array with Angle of Arrival values')
+    #parser.add_argument('--dels', help='Array with NLOS paths delays values')
+    args = parser.parse_args()
+    
+    #if args.load:
+        #cargamos fichero CSV
+    
+    #else:
+        #AoA = args.AoA
+        #AoD = args.AoD
+        #dels = args.dels
