@@ -182,7 +182,7 @@ class MultipathLocationEstimator:
 #            group_table=group_method
         if (hint_phi0==None):
             #coarse linear approximation for initialization
-            init_phi0=self.bisectPhi0ForAllPaths(AoD,AoA,dels,Npoint=1000,Niter=1,Ndiv=2)
+            init_phi0=self.bisectPhi0ForAllPaths(AoD,AoA,dels,Npoint=100,Niter=1,Ndiv=2)
         else:
             init_phi0=hint_phi0
         if method=='fsolve':
@@ -202,8 +202,9 @@ class MultipathLocationEstimator:
             (x0all,y0all,tauEall)= self.computePosFrom3PathsKnownPhi0(AoD,AoA,dels,phi0_est.reshape(-1,1))
             x0=np.mean(x0all,1)
             y0=np.mean(y0all,1)
+            tauerr=np.mean(tauEall,1)
             (vx,vy)= self.computeAllPathsWithParams(AoD,AoA,dels,x0,y0,phi0_est)
-        return(phi0_est,x0,y0,vx,vy,cov_phi0)
+        return(phi0_est,x0,y0,tauerr,vx,vy,cov_phi0)
 
 if __name__ == "__main__":
     print("holamundo")

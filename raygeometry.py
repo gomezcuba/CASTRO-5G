@@ -8,7 +8,6 @@ import scipy.optimize as opt
 
 from mpl_toolkits import mplot3d
 
-
 import numpy as np
 import time
 import os
@@ -59,17 +58,20 @@ plt.plot(x0_true,y0_true,'^g')
 plt.title("All angles of a multipath channel with correct tau0, random phi0")
 
 loc=MultipathLocationEstimator.MultipathLocationEstimator()
-phi0_search=np.linspace(0,2*np.pi,1000).reshape(-1,1)
+phi0_search=np.linspace(0,2*np.pi,100).reshape(-1,1)
 (x0all,y0all,tauEall)= loc.computePosFrom3PathsKnownPhi0(AoD,AoA,dels,phi0_search)
 
 plt.figure(2)
-plt.plot([0,x0_true],[0,y0_true],':g')
-plt.plot(x0all,y0all,'-+')
-plt.plot(0,0,'sb')
-plt.plot(x0_true,y0_true,'^g')
-plt.axis([-75,75,-75,75])
+
+plt.plot([0,x0_true],[0,y0_true],':g', label='_nolegend_')
+plt.plot(x0all,y0all,':', label='_nolegend_')
+plt.plot(0,0,'sb',markersize=10)
+plt.plot(x0_true,y0_true,'^g',markersize=10)
+plt.axis([-50,50,-50,50])
+plt.xlabel('$d_{ox}$ (m)')
+plt.ylabel('$d_{oy}$ (m)')
+plt.legend(['Transmitter','Receiver'])
 plt.savefig('graphsol%d.eps'%(Npath))
-plt.title("All possible estimations of position for each set of 3 paths, for phi0 from 0 to 2pi")
 
 
 X0e=np.zeros((1000,Npath))
@@ -80,7 +82,7 @@ for ct in range(phi0_search.size):
         (X0e[ct,gr],Y0e[ct,gr],TauEe[ct,gr],vxest,vyest)=loc.computeAllPathsLinear(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],phi0_search[ct])
 
 
-(phi0_bisec,x0_bisec,y0_bisec,x_bisec,y_bisec,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,method='bisec')
+(phi0_bisec,x0_bisec,y0_bisec,_,x_bisec,y_bisec,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,method='bisec')
 print(np.mod(phi0_bisec,2*np.pi),phi0_true[0])
     
 plt.figure(3)
@@ -106,7 +108,7 @@ for p in range(np.shape(theta_true)[0]):
 plt.title("All estimations of position for the full set of multipaths, after phi0 is estimated with bisec")
 
 loc.RootMethod='lm'
-(phi0_root,x0_root,y0_root,x_root,y_root,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,method='fsolve')
+(phi0_root,x0_root,y0_root,_,x_root,y_root,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,method='fsolve')
 print(np.mod(phi0_root,np.pi*2),phi0_true)
     
     
@@ -140,19 +142,28 @@ print(error_bisec,error_root)
 
 
 plt.figure(5)
-plt.plot(X0e,Y0e,':')
-plt.plot(0,0,'sb')
-plt.plot(x0_true,y0_true,'^g')
-plt.title("All possible estimations of position for each set of N-1 paths (used in root linear), for phi0 from 0 to 2pi")
+plt.plot(X0e,Y0e,':', label='_nolegend_')
+plt.plot(0,0,'sb',markersize=10)
+plt.plot(x0_true,y0_true,'^g',markersize=10)
+plt.axis([-50,50,-50,50])
+plt.xlabel('$d_{ox}$ (m)')
+plt.ylabel('$d_{oy}$ (m)')
+plt.legend(['Transmitter','Receiver'])
 plt.savefig('graphsoldrop1%d.eps'%(Npath))
 
 plt.figure(6)
 ax = plt.axes(projection='3d')
-ax.plot3D([0],[0],[0],'sb')
-ax.plot3D(x0_true,y0_true,[0],'^g')
 for gr in range(Npath):
-    ax.plot3D(X0e[:,gr],Y0e[:,gr],TauEe[:,gr], ':')
-plt.title("All possible estimations of position and delay, for each set of N-1 paths (used in root linear), for phi0 from 0 to 2pi")
+    ax.plot3D(X0e[:,gr],Y0e[:,gr],3e8*TauEe[:,gr], ':', label='_nolegend_')
+ax.plot3D([0],[0],[0],'sb',markersize=10)
+ax.plot3D(x0_true,y0_true,[0],'^g',markersize=10)
+ax.set_xlim(-50,50)
+ax.set_ylim(-50,50)
+ax.set_zlim(0,np.max(3e8*TauEe[TauEe>0]/2))
+ax.set_xlabel('$d_{ox}$ (m)')
+ax.set_ylabel('$d_{oy}$ (m)')
+ax.set_zlabel('$\\ell_e$ (m)')
+plt.legend(['Transmitter','Receiver'])
 plt.savefig('graph3Dsoldrop1%d.eps'%(Npath))
 
 
@@ -162,9 +173,16 @@ ax = plt.axes(projection='3d')
 ax.plot3D([0],[0],[0],'sb')
 ax.plot3D(x0_true,y0_true,[0],'^g')
 for gr in range(Npath-2):
-    ax.plot3D(x0all[:,gr],y0all[:,gr],tauEall[:,gr], ':')
-ax.axis([-75,75,-75,75])
-plt.title("All possible estimations of position and delay, for each set of 3 paths, for phi0 from 0 to 2pi")
+    ax.plot3D(x0all[:,gr],y0all[:,gr],tauEall[:,gr], ':', label='_nolegend_')
+ax.plot3D([0],[0],[0],'sb',markersize=10)
+ax.plot3D(x0_true,y0_true,[0],'^g',markersize=10)
+ax.set_xlim(-50,50)
+ax.set_ylim(-50,50)
+ax.set_zlim(0,np.max(3e8*TauEe[TauEe>0]/2))
+ax.set_xlabel('$d_{ox}$ (m)')
+ax.set_ylabel('$d_{oy}$ (m)')
+ax.set_zlabel('$\\ell_e$ (m)')
+plt.legend(['Transmitter','Receiver'])
 plt.savefig('graph3Dsol%d.eps'%(Npath))
 
 
