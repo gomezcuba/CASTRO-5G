@@ -8,6 +8,11 @@ import scipy.optimize as opt
 
 from mpl_toolkits import mplot3d
 
+import cairosvg
+from PIL import Image
+from io import BytesIO
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+
 import numpy as np
 import time
 import os
@@ -19,10 +24,10 @@ plt.close('all')
 import MultipathLocationEstimator
 
 Npath=10
-x_true=np.random.rand(Npath)*40-20
-y_true=np.random.rand(Npath)*40-20
-x0_true=np.random.rand(1)*40-10
-y0_true=np.random.rand(1)*40-10
+#x_true=np.random.rand(Npath)*40-20
+#y_true=np.random.rand(Npath)*40-20
+#x0_true=np.random.rand(1)*40-10
+#y0_true=np.random.rand(1)*40-10
 
 phi0_true=np.random.rand(1)*2*np.pi
 theta0_true=np.mod(np.arctan(y0_true/x0_true)+np.pi*(x0_true<0) , 2*np.pi)
@@ -63,10 +68,25 @@ phi0_search=np.linspace(0,2*np.pi,100).reshape(-1,1)
 
 plt.figure(2)
 
+#with open('BStower.svg', 'r') as f:
+#    img_svg = f.read()
+#img_png = cairosvg.svg2png(bytestring=img_svg.encode('utf-8'))
+#img_tower = OffsetImage(Image.open(BytesIO(img_png)), zoom=.1)
+#with open('m2mapplications_logistics.svg', 'r') as f:
+#    img_svg = f.read()
+#img_png = cairosvg.svg2png(bytestring=img_svg.encode('utf-8'))
+#img_mobile = OffsetImage(Image.open(BytesIO(img_png)), zoom=.075)
+
 plt.plot([0,x0_true],[0,y0_true],':g', label='_nolegend_')
 plt.plot(x0all,y0all,':', label='_nolegend_')
 plt.plot(0,0,'sb',markersize=10)
+#img_tower.image.axes=plt.gca()
+#abt = AnnotationBbox(img_tower, (0,0), frameon=False, pad=0.0,)
+#plt.gca().add_artist(abt)
 plt.plot(x0_true,y0_true,'^g',markersize=10)
+#img_mobile.image.axes=plt.gca()
+#abm = AnnotationBbox(img_mobile, (x0_true,y0_true), frameon=False, pad=0.0,)
+#plt.gca().add_artist(abm)
 plt.axis([-50,50,-50,50])
 plt.xlabel('$d_{ox}$ (m)')
 plt.ylabel('$d_{oy}$ (m)')
@@ -154,12 +174,12 @@ plt.savefig('graphsoldrop1%d.eps'%(Npath))
 plt.figure(6)
 ax = plt.axes(projection='3d')
 for gr in range(Npath):
-    ax.plot3D(X0e[:,gr],Y0e[:,gr],3e8*TauEe[:,gr], ':', label='_nolegend_')
+    ax.plot3D(X0e[:,gr],Y0e[:,gr],tau0_true*c+TauEe[:,gr], ':', label='_nolegend_')
 ax.plot3D([0],[0],[0],'sb',markersize=10)
-ax.plot3D(x0_true,y0_true,[0],'^g',markersize=10)
+ax.plot3D(x0_true,y0_true,tau0_true*c*np.ones_like(y0_true),'^g',markersize=10)
 ax.set_xlim(-50,50)
 ax.set_ylim(-50,50)
-ax.set_zlim(0,np.max(3e8*TauEe[TauEe>0]/2))
+ax.set_zlim(0,np.max(tau0_true*c+3e8*TauEe[TauEe>0]/2))
 ax.set_xlabel('$d_{ox}$ (m)')
 ax.set_ylabel('$d_{oy}$ (m)')
 ax.set_zlabel('$\\ell_e$ (m)')
@@ -170,15 +190,13 @@ plt.savefig('graph3Dsoldrop1%d.eps'%(Npath))
 
 plt.figure(7)
 ax = plt.axes(projection='3d')
-ax.plot3D([0],[0],[0],'sb')
-ax.plot3D(x0_true,y0_true,[0],'^g')
 for gr in range(Npath-2):
-    ax.plot3D(x0all[:,gr],y0all[:,gr],tauEall[:,gr], ':', label='_nolegend_')
+    ax.plot3D(x0all[:,gr],y0all[:,gr],tau0_true*c+c*tauEall[:,gr], ':', label='_nolegend_')
 ax.plot3D([0],[0],[0],'sb',markersize=10)
-ax.plot3D(x0_true,y0_true,[0],'^g',markersize=10)
+ax.plot3D(x0_true,y0_true,tau0_true*c*np.ones_like(y0_true),'^g',markersize=10)
 ax.set_xlim(-50,50)
 ax.set_ylim(-50,50)
-ax.set_zlim(0,np.max(3e8*TauEe[TauEe>0]/2))
+ax.set_zlim(0,np.max(tau0_true*c+3e8*TauEe[TauEe>0]/2))
 ax.set_xlabel('$d_{ox}$ (m)')
 ax.set_ylabel('$d_{oy}$ (m)')
 ax.set_zlabel('$\\ell_e$ (m)')
