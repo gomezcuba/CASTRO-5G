@@ -165,12 +165,12 @@ class MultipathLocationEstimator:
         cosD = np.cos(AoD)
         cosA = np.cos(AoA + phi0_est)
         
-        P = (sinD + sinA)/(sinD*cosA + cosD*sinA)
+        P = (sinD + sinA)/(cosD*sinA - sinD*cosA)
         P_mask = np.invert((np.isinf(P) + np.isnan(P)), dtype=bool)
         P = P*P_mask
         P[np.isnan(P)] = 1
 
-        Q = (cosA - cosD)/(sinD*cosA + cosD*sinA)
+        Q = (cosA + cosD)/(sinD*cosA - cosD*sinA)
         Q_mask = np.invert((np.isinf(Q) + np.isnan(Q)), dtype=bool)
         Q = Q*Q_mask
         Q[np.isnan(Q)] = 1
@@ -183,8 +183,8 @@ class MultipathLocationEstimator:
         l0est = np.sqrt(d0xest**2 + d0yest**2)
         tauEest = (l0est - l0err)/self.c
         
-        vyest = np.where(tgD!=0, (tgA*d0xest + d0yest)/(tgA/tgD + 1), 0)
-        vxest = np.where(tgD!=0, vyest/tgD, d0xest + d0yest/tgA)
+        vyest = np.where(tgD!=0, (-tgA*d0xest + d0yest)/(-tgA/tgD + 1), 0)
+        vxest = np.where(tgD!=0, vyest/tgD, d0xest - d0yest/tgA)
             
         return(d0xest, d0yest, tauEest, vxest, vyest)
     
@@ -602,12 +602,12 @@ class MultipathLocationEstimator:
             if (hint_phi0 == None):
                 #coarse linear approximation for initialization
                 init_phi0 = self.brutePhi0ForAllPaths(AoD, AoA, dels, Npoint, group_method)
-                (Phi0_est,cov_Phi0) = self.solvePhi0ForAllPaths(AoD, AoA, dels, init_phi0, group_method, RootMethod)
+                (phi0_est,cov_Phi0) = self.solvePhi0ForAllPaths(AoD, AoA, dels, init_phi0, group_method, RootMethod)
 
             else:
                 init_phi0 = hint_phi0
                 (phi0_est, cov_phi0) = self.solvePhi0ForAllPaths(AoD, AoA, dels, init_phi0, group_method, RootMethod)
-
+            cov_phi0=None
         elif phi0_method == 'brute':
             phi0_est = self.brutePhi0ForAllPaths(AoD, AoA, dels, Npoint, group_method)
             cov_phi0 = np.pi/self.NLinePointsPerIteration
