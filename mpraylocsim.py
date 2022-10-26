@@ -250,6 +250,8 @@ else:
 
 location_error=np.sqrt(np.abs(x0-x0_est)**2+np.abs(y0-y0_est)**2)
 mapping_error=np.sqrt(np.abs(x-x_est)**2+np.abs(y-y_est)**2) 
+tauE_err = np.abs(tauE_est+(tauE-tau0))
+phi0_err=np.abs(phi0-phi0_est)*180/np.pi
 x0_dumb=np.random.rand(1,Nsims)*(Xmax-Xmin)+Xmin
 y0_dumb=np.random.rand(1,Nsims)*(Ymax-Ymin)+Ymin
 error_dumb=np.sqrt(np.abs(x0-x0_dumb)**2+np.abs(y0-y0_dumb)**2).reshape((-1))
@@ -270,7 +272,7 @@ if args.noerror:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -291,7 +293,7 @@ if args.noerror:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -315,7 +317,7 @@ if args.S:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -338,7 +340,7 @@ if args.S:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -361,7 +363,7 @@ if args.S:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -384,7 +386,7 @@ if args.S:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -407,7 +409,7 @@ if args.S:
                 marker='*' if phi0Quant else 'o'
                 line=':'
             else:
-                caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+                caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
                 marker='x' if phi0Quant else 's'
                 color='b' if optimMthd=='brute' else 'g'
@@ -470,7 +472,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -494,7 +496,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -523,7 +525,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -542,6 +544,62 @@ if args.D:
         
     fig_ctr=fig_ctr+1
     plt.figure(fig_ctr)
+    dicCaseMask=[x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]
+    lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='dic' and x[2]=='inf' and x[3]=='inf'])
+    for nc in range(Ncases):
+        (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
+        if phi0Apriori:
+            caseStr="phi0 quantized sensor" if phi0Quant else "phi0 known"
+            color='r'
+            marker='*' if phi0Quant else 'o'
+            line=':'
+        else:
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
+            line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
+            marker='x' if phi0Quant else 's'
+            color='b' if optimMthd=='brute' else 'g'
+        aux_err=np.zeros_like(lNant)
+        subarray=1e9*tauE_err[nc,dicCaseMask,:]
+        for nsub in range(lNant.size):
+            aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
+        plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
+    plt.xlabel('$K_{\\theta}$')
+    plt.ylabel('80\%tile $\\tau_e$ error(ns)')
+    plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
+    plt.legend()
+    if args.print:
+        plt.savefig(outfoldername+'/taue_vs_ntant.eps')
+        
+    fig_ctr=fig_ctr+1
+    plt.figure(fig_ctr)
+    dicCaseMask=[x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]
+    lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='dic' and x[2]=='inf' and x[3]=='inf'])
+    for nc in range(1,Ncases):
+        (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
+        if phi0Apriori:
+            caseStr="phi0 quantized sensor" if phi0Quant else "phi0 known"
+            color='r'
+            marker='*' if phi0Quant else 'o'
+            line=':'
+        else:
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
+            line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
+            marker='x' if phi0Quant else 's'
+            color='b' if optimMthd=='brute' else 'g'
+        aux_err=np.zeros_like(lNant)
+        subarray=phi0_err[nc,dicCaseMask,:]
+        for nsub in range(lNant.size):
+            aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
+        plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
+    plt.xlabel('$K_{\\theta}$')
+    plt.ylabel('80\%tile $\\phi_o$ error($^o$)')
+    plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
+    plt.legend()
+    if args.print:
+        plt.savefig(outfoldername+'/phi0e_vs_ntant.eps')
+        
+    fig_ctr=fig_ctr+1
+    plt.figure(fig_ctr)
     dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]
     lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf'])
     for nc in range(Ncases):
@@ -552,7 +610,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -577,7 +635,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -588,7 +646,8 @@ if args.D:
     plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
     plt.legend()
     if args.print:
-        plt.savefig(outfoldername+'/map_vs_nrant.eps')     
+        plt.savefig(outfoldername+'/map_vs_nrant.eps')  
+        
         
     fig_ctr=fig_ctr+1
     plt.figure(fig_ctr)
@@ -602,7 +661,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -627,7 +686,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
@@ -642,7 +701,6 @@ if args.D:
     
     fig_ctr=fig_ctr+1
     plt.figure(fig_ctr)
-    tauE_err = tauE_est+(tauE-tau0)
     dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[2]=='inf' for x in lErrMod]
     lNant=np.array([float(x[3]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[2]=='inf'])
     for nc in range(Ncases):
@@ -653,7 +711,7 @@ if args.D:
             marker='*' if phi0Quant else 'o'
             line=':'
         else:
-            caseStr="%s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and phi0Quant ) else '')
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
             marker='x' if phi0Quant else 's'
             color='b' if optimMthd=='brute' else 'g'
