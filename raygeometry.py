@@ -24,10 +24,10 @@ plt.close('all')
 import MultipathLocationEstimator
 
 Npath=10
-#x_true=np.random.rand(Npath)*40-20
-#y_true=np.random.rand(Npath)*40-20
-#x0_true=np.random.rand(1)*40-10
-#y0_true=np.random.rand(1)*40-10
+x_true=np.random.rand(Npath)*40-20
+y_true=np.random.rand(Npath)*40-20
+x0_true=np.random.rand(1)*40-10
+y0_true=np.random.rand(1)*40-10
 
 phi0_true=np.random.rand(1)*2*np.pi
 theta0_true=np.mod(np.arctan(y0_true/x0_true)+np.pi*(x0_true<0) , 2*np.pi)
@@ -63,8 +63,15 @@ plt.plot(x0_true,y0_true,'^g')
 plt.title("All angles of a multipath channel with correct tau0, random phi0")
 
 loc=MultipathLocationEstimator.MultipathLocationEstimator()
-phi0_search=np.linspace(0,2*np.pi,100).reshape(-1,1)
-(x0all,y0all,tauEall)= loc.computePosFrom3PathsKnownPhi0(AoD,AoA,dels,phi0_search)
+phi0_search=np.linspace(0,2*np.pi,1000).reshape(-1,1)
+
+x0all=np.zeros((1000,Npath-2))
+y0all=np.zeros((1000,Npath-2))
+tauEall=np.zeros((1000,Npath-2))
+
+for ct in range(phi0_search.size):
+    for gr in range(Npath-2):
+        (x0all[ct,gr],y0all[ct,gr],tauEall[ct,gr],vxest,vyest)= loc.computeAllPaths(AoD[gr:gr+3],AoA[gr:gr+3],dels[gr:gr+3],phi0_search[ct])
 
 plt.figure(2)
 
@@ -99,10 +106,10 @@ Y0e=np.zeros((1000,Npath))
 TauEe=np.zeros((1000,Npath))
 for ct in range(phi0_search.size):
     for gr in range(Npath):
-        (X0e[ct,gr],Y0e[ct,gr],TauEe[ct,gr],vxest,vyest)=loc.computeAllPathsLinear(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],phi0_search[ct])
+        (X0e[ct,gr],Y0e[ct,gr],TauEe[ct,gr],vxest,vyest)=loc.computeAllPaths(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],phi0_search[ct])
 
 
-(phi0_bisec,x0_bisec,y0_bisec,_,x_bisec,y_bisec,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,method='bisec')
+(phi0_bisec,x0_bisec,y0_bisec,_,x_bisec,y_bisec,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,phi0_method='brute', group_method='3path')
 print(np.mod(phi0_bisec,2*np.pi),phi0_true[0])
     
 plt.figure(3)
@@ -128,7 +135,7 @@ for p in range(np.shape(theta_true)[0]):
 plt.title("All estimations of position for the full set of multipaths, after phi0 is estimated with bisec")
 
 loc.RootMethod='lm'
-(phi0_root,x0_root,y0_root,_,x_root,y_root,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,method='fsolve')
+(phi0_root,x0_root,y0_root,_,x_root,y_root,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,phi0_method='fsolve', group_method='drop1')
 print(np.mod(phi0_root,np.pi*2),phi0_true)
     
     

@@ -2,209 +2,641 @@
 
 import numpy as np
 import scipy.optimize as opt
+import argparse
+import pandas as pd
 
 class MultipathLocationEstimator:
+    """Class used to perform the calculation and estimation of the UE (User Equipment) position in 2D. 
     
-    def __init__(self,Npoint=100,Nref=10,Ndiv=2,RootMethod='lm'):
-        self.NLinePointsPerIteration=Npoint
-        self.NLineRefinementIterations=Nref
-        self.NLineRefinementDivision=Ndiv
-        self.RootMethod=RootMethod
-        self.c=3e8
-        
+    The main goal of the MultipathLocationEstimator class is try to recover the UE position trigonometrically, defined as 
+    (d0x, d0y), estimating the value of user offset orientation (phi_0) from the knowledge of the set of the Angles Of Departure 
+    (AoD), Angles Of Arrival (AoA) and delays introduced by the multipath channels. 
+    This class includes several algorithms to obtain the value of phi_0, from a brute force searching method to a 
+    non-linear system ecuation solver. Also differents methods have been included to find the UE position dealing with clock
+    and orientation error.
     
+    ...
+    
+
+    Attributes
+    ---------
+    Npoint : int, optional
+        Total point divisions in the minimization range of search.
         
-    def computePosFrom3PathsKnownPhi0(self,AoD,AoA,dels,phi0_est):
-        tgD = np.tan(AoD)
-        tgA = np.tan(np.pi-AoA-phi0_est)
-        siD = np.sin(AoD)
-        siA = np.sin(np.pi-AoA-phi0_est)
-        coD = np.cos(AoD)
-        coA = np.cos(np.pi-AoA-phi0_est)
-        
-#        T=(1/tgD+1/tgA)
-#        S=(1/siD+1/siA)
-#        P=S/T
-#        Q=P/tgA-1/siA
-        P=(siD+siA)/(coD*siA+coA*siD)
-        P[np.isnan(P)]=1
-        P[np.isinf(P)]=np.sign(P[np.isinf(P)])/np.sqrt(2)
-#        Q=P/tgA-1/siA
-        Q=(coA-coD)/(coD*siA+coA*siD)
-        Q[np.isnan(Q)]=1
-        Q[np.isinf(Q)]=np.sign(Q[np.isinf(Q)])/np.sqrt(2)
-        Dl = dels*self.c
-        
-        Idp=(Dl[0:-1]-Dl[1:])/(P[...,0:-1]-P[...,1:])
-        Slp=(Q[...,0:-1]-Q[...,1:])/(P[...,0:-1]-P[...,1:])
-        
-        y0=(Idp[...,0:-1]-Idp[...,1:])/(Slp[...,0:-1]-Slp[...,1:])
-        x0=Idp[...,0:-1]-y0*Slp[...,0:-1]
-        
-        l0Err=x0*P[...,0:-2]+y0*Q[...,0:-2]-Dl[0:-2]
-        l0=np.sqrt(x0**2+y0**2)
-        tauE=(l0-l0Err)/self.c
-        
-        return(x0,y0,tauE)
-        
-    def computeAllPathsWithParams(self,AoD,AoA,dels,x0,y0,phi0_est):
-        tgD = np.tan(AoD)
-        tgA = np.tan(np.pi-AoA-phi0_est)
-        
-#        T=(1/tgD+1/tgA)        
-#        vy=(x0+y0/tgA)/T
-        vy=np.where(tgD!=0, (tgA*x0+y0)/(tgA/tgD+1) , 0)
-        vx=np.where(tgD!=0, vy/tgD, x0+y0/tgA)
+    RootMethod: str, optional
+        Type of solver.
+        ** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
+        ** hybr (Hybrid method): it uses Powell's dog leg method, an iterative optimisation algorithm for the solution of 
+        non-linear least squares problems.
+
+    Methods
+    -------
+    computeAllPaths(AoD, AoA, dels, phi0_est)
+        Performs the calculation of the posible UE vector positions using the linear method.
+     
+    gen3PathGroup(Npath)
+        Returns the table with the path groups using the 3-path method.
+    
+    genDrop1Group(Npath)
+        Returns the table with the path groups using the drop1 method.
+    
+    genRandomGroup(Npath, Nlines)
+        Returns the table with the path groups using the random method.
+    
+    feval_wrapper_AllPathsByGroupsFun(x, AoD, AoA, dels, group_method='drop1')
+        Defines the minimum mean squared (MSE) distance function to solve all the posible UE vector positions using the 
+        linear method by grouping the paths into sets defined by the group_method.
+    
+    brutePhi0ForAllPaths(self, AoD, AoA, dels, Npoint, group_method='drop1')
+        Performs the estimation of the value of phi0 using the brute force method.
+    
+    solvePhi0ForAllPaths(self, AoD, AoA, dels, init_phi0, group_method='drop1', RootMethod='lm')
+        Performs the estimation of the value of phi0 using the scipy.optimize.root function.
+    
+    computeAllLocationsFromPaths(self, AoD, AoA, dels, Npoint, hint_phi0=None, phi0_method='fsolve', group_method='drop1', RootMethod='lm')
+        Performs the estimation of the phi_0 especified by the parameter method, and returns the position 
+        of the UE for this angle.
+    
+    """
+   
+    def __init__(self, Npoint=1000, RootMethod='lm'):
+        """Constructs all the attributes for the MultipathLocationEstimator object.
+
+        Parameters
+        ----------
+
+        Npoint : int, optional
+            Total point divisions in the minimization range of search.
+
+        RootMethod: str, optional
+            Type of solver.
+            ** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
+            ** hybr (Hybrid method): it uses Powell's dog leg method, an iterative optimisation algorithm for the solution of 
+            non-linear least squares problems.
             
-        return(vx,vy)
+        """
+
+        self.NLinePointsPerIteration = Npoint
+        self.RootMethod = RootMethod
+        self.c = 3e8
+    
+    def computeAllPaths(self, AoD, AoA, dels, phi0_est):
+        """Performs the calculation of the posible UE vector positions using the linear method.
         
-    def computeAllPathsLinear(self,AoD,AoA,dels,phi0_est):
-        tgD = np.tan(AoD)
-        tgA = np.tan(np.pi-AoA-phi0_est)
-        siD = np.sin(AoD)
-        siA = np.sin(np.pi-AoA-phi0_est)
-        coD = np.cos(AoD)
-        coA = np.cos(np.pi-AoA-phi0_est)
+        The value of the UE position is obtained by using the linear algorithm estimation. For this purpose the 
+        algorithm takes the sets of the AoA, AoD and delays values of the all the NLOS Npaths and obtained all 
+        the posibles position vectors (d0x, d0y) of the UE, for the value especified by phi0_est.
         
-#        T=(1/tgD+1/tgA)
-#        S=(1/siD+1/siA)
-#        P=S/T        
-        P=(siD+siA)/(coD*siA+coA*siD)
-        P[np.isnan(P)]=1
-        P[np.isinf(P)]=np.sign(P[np.isinf(P)])/np.sqrt(2)
-#        Q=P/tgA-1/siA
-        Q=(coA-coD)/(coD*siA+coA*siD)
-        Q[np.isnan(Q)]=1
-        Q[np.isinf(Q)]=np.sign(Q[np.isinf(Q)])/np.sqrt(2)
-        Dl = dels*self.c
         
-        result=np.linalg.lstsq(np.column_stack([P,Q,-np.ones_like(P)]),Dl,rcond=None)
+        ----------------------------------    GENERALIZED LINEAR METHOD    -------------------------------------
+
+        Considering having the AoA, AoD and delays values for Npaths: {1,2,3, . . . , Npath}, generalized linear method 
+        is divided into the following steps:
         
-        (x0est,y0est,l0err)=result[0]
+        STEP (1):
+            Obtain the unknown values for P, Q and Dl unknowns for the Npaths.
         
-        l0est=np.sqrt(x0est**2+y0est**2)
-        tauEest=(l0est-l0err)/self.c
-        
-#        vyest=(x0est+y0est/tgA)/T
-        vyest=np.where(tgD!=0, (tgA*x0est+y0est)/(tgA/tgD+1), 0)
-        vxest=np.where(tgD!=0, vyest/tgD, x0est+y0est/tgA)
+        STEP (2): 
+            With Npaths, it can be wrotten the following system of linear equations:
             
-        return(x0est,y0est,tauEest,vxest,vyest)
+                                                            A @ x = b      (1)
+            
+            
+                                    | P{1}     Q{1}     -1|             |  Dl[1]  |
+                                    | P{2}     Q{1}     -1|             |  Dl[2]  |
+                                    | P{3}     Q{1}     -1|   |d0xest|   |  Dl[3]  |
+                                    | P{4}     Q{1}     -1| @ |d0yest| = |  Dl[4]  |  (2)
+                                    |                     |   |l0err|   |         |
+                                    |           ...       |             |   ...   |
+                                    |                     |             |         |
+                                    | P{Npath} P{Npath} -1|             |Dl[Npath]|
+
+
+        STEP (3):
+            Compute the minimun least-squares solution.
+            
+            *** The method "numpy.linalg.lstsq" computes the least-squares solution. What means that obtains the vector x that 
+            approximately solves the equation (1). 
+            In this case, the system is over-determined (the number of linearly independent rows of a can be less than, 
+            equal to, or greater than its number of linearly independent columns). So if there are multiple minimizing 
+            solutions, the one with the smallest euclidean 2-norm (min|b - A x|) is returned.
+        
+        ----------------------------------------------------------------------------------------------------------
+        
+        Parameters
+        ----------
+        AoD  : ndarray
+            Angles of departure of the NLOS ray propagation, mesured in the BS from de positive x-axis in the 
+            non-colckwise.
+            
+        AoA  : ndarray
+            Angles of arrival of the NLOS ray propagation, mesured in the UE from de positive x-axis in the 
+            non-colckwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            
+        dels : ndarray
+            Delays introduced by the NLOS ray propagations.
+            
+        phi0_est: ndarray
+            Offset angle of the UE orientation in the non-clockwise sense.
+
+        Returns
+        -------
+        d0xest : ndarray
+            x-coordinate of the UE estimated position.
+            
+        d0yest : ndarray
+            y-coordinate of the UE estimated position.
+            
+        tauEest : ndarray
+            initial delay difference between the LOS path and the NLOS path propagation.
+            
+        vyest : ndarray
+           x-coordinate of the scatter estimated position.
+            
+        vxest : ndarray
+           y-coordinate of the scatter estimated position.
           
-    def feval_wrapper_AllPathsLinear_drop1(self,x,AoD,AoA,dels):
-        Npath=AoD.size
-        x0all=np.zeros(Npath)
-        y0all=np.zeros(Npath)
-        tauEall=np.zeros(Npath)
+        """
+    
+        tgD = np.tan(AoD)
+        tgA = np.tan(AoA + phi0_est)
+        sinD = np.sin(AoD)
+        sinA = np.sin(AoA + phi0_est)
+        cosD = np.cos(AoD)
+        cosA = np.cos(AoA + phi0_est)
+        
+        P = (sinD + sinA)/(cosD*sinA - sinD*cosA)
+        P_mask = np.invert((np.isinf(P) + np.isnan(P)), dtype=bool)
+        P = P*P_mask
+        P[np.isnan(P)] = 1
+
+        Q = (cosA + cosD)/(sinD*cosA - cosD*sinA)
+        Q_mask = np.invert((np.isinf(Q) + np.isnan(Q)), dtype=bool)
+        Q = Q*Q_mask
+        Q[np.isnan(Q)] = 1
+
+        Dl = dels*self.c
+        
+        result = np.linalg.lstsq(np.column_stack([P, Q, -np.ones_like(P)]), Dl, rcond=None)
+        (d0xest, d0yest, l0err) = result[0]
+        
+        l0est = np.sqrt(d0xest**2 + d0yest**2)
+        tauEest = (l0est - l0err)/self.c
+        
+        vyest = np.where(tgD!=0, (-tgA*d0xest + d0yest)/(-tgA/tgD + 1), 0)
+        vxest = np.where(tgD!=0, vyest/tgD, d0xest - d0yest/tgA)
+            
+        return(d0xest, d0yest, tauEest, vxest, vyest)
+    
+    def gen3PathGroup(self, Npath):
+        """Returns the table with the path groups using the 3-path method.
+        
+        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
+        groups of paths G1(1, 2, 3), G2(2, 3, 4) , G3(3, 4, 5), . . ., Gm(Npath-2, Npath-1, Npath). Each group is defined as 
+        the result of combination of 3 paths in a total of (Npath-2) groups.
+          
+        E.g.:
+        The total number of paths, Npath = 10, so groups includes paths as:
+        
+                                                G1 = {1,2,3}       G5 = {5,6,7}
+                                                G2 = {2,3,4}       G6 = {6,7,8}
+                                                G3 = {3,4,5}       G7 = {7,8,9}
+                                                G4 = {4,5,6}       G8 = {8,9,10}
+        
+        For this examples, the table is generated as:
+        
+                                 |True  True  True False False False False False False False|
+                                 |False True  True  True False False False False False False|
+                                 |False False True  True  True False False False False False|
+                                 |False False False True  True  True False False False False|
+                                 |False False False False True  True  True False False False|
+                                 |False False False False False True  True  True False False|
+                                 |False False False False False False True  True  True False|
+                                 |False False False False False False False True  True  True|
+        
+        ---------------------------------------------------------------------------------------------------------
+
+        Parameters
+        ----------
+        Npath  : int
+            Total number of NLOS paths.
+
+        Returns
+        -------
+        table_group : ndarray
+            Boolean array that contains all the 3-path groups.
+           
+        """
+        
+        table_group = np.empty((Npath-2, Npath), dtype=bool)
+
+        for gr in range(Npath-2):
+            path_indices = [gr, gr+1, gr+2]
+            table_group[gr,:] = np.isin(np.arange(Npath), path_indices)        
+        
+        return table_group
+
+    def genDrop1Group(self, Npath):
+        """Returns the table with the path groups using the drop1 method.
+        
+        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
+        groups of paths of paths G1, G2 , G3, . . ., Gm. Each group is defined as the group of all paths except de m-th one.
+        So the Gm group will inclue: Gm = {1, . . . ,m-1 , m+1, . . ., Npath}
+          
+        E.g.:
+        The total number of paths, Npath = 10, so groups includes paths as:
+        
+                                    G1 = {2,3,4,5,6,7,8,9,10}       G6 = {1,2,3,4,5,7,8,9,10}
+                                    G2 = {1,3,4,5,6,7,8,9,10}       G7 = {1,2,3,4,5,6,8,9,10}
+                                    G3 = {1,2,4,5,6,7,8,9,10}       G8 = {1,2,3,4,5,6,7,9,10}
+                                    G4 = {1,2,3,5,6,7,8,9,10}       G9 = {1,2,3,4,5,6,7,8,10}
+                                    G5 = {1,2,3,4,6,7,8,9,10}       G10 = {1,2,3,4,5,6,7,8,9}
+        
+        For this examples, the table is generated as:
+        
+                                 |False  True  True  True  True  True  True  True  True  True|
+                                 |True  False  True  True  True  True  True  True  True  True|
+                                 |True  True  False  True  True  True  True  True  True  True|
+                                 |True  True  True  False  True  True  True  True  True  True|
+                                 |True  True  True  True  False  True  True  True  True  True|
+                                 |True  True  True  True  True  False  True  True  True  True|
+                                 |True  True  True  True  True  True  False  True  True  True|
+                                 |True  True  True  True  True  True  True  False  True  True|
+                                 |True  True  True  True  True  True  True  True  False  True|
+                                 |True  True  True  True  True  True  True  True  True  False|
+                              
+        ---------------------------------------------------------------------------------------------------------
+                         
+        Parameters
+        ----------
+        Npath  : int
+            Total number of NLOS paths.
+
+        Returns
+        -------
+        table_group : ndarray
+            Boolean array that contains all the 3-path groups.
+           
+        """
+        table_group = np.empty((Npath, Npath), dtype=bool)
+
         for gr in range(Npath):
-            (x0all[gr],y0all[gr],tauEall[gr],_,_)=self.computeAllPathsLinear(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],x)
-        return(np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1))
-    
-    def feval_wrapper_AllPathsLinear_random(self,x,AoD,AoA,dels):
-        Npath=AoD.size
-        Nlines=5
-        x0all=np.zeros(Nlines)
-        y0all=np.zeros(Nlines)
-        tauEall=np.zeros(Nlines)
-        indices=np.random.choice(Npath,(Nlines,Npath//2))
+            table_group[gr,:] = np.isin(np.arange(Npath), [gr], invert=True)
+        
+        return table_group
+
+    def genRandomGroup(self, Npath, Nlines):
+        """Returns the table with the path groups using the random method.
+        
+        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
+        groups of paths G1, G2 , G3, . . ., Gm. So the table will include Nlines groups with random Npath values.
+          
+        E.g.:
+        With Npath = 10 and Nlines = 5, groups could be generated as:
+        
+                                                    G1 = {2,6,7}       
+                                                    G2 = {1,3,8,9}       
+                                                    G3 = {1,2,5,9,10}       
+                                                    G4 = {1,3,5,8,9}
+                                                    G5 = {1,3,4}
+        
+        For this examples, the table is generated as:
+        
+                                |False True False False False True True False False False]
+                                |True False True False False False False  True True False]
+                                |True   True False False True False False False True True]
+                                |True False   True False True False False True True False]
+                                |True False True True False False False False False False]
+        
+        ---------------------------------------------------------------------------------------------------------
+
+        Parameters
+        ----------
+        Npath  : int
+            Total number of NLOS paths.
+
+        Returns
+        -------
+        table_group : ndarray
+            Boolean array that contains all the 3-path groups.
+           
+        """
+        path_indices = np.random.choice(Npath,(Nlines, Npath//2))
+        table_group = np.empty((Nlines, Npath), dtype=bool)
+        
         for gr in range(Nlines):
-            (x0all[gr],y0all[gr],tauEall[gr],_,_)=self.computeAllPathsLinear(AoD[indices[gr,:]],AoA[indices[gr,:]],dels[indices[gr,:]],x)
-        return(np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1))
-    
-    def solvePhi0ForAllPaths_linear(self,AoD,AoA,dels,init_phi0):
-        res=opt.root(self.feval_wrapper_AllPathsLinear_drop1,x0=init_phi0,args=(AoD,AoA,dels),method=self.RootMethod)
-#        print(res)
-        if not res.success:
-#            print("Attempting to correct initialization problem")
-            niter=0 
-            while (not res.success) and (niter<1000):
-                res=opt.root(self.feval_wrapper_AllPathsLinear_drop1,x0=2*np.pi*np.random.rand(1),args=(AoD,AoA,dels),method=self.RootMethod)
-                niter+=1
-#            print("Final Niter %d"%niter)
-        if res.success:
-            return (res.x,res.cov_x)
+            table_group[gr, :] = np.isin(np.arange(Npath), path_indices[gr])
+        
+        return table_group
+
+    def feval_wrapper_AllPathsByGroupsFun(self, x, AoD, AoA, dels, group_method='drop1'):
+        """Defines the minimum mean squared (MSE) distance function to solve all the posible UE vector positions using the 
+        linear method by grouping the paths into sets defined by the group_method.
+        
+        The group_method method calls:
+        - '3path' : 
+            gen3PathGroup() to create the path groups.
+
+        - 'drop1' : 
+            genDrop1Group() to create the path groups.
+
+        - 'random' : 
+            genRandomGroup() to create the path groups.
+            
+        ---------------------------------------------------------------------------------------------------------
+   
+        Parameters
+        ----------
+        x: ndarray
+            Function unknown (phi0).
+            
+        AoD  : ndarray
+            Angles of departure of the NLOS ray propagation, mesured in the BS from de positive x-axis in the 
+            non-colckwise.
+            
+        AoA  : ndarray
+            Angles of arrival of the NLOS ray propagation, mesured in the UE from de positive x-axis in the 
+            non-colckwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            
+        dels : ndarray
+            Delays introduced by the NLOS ray propagations.
+            
+        group_method : ndarray, optional
+            Path grouping strategy.
+            *** Options: 'drop1', '3-path', 'random'
+            *** Default value is 'drop1'.
+            
+        Returns
+        -------
+        Returns the mathematical polinomial function based in the minimum mean square error (MMSE) equation.
+
+        """
+
+        Npath = AoD.size
+
+        if group_method == '3path':
+            table_group = self.gen3PathGroup(Npath)
+            
+        elif group_method == 'drop1':
+            table_group = self.genDrop1Group(Npath)
+            
+        elif group_method == 'random':
+            Nlines = 5
+            table_group = self.genRandomGroup(Npath, Nlines)
+
         else:
-            print("ERROR: Phi0 root not found")
-            return (np.array(0.0),np.inf)
-    
-    def bisectPhi0ForAllPaths(self,AoD,AoA,dels,Npoint=None,Niter=None,Ndiv=None):        
-        philow=0
-        phihigh=2*np.pi
-#        Ncurves=np.size(AoD)-2
+            table_group = group_method
+
+        Ngroup = table_group.shape[0]
+        d0xall = np.zeros(Ngroup)
+        d0yall = np.zeros(Ngroup)
+        tauEall = np.zeros(Ngroup)
+
+        for gr in range(Ngroup):
+            (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPaths(AoD[table_group[gr, :]], AoA[table_group[gr, :]], dels[table_group[gr, :]], x)
+        return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
+
+    def brutePhi0ForAllPaths(self, AoD, AoA, dels, Npoint, group_method='drop1'):
+        """Performs the estimation of the value of phi0 using the brute force method.
+        
+        The value of the estimated offset angle of the UE orientation is obtained by using the bisection algorithm.
+        For this purpose the method divides the range of the posible values of phi_0, among 0 and 2pi into Npoints 
+        and minimize the error. The method reduces recurrently the range till minimize the error in phi_0 estimation.
+        
+        ----------------------------------------   BRUTE FORCE SEARCH    ----------------------------------------
+        
+        The brute force solution generates thousands os points in the interval (0, 2pi) and picks the one with the
+        lowest minimun square error (MSE).
+        
+        ---------------------------------------------------------------------------------------------------------
+        
+        Parameters
+        ----------
+        AoD  : ndarray
+            Angles of departure of the NLOS ray propagation, mesured in the BS from de positive x-axis in the 
+            non-colckwise.
+            
+        AoA  : ndarray
+            Angles of arrival of the NLOS ray propagation, mesured in the UE from de positive x-axis in the 
+            non-colckwise sense. The value of phi_0 can modify the orientation of the x-axis.
+        
+        dels : ndarray
+            Delays introduced by the NLOS ray propagations.
+            
+        Npoint : int, optional
+            Total point divisions in the minimization range of search.
+            ** The range of search is [0-2pi]
+            
+        group_method : ndarray, optional
+            Path grouping strategy.
+            *** Options: 'drop1', '3-path', 'random'
+            *** Default value is 'drop1'.
+
+        Returns
+        -------
+        phi0_est: ndarray
+            Offset angle estimated of the UE orientation.
+
+        """
+        
         if not Npoint:
-            Npoint=self.NLinePointsPerIteration
-        if not Niter:
-            Niter=self.NLineRefinementIterations
-        if not Ndiv:
-            Ndiv=self.NLineRefinementDivision
-        for nit in range(Niter):
-            interval=np.linspace(philow,phihigh,Npoint).reshape(-1,1)
-#            x0all=np.zeros((Ncurves,Npoint))
-#            y0all=np.zeros((Ncurves,Npoint))
-#            for npath in range(Ncurves):
-#                (x0all[npath,:],y0all[npath,:])= self.computePosFrom3PathsKnownPhi0(AoD[npath:npath+3],AoA[npath:npath+3],dels[npath:npath+3],interval)
-            (x0all,y0all,tauEall)=self.computePosFrom3PathsKnownPhi0(AoD,AoA,dels,interval)
-            dist=np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1)
-            distint=np.argmin(dist)
-            philow=interval[distint]-np.pi/(Ndiv**nit)
-            phihigh=interval[distint]+np.pi/(Ndiv**nit)
-#        if (dist[distint]>1):
-#            print("ERROR: phi0 recovery algorithm converged loosely phi0: %.2f d: %.2f"%((np.mod(interval[distint],2*np.pi),dist[distint])))
+            Npoint = self.NLinePointsPerIteration
+            
+        philow = 0
+        phihigh = 2*np.pi
+        interval = np.linspace(philow, phihigh, Npoint).reshape(-1,1)
+        dist = np.zeros(Npoint)
+
+        for npoint in range(Npoint):
+            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFun(interval[npoint], AoD, AoA, dels, group_method)
+        
+        distint = np.argmin(dist)
+
         return(interval[distint])
     
-    def feval_wrapper_3PathPosFun(self,x,AoD,AoA,dels):
-        (x0all,y0all,tauEall)=self.computePosFrom3PathsKnownPhi0(AoD,AoA,dels,np.asarray(x))
-        return(np.sum(np.abs(x0all-np.mean(x0all,x0all.ndim-1,keepdims=True))**2+np.abs(y0all-np.mean(y0all,x0all.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,x0all.ndim-1,keepdims=True))**2,x0all.ndim-1))
+    def solvePhi0ForAllPaths(self, AoD, AoA, dels, init_phi0, group_method='drop1', RootMethod='lm'):
+        """Performs the estimation of the value of phi0 using the scipy.optimize.root function.
         
-    def solvePhi0ForAllPaths(self,AoD,AoA,dels,init_phi0):
-        res=opt.root(self.feval_wrapper_3PathPosFun,x0=init_phi0,args=(AoD,AoA,dels),method=self.RootMethod)
+        The value of the estimated offset angle of the UE orientation is obtained by finding the zeros of the 
+        minimum mean square error (MMSE) equation defined by feval_wrapper_AllPathsByGroups. For this purpose, it is used
+        the method root() to find the solutions of this function.
+
+
+        ---------------------------------    MULTIDIMENSIONAL ROOT METHOD    ------------------------------------
+        
+        In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.
+        
+        TO USE THE METHOD:
+        sol = scipy.optimize.root(fun, x0, args=(), method='lm').
+        
+        Parameters
+        ----------
+        fun : callable
+            The vector function to find a root of.
+        
+        x0 : ndarray
+            Initial guess.
+    
+        args : tuple, optional
+            Extra arguments passed to the objective function and its Jacobian. These are other variables 
+            that we aren't finding the roots for. The parameters have to appear in the same order as the function.
+            
+        method : str
+            Type of solver.
+            *** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
+        
+        
+        ---------------------------------------------------------------------------------------------------------
+        
+        Parameters
+        ----------
+        AoD  : ndarray
+            Angles of departure of the NLOS ray propagation, mesured in the BS from de positive x-axis in the 
+            non-colckwise.
+            
+        AoA  : ndarray
+            Angles of arrival of the NLOS ray propagation, mesured in the UE from de positive x-axis in the 
+            non-colckwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            
+        dels : ndarray
+            Delays introduced by the NLOS ray propagations.
+        
+        init_phi0 : ndarray
+            Hint or guess about the value of phi0.
+            
+        group_method : ndarray, optional
+            Path grouping strategy.
+            *** Options: 'drop1', '3-path', 'random'
+            *** Default value is 'drop1'.
+        
+        RootMethod: str, optional
+            Type of solver.
+            ** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problems.
+            ** hybr (Hybrid method): it uses Powell's dog leg method, an iterative optimisation algorithm for the solution of 
+            non-linear least squares problems.
+
+        Returns
+        -------
+        phi0_est: ndarray
+            Offset angle estimated of the UE orientation.
+                  
+        """
+       
+        res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=init_phi0, args=(AoD, AoA, dels, group_method), method=self.RootMethod)
         if not res.success:
-#            print("Attempting to correct initialization problem")
-            niter=0 
+        #print("Attempting to correct initialization problem")
+            niter = 0 
             while (not res.success) and (niter<1000):
-                res=opt.root(self.feval_wrapper_3PathPosFun,x0=2*np.pi*np.random.rand(1),args=(AoD,AoA,dels),method=self.RootMethod)
-                niter+=1
-#            print("Final Niter %d"%niter)
+                res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=2*np.pi*np.random.rand(1), args=(AoD, AoA, dels, group_method), method=self.RootMethod)
+                niter += 1
+        #print("Final Niter %d"%niter)
         if res.success:
             return (res.x,res.cov_x)
         else:
-            print("ERROR: Phi0 root not found")
+            print("ERROR: phi0 root not found")
             return (np.array(0.0),np.inf)
-   
-    def computeAllLocationsFromPaths(self,AoD,AoA,dels,method='fsolve',group_method='drop1',hint_phi0=None):
-#        if group_method=='3path':
-#            group_table=genGrou3Path()
-#        elif group_method=='drop1':
-#            group_table=genGrouDrop1()
-#        elif group_method=='random':
-#            group_table=genGrouRandom()
-#        else:
-#            group_table=group_method
-        if (hint_phi0==None):
-            #coarse linear approximation for initialization
-            init_phi0=self.bisectPhi0ForAllPaths(AoD,AoA,dels,Npoint=100,Niter=1,Ndiv=2)
-        else:
-            init_phi0=hint_phi0
-        if method=='fsolve':
-            (phi0_est,cov_phi0)=self.solvePhi0ForAllPaths(AoD,AoA,dels,init_phi0)
-        elif method=='bisec':
-            phi0_est=self.bisectPhi0ForAllPaths(AoD,AoA,dels)
-            cov_phi0=np.pi/self.NLinePointsPerIteration
-        elif method=='fsolve_linear':
-            (phi0_est,cov_phi0)=self.solvePhi0ForAllPaths_linear(AoD,AoA,dels,init_phi0)
+
+    def computeAllLocationsFromPaths(self, AoD, AoA, dels, Npoint=None, hint_phi0=None, phi0_method='fsolve', group_method='drop1', RootMethod='lm'):
+        """Performs the estimation of the phi_0 especified by the parameter method, and returns the position 
+        of the UE for this angle.
+
+        The parameter method calls:
+        - 'fsolve' : 
+            calls solvePhi0ForAllPaths() to estimate phi0.
+
+        - 'brute' : 
+            calls bisectPhi0ForAllPaths() to estimate phi0.
+            
+        ---------------------------------------------------------------------------------------------------------
+
+        Parameters
+         ----------
+        AoD  : ndarray
+            Angles of departure of the NLOS ray propagation, mesured in the BS from de positive x-axis in the 
+            non-colckwise.
+            
+        AoA  : ndarray
+            Angles of arrival of the NLOS ray propagation, mesured in the UE from de positive x-axis in the 
+            non-colckwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            
+        dels : ndarray
+            Delays introduced by the NLOS ray propagations.
+            
+        hint_phi0 : ndarray, optional
+            Hint or guess about the value of phi0. 
+    
+        phi0_method: str, optional
+            Method used to performs the value estimation of phi0.
+            *** Options: 'fsolve', 'bisec', 'fsolve_linear'
+            *** Default value is 'fsolve'.
+        
+        group_method : ndarray, optional
+            Path grouping strategy.
+            *** Options: 'drop1', '3-path', 'random'
+            *** Default value is 'drop1'.
+            
+        Returns
+        -------
+        phi0_est: ndarray
+            Offset angle estimated of the UE orientation.
+            
+        d0x : ndarray
+            x-coordinate of the posible position of the UE.
+            
+        d0y : ndarray
+            y-coordinate of the posible position of the UE.
+            
+        vy : ndarray
+            y-coordinate of the reflector position in the NLOS path.
+            
+        vx : ndarray
+            x-coordinate of the reflector position in the NLOS path.
+            
+        cov_phi0: ndarray
+            The inverse of the Hessian matrix of phi0.
+                        
+        """
+
+        if phi0_method == 'fsolve':
+            
+            if (hint_phi0 == None):
+                #coarse linear approximation for initialization
+                init_phi0 = self.brutePhi0ForAllPaths(AoD, AoA, dels, Npoint, group_method)
+                (phi0_est,cov_Phi0) = self.solvePhi0ForAllPaths(AoD, AoA, dels, init_phi0, group_method, RootMethod)
+
+            else:
+                init_phi0 = hint_phi0
+                (phi0_est, cov_phi0) = self.solvePhi0ForAllPaths(AoD, AoA, dels, init_phi0, group_method, RootMethod)
+            cov_phi0=None
+        elif phi0_method == 'brute':
+            phi0_est = self.brutePhi0ForAllPaths(AoD, AoA, dels, Npoint, group_method)
+            cov_phi0 = np.pi/self.NLinePointsPerIteration
         else:
             print("unsupported method")
             return(None)
-        #at this point any 3 paths can be used
-        if method=='fsolve_linear':
-            (x0,y0,tauerr,vx,vy)= self.computeAllPathsLinear(AoD,AoA,dels,phi0_est)
-        else:
-            (x0all,y0all,tauEall)= self.computePosFrom3PathsKnownPhi0(AoD,AoA,dels,phi0_est.reshape(-1,1))
-            x0=np.mean(x0all,1)
-            y0=np.mean(y0all,1)
-            tauerr=np.mean(tauEall,1)
-            (vx,vy)= self.computeAllPathsWithParams(AoD,AoA,dels,x0,y0,phi0_est)
-        return(phi0_est,x0,y0,tauerr,vx,vy,cov_phi0)
+        
+        (d0x, d0y, tauerr, vx, vy) = self.computeAllPaths(AoD, AoA, dels, phi0_est)
 
-if __name__ == "__main__":
-    print("holamundo")
+        return(phi0_est, d0x, d0y, tauerr, vx, vy, cov_phi0)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--load',  help='CVS name file lo load channel parameters')
+    parser.add_argument('--AoD', help='Array with Angle of Departure values')
+    parser.add_argument('--AoA', help='Array with Angle of Arrival values')
+    parser.add_argument('--dels', help='Array with NLOS paths delays values')
+    
+    args = parser.parse_args()
+    
+    if args.load:
+        #cargamos fichero CSV
+        data = pd.read_csv(args.load, header = 0)
+        AoD = data['AoD']
+        AoA = data['AoA']
+        dels = data['dels']
+    
+    else:
+        AoA = args.AoA
+        AoD = args.AoD
+        dels = args.dels

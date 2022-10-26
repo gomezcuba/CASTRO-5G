@@ -15,14 +15,14 @@ from progress.bar import Bar
 
 plt.close('all')
 
-Nchan=1
-Nd=16
-Na=16
-Nt=64
+Nchan=100
+Nd=4
+Na=4
+Nt=16
 Nxp=4
 Nrft=1
 Nrfr=2
-K=64
+K=16
 Ts=2.5
 Ds=Ts*Nt
 #SNRs=10**(np.arange(-1,2.01,1.0))
