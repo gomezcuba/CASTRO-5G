@@ -47,7 +47,7 @@ clock_error=(40/c)*np.random.rand(1,Nsims) #delay estimation error
 del_error=(Tserr)*np.random.randn(Npath,Nsims) #delay estimation error
 dels = tau-tau0+clock_error+del_error
 
-loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=1000,Nref=1,Ndiv=2,RootMethod='lm')
+loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=100,RootMethod='lm')
 
 
 t_start_b = time.time()
@@ -59,7 +59,7 @@ y_b=np.zeros((Npath,Nsims))
 bar = Bar("bisec", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],_,x_b[:,nsim],y_b[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='bisec')
+    (phi0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],_,x_b[:,nsim],y_b[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='brute', group_method='3path')
     bar.next()
 bar.finish()
 error_bisec=np.sqrt(np.abs(x0-x0_b)**2+np.abs(y0-y0_b))
@@ -76,7 +76,7 @@ y_r=np.zeros((Npath,Nsims))
 bar = Bar("froot", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],_,x_r[:,nsim],y_r[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve')
+    (phi0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],_,x_r[:,nsim],y_r[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='3path')
     bar.next()
 bar.finish()
 error_root=np.sqrt(np.abs(x0-x0_r)**2+np.abs(y0-y0_r))
@@ -94,7 +94,7 @@ y_r2=np.zeros((Npath,Nsims))
 bar = Bar("froot_linear", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_r2[:,nsim],x0_r2[:,nsim],y0_r2[:,nsim],_,x_r2[:,nsim],y_r2[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve_linear')
+    (phi0_r2[:,nsim],x0_r2[:,nsim],y0_r2[:,nsim],_,x_r2[:,nsim],y_r2[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='drop1')
     bar.next()
 bar.finish()
 error_root2=np.sqrt(np.abs(x0-x0_r2)**2+np.abs(y0-y0_r2))
@@ -113,7 +113,7 @@ bar = Bar("froot_linear hint", max=Nsims)
 bar.check_tty = False
 phi0_coarse=np.round(phi0*256/np.pi/2)*np.pi*2/256
 for nsim in range(Nsims):
-    (phi0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],_,x_h[:,nsim],y_h[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],method='fsolve_linear',hint_phi0=phi0_coarse[:,nsim])
+    (phi0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],_,x_h[:,nsim],y_h[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='drop1',hint_phi0=phi0_coarse[:,nsim])
     bar.next()
 bar.finish()
 error_rooth=np.sqrt(np.abs(x0-x0_h)**2+np.abs(y0-y0_h))
@@ -128,11 +128,16 @@ x_k=np.zeros((Npath,Nsims))
 y_k=np.zeros((Npath,Nsims))
 bar = Bar("know phi 3-path method", max=Nsims)
 bar.check_tty = False
+x0all=np.zeros((Nsims,Npath-2))
+y0all=np.zeros((Nsims,Npath-2))
+tauEall=np.zeros((Nsims,Npath-2))
+
 for nsim in range(Nsims):
-    (x0all,y0all,tauEall)=loc.computePosFrom3PathsKnownPhi0(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0[:,nsim])
-    x0_k[:,nsim]=np.mean(x0all)
-    y0_k[:,nsim]=np.mean(y0all)
-    bar.next()
+    for gr in range(Npath-2):
+        (x0all[nsim,gr],y0all[nsim,gr],tauEall[nsim,gr],_,_)= loc.computeAllPaths(AoD[gr:gr+3,nsim],AoA[gr:gr+3,nsim],dels[gr:gr+3,nsim],phi0[:,nsim])
+    bar.next()    
+x0_k=np.mean(x0all,axis=1)
+y0_k=np.mean(y0all,axis=1)
 bar.finish()
 error_k=np.sqrt(np.abs(x0-x0_k)**2+np.abs(y0-y0_k))
 t_run_k = time.time() - t_start_k
@@ -147,7 +152,7 @@ y_k2=np.zeros((Npath,Nsims))
 bar = Bar("know phi linear method", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (x0_k2[:,nsim],y0_k2[:,nsim],_,x_k2[:,nsim],y_k2[:,nsim])=loc.computeAllPathsLinear(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0[:,nsim])
+    (x0_k2[:,nsim],y0_k2[:,nsim],_,x_k2[:,nsim],y_k2[:,nsim])=loc.computeAllPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0[:,nsim])
     bar.next()
 bar.finish()
 error_k2=np.sqrt(np.abs(x0-x0_k2)**2+np.abs(y0-y0_k2))

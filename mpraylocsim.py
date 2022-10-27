@@ -36,7 +36,9 @@ parser.add_argument('--noloc',help='Do not perform location estimation, load pri
 parser.add_argument('--show', help='Open plot figures in window', action='store_true')
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
-args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
+args = parser.parse_args("-N 100 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
+
+#args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
 Nsims=args.N if args.N else 100
 if args.noerror:
@@ -205,7 +207,7 @@ else:
     y_est=np.zeros((Ncases,NerrMod,Npath,Nsims))
     run_time=np.zeros((Ncases,NerrMod))
     
-    loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
+    loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=100,RootMethod='lm')
     
     for nc in range(Ncases):
         (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
@@ -219,21 +221,16 @@ else:
                         phi0_est[nc,nv,ns]=np.round(phi0[:,ns]/phi0GyrQuant)*phi0GyrQuant        
                     else:
                         phi0_est[nc,nv,ns]=phi0[:,ns]
-                    (x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,:,ns],y_est[nc,nv,:,ns])=loc.computeAllPathsLinear(theta_est[nv,:,ns],phi_est[nv,:,ns],tau_est[nv,:,ns],phi0_est[nc,nv,ns])
+                    (x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,:,ns],y_est[nc,nv,:,ns])=loc.computeAllPaths(theta_est[nv,:,ns],phi_est[nv,:,ns],tau_est[nv,:,ns],phi0_est[nc,nv,ns])
                 else:
                 #TODO make changes in location estimator and get rid of these ifs
                     if phi0Quant:
                         phi0_hint=np.round(phi0[:,ns]/phi0GyrQuant)*phi0GyrQuant        
                     else:
                         phi0_hint=None
-                    if grouping=='3P':
-                        if optimMthd=='brute':
-                            methodAlgo='bisec'
-                        else:
-                            methodAlgo='fsolve'
-                    else:
-                        methodAlgo='fsolve_linear'
-                    (phi0_est[nc,nv,ns],x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,:,ns],y_est[nc,nv,:,ns],_)= loc.computeAllLocationsFromPaths(theta_est[nv,:,ns],phi_est[nv,:,ns],tau_est[nv,:,ns],method=methodAlgo,hint_phi0=phi0_hint)
+                    group_m= '3path' if grouping=='3P' else 'drop1'
+                    phi0_m= 'fsolve' if (optimMthd=='mmse')or(grouping=='D1') else optimMthd
+                    (phi0_est[nc,nv,ns],x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,:,ns],y_est[nc,nv,:,ns],_)= loc.computeAllLocationsFromPaths(theta_est[nv,:,ns],phi_est[nv,:,ns],tau_est[nv,:,ns],phi0_method=phi0_m,group_method=group_m,hint_phi0=phi0_hint)
                 bar.next()
             bar.finish()
             run_time[nc,nv] = time.time() - t_start_point

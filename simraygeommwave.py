@@ -75,13 +75,13 @@ Nsims=100
 
 EST_CHANS=True
 EST_PLOT=True
-Nd=64
-Na=64
-Nt=256
-Nxp=15
+Nd=16
+Na=16
+Nt=128
+Nxp=7
 Nrft=1
 Nrfr=4
-K=256
+K=128
 Ts=300/Nt#2.5
 Ds=Ts*Nt
 sigma2=.01
@@ -451,20 +451,20 @@ if EST_LOCS:
     
     configTable=[
             #multipath data source, location method, user phi0 coarse hint initialization
-#            ('CS','bisec',''),
-#            ('CS','fsolve','No Hint'),
-#            ('CS','fsolve_linear','No hint'),
-#            ('CS','fsolve','Hint'),
-            ('CS','fsolve_linear','Hint'),
-            ('CS','oracle','Pure'),            
-            ('CS','oracle','Hint'),            
-#            ('true','bisec',''),
-#            ('true','fsolve','No Hint'),
-#            ('true','fsolve_linear','No hint'),
-#            ('true','fsolve','Hint'),
-            ('true','fsolve_linear','Hint'),
-            ('true','oracle','Pure'),            
-            ('true','oracle','Hint'),            
+#            ('CS','brute','group3',''),
+#            ('CS','fsolve','group3','No Hint'),
+#            ('CS','fsolve','drop1','No hint'),
+#            ('CS','fsolve','group3','Hint'),
+            ('CS','fsolve','drop1','Hint'),
+            ('CS','oracle','','Pure'),            
+            ('CS','oracle','','Hint'),            
+#            ('true','brute','group3',''),
+#            ('true','fsolve','group3','No Hint'),
+#            ('true','fsolve','drop1','No hint'),
+#            ('true','fsolve','group3','Hint'),
+            ('true','fsolve','drop1','Hint'),
+            ('true','oracle','','Pure'),            
+            ('true','oracle','','Hint'),            
     ]
     Nconfigs=len(configTable)
     
@@ -473,7 +473,7 @@ if EST_LOCS:
 #        NpathsRetrieved[nsim]=np.sum(np.abs(coef_est[:,nsim])**2>sigma2,axis=0)
 #        NpathsRetrieved[nsim]=np.where(np.cumsum(np.abs(coef_est[:,nsim])**2,axis=0)/np.sum(np.abs(coef_est[:,nsim])**2,axis=0)>.75)[0][0]
 #        NpathsRetrieved[nsim]=np.sum(coef_est[:,nsim]!=0)
-    loc=mploc.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
+    loc=mploc.MultipathLocationEstimator(Npoint=1000,RootMethod='lm')
     t_start_all=np.zeros(Nconfigs)
     t_end_all=np.zeros(Nconfigs)
     phi0_est=np.zeros((Nconfigs,NpathsRetrievedMax-2,Nsims))
@@ -486,14 +486,14 @@ if EST_LOCS:
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
         t_start_all[ncfg]=time.time()
-        bar = Bar("%s %s %s"%(cfg[0],cfg[1],cfg[2]), max=Nsims)
+        bar = Bar("%s %s %s %s"%(cfg[0],cfg[1],cfg[2],cfg[3]), max=Nsims)
         bar.check_tty = False
         for nsim in range(Nsims):
             for Nstimpaths in range(3, NpathsRetrieved[nsim]+1 ):
                 try:
                     if cfg[0]=='CS':
                         if cfg[1]=='oracle':
-                            if cfg[2]=='Hint':
+                            if cfg[3]=='Hint':
                                 phi0_est[ncfg,Nstimpaths-3,nsim]=phi0_coarse[nsim]
                             else:
                                 phi0_est[ncfg,Nstimpaths-3,nsim]=phi0[nsim]
@@ -503,7 +503,7 @@ if EST_LOCS:
                                 _,
                                 x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
                                 y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim]
-                            ) = loc.computeAllPathsLinear(
+                            ) = loc.computeAllPaths(
                                 AoD_est[0:Nstimpaths,nsim],
                                 AoA_est[0:Nstimpaths,nsim],
                                 dels_est[0:Nstimpaths,nsim],
@@ -513,6 +513,7 @@ if EST_LOCS:
                                 phi0_est[ncfg,Nstimpaths-3,nsim],
                                 x0_est[ncfg,Nstimpaths-3,nsim],
                                 y0_est[ncfg,Nstimpaths-3,nsim],
+                                _,
                                 x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
                                 y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
                                 phi0_cov[ncfg,Nstimpaths-3,nsim]
@@ -520,11 +521,12 @@ if EST_LOCS:
                                 AoD_est[0:Nstimpaths,nsim],
                                 AoA_est[0:Nstimpaths,nsim],
                                 dels_est[0:Nstimpaths,nsim],
-                                method=cfg[1],
-                                hint_phi0= ( phi0_coarse[nsim] if (cfg[2]=='Hint') else None ) )
+                                phi0_method=cfg[1],
+                                group_method=cfg[2],
+                                hint_phi0= ( phi0_coarse[nsim] if (cfg[3]=='Hint') else None ) )
                     else:
                         if cfg[1]=='oracle':
-                            if cfg[2]=='Hint':
+                            if cfg[3]=='Hint':
                                 phi0_est[ncfg,Nstimpaths-3,nsim]=phi0_coarse[nsim]
                             else:
                                 phi0_est[ncfg,Nstimpaths-3,nsim]=phi0[nsim]
@@ -534,7 +536,7 @@ if EST_LOCS:
                                 _,
                                 x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
                                 y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim]
-                            ) = loc.computeAllPathsLinear(
+                            ) = loc.computeAllPaths(
                                 AoD[0:Nstimpaths,nsim],
                                 AoA[0:Nstimpaths,nsim],
                                 dels[0:Nstimpaths,nsim],
@@ -544,6 +546,7 @@ if EST_LOCS:
                                 phi0_est[ncfg,Nstimpaths-3,nsim],
                                 x0_est[ncfg,Nstimpaths-3,nsim],
                                 y0_est[ncfg,Nstimpaths-3,nsim],
+                                _,
                                 x_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
                                 y_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim],
                                 phi0_cov[ncfg,Nstimpaths-3,nsim]
@@ -551,8 +554,9 @@ if EST_LOCS:
                                 AoD[0:Nstimpaths,nsim],
                                 AoA[0:Nstimpaths,nsim],
                                 dels[0:Nstimpaths,nsim],
-                                method=cfg[1],
-                                hint_phi0= ( phi0_coarse[nsim] if (cfg[2]=='Hint') else None ) )                
+                                phi0_method=cfg[1],
+                                group_method=cfg[2],
+                                hint_phi0= ( phi0_coarse[nsim] if (cfg[3]=='Hint') else None ) )             
                 except Exception as e:
                     print("Omitting other error in nsim %d npaths %d"%(nsim,Nstimpaths))
                     print(str(e))
@@ -576,7 +580,7 @@ if EST_LOCS:
                 configTable=configTable)
         configTable=np.array(configTable)
 else:
-    loc=mploc.MultipathLocationEstimator(Npoint=1000,Nref=20,Ndiv=2,RootMethod='lm')
+    loc=mploc.MultipathLocationEstimator(Npoint=1000,RootMethod='lm')
     data=np.load('./mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims))
     t_start_all=data["t_start_all"]
     t_end_all=data["t_end_all"]
@@ -627,7 +631,7 @@ if PLOT_LOCS:
     
     error_guess=np.sqrt(np.abs(x0-x0_guess)**2+np.abs(y0-y0_guess))
     plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,error_guess.size),':k')
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
+    plt.legend(["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable]+['random guess'])
     plt.xlabel("Position error (m)")
     plt.ylabel("C.D.F.")
     plt.title("Assuming optimum number of paths")
@@ -639,7 +643,7 @@ if PLOT_LOCS:
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
         (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
-        labstr = "%s %s %s"%(cfg[0],cfg[1].replace("_"," "),cfg[2])
+        labstr = "%s %s %s %s"%(cfg[0],cfg[1],cfg[2],cfg[3])
         if labstr in labstrFilter:
             pcatch = plt.plot(np.vstack((x0,x0_est[ncfg,npathbest[ncfg,:],range(Nsims)])),np.vstack((y0,y0_est[ncfg,npathbest[ncfg,:],range(Nsims)])),linestyle=':',color=clcfg,marker=mkcfg, mfc='none', label=labstr)
             plt.setp(pcatch[1:],label="_")
@@ -659,7 +663,7 @@ if PLOT_LOCS:
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
         phi0_eatmin[ncfg,:]=phi0_err[ncfg,npathbest[ncfg,:],range(Nsims)]
-        labstr = "%s %s %s"%(cfg[0],cfg[1].replace("_"," "),cfg[2])
+        labstr = "%s %s %s %s"%(cfg[0],cfg[1],cfg[2],cfg[3])
         if labstr in labstrFilter:
             (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
             plt.loglog(phi0_eatmin[ncfg,:],error_min[ncfg,:],linestyle='',marker=mkcfg,color=clcfg)
@@ -675,7 +679,7 @@ if PLOT_LOCS:
         cfg = configTable[ncfg]
         (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
         plt.plot(npathbest[ncfg,:],error_min[ncfg,:],linestyle='',marker=mkcfg,color=clcfg)
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+    plt.legend(["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable])
     plt.xlabel("Npaths at min error")
     plt.ylabel("Location error")
     plt.axis([0,NpathsRetrievedMax,0,50])
@@ -686,7 +690,7 @@ if PLOT_LOCS:
         cfg = configTable[ncfg]
         (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
         plt.plot(NpathsRetrieved,error_min[ncfg,:],linestyle='',marker=mkcfg,color=clcfg)
-    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+    plt.legend(["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable])
     plt.xlabel("Npaths retrieved total")
     plt.ylabel("Location error")
     plt.axis([0,NpathsRetrievedMax,0,50])
@@ -833,8 +837,8 @@ if PLOT_LOCS:
   
     Npathfrac=1-NpathsRetrieved/Nt#TODO: make these variables accessible without being global
     AvgNoBoost = -Npathfrac*np.log(1-Npathfrac)
-    Ncfglinhint = np.argmax(np.all(configTable==('CS','fsolve_linear','Hint'),axis=1))
-    Ncfgoracle = np.argmax(np.all(configTable==('CS','oracle','Pure'),axis=1))
+    Ncfglinhint = np.argmax(np.all(configTable==('CS','fsolve','drop1','Hint'),axis=1))
+    Ncfgoracle = np.argmax(np.all(configTable==('CS','oracle','','Pure'),axis=1))
     
     lMethods=[
              #oracle reveals npaths with true best distance error
@@ -892,7 +896,7 @@ if PLOT_LOCS:
 #            cfg = configTable[ncfg]
 #            (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
 #            plt.plot(NpathsRetrieved, error_dist[ncfg,npaths_method,range(Nsims)],linestyle='',marker=mkcfg,color=clcfg)
-#        plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+#        plt.legend(["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable])
 #        plt.axis([0,NpathsRetrievedMax,0,50])
 #        plt.xlabel("npaths selected method")
 #        plt.ylabel("Location error")
@@ -930,16 +934,16 @@ if PLOT_LOCS:
                       ]
 #        plt.semilogx(np.sort(error_guess).T,np.linspace(0,1,Nsims),':k')        
 #        plt.title("Assuming %s bound min number of paths"%method[3])
-#        plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable]+['random guess'])
+#        plt.legend(["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable]+['random guess'])
 #        plt.xlabel("Position error (m)")
 #        plt.ylabel("C.D.F.")
         
     plt.figure(fig_num_bar)
     plt.legend([x[2] for x in lMethods])
     plt.xlabel('config')
-    plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable],rotation=45)
+    plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable],rotation=45)
     plt.ylabel('Corr coefficient')
-#    plt.legend(["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable])
+#    plt.legend(["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable])
    
     
 #    npaths_method=np.maximum(np.minimum( usePhi0Err(coef_est,[.8])-3,36),0)
@@ -976,7 +980,7 @@ if PLOT_LOCS:
         method=lMethods[nmethod]
         plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,0],1/(Nmethods+2),color=method[1])
     plt.xlabel('config')
-    plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable],rotation=45)
+    plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable],rotation=45)
     plt.ylabel('Mean error (m)')
     plt.legend([x[2] for x in lMethods])
 #  
@@ -987,7 +991,7 @@ if PLOT_LOCS:
             method=lMethods[nmethod]
             plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,1+npct],1/(Nmethods+2),color=method[1])
         plt.xlabel('config')
-        plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s"%(x[0],x[1].replace("_"," "),x[2]) for x in configTable],rotation=45)
+        plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable],rotation=45)
         plt.ylabel('%d pct error (m)'%lPercentilesPlot[npct])
         plt.legend([x[2] for x in lMethods])
         
