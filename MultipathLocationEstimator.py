@@ -564,7 +564,7 @@ class MultipathLocationEstimator:
             print("ERROR: phi0 root not found")
             return (np.array(0.0),np.inf)
 
-    def computeAllLocationsFromPaths(self, AoD, AoA, dels, Npoint=None, hint_phi0=None, phi0_method='fsolve', group_method='drop1', RootMethod='lm'):
+    def computeAllLocationsFromPaths(self, AoD, AoA, dels, Npoint=100, hint_phi0=None, phi0_method='fsolve', group_method='drop1', RootMethod='lm'):
         """Performs the estimation of the phi_0 especified by the parameter method, and returns the position 
         of the UE for this angle.
 
@@ -654,7 +654,7 @@ class MultipathLocationEstimator:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--load',  help='CVS name file lo load channel parameters')
+    parser.add_argument('--load', help='CVS name file lo load channel parameters')
     parser.add_argument('--AoD', help='Array with Angle of Departure values')
     parser.add_argument('--AoA', help='Array with Angle of Arrival values')
     parser.add_argument('--dels', help='Array with NLOS paths delays values')
@@ -667,8 +667,13 @@ if __name__ == '__main__':
         AoD = data['AoD']
         AoA = data['AoA']
         dels = data['dels']
-    
+
     else:
         AoA = args.AoA
         AoD = args.AoD
         dels = args.dels
+
+    loc = MultipathLocationEstimator(Npoint = 100, RootMethod = "lm")
+    (phi0_fsolve, d_0x_fsolve, d_0y_fsolve,_,_,_,_) = loc.computeAllLocationsFromPaths(AoD, AoA, dels)
+    print(phi0_fsolve, d_0x_fsolve, d_0y_fsolve)
+
