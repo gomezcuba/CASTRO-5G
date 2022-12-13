@@ -45,7 +45,7 @@ y0=np.random.rand(Nchan)*100-50
 
 legStrAlgs=[
         'OMPx1',
-#        'OMPx2',
+        'OMPx2',
         'OMPBR',
         ]
 
@@ -79,11 +79,11 @@ for ichan in range(0,Nchan):
         Npaths[-1].append([])        
         Npaths[-1][-1].append(len(paths.delays))
 
-#        t0 = time.time()
-#        hest4,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,2.0,2.0,2.0,1.0)
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest4)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
+        t0 = time.time()
+        hest4,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,2.0,2.0,2.0,1.0)
+        MSE[-1][-1].append(np.mean(np.abs(hk-hest4)**2)/np.mean(np.abs(hk)**2))
+        totTimes[-1][-1].append(time.time()-t0)
+        Npaths[-1][-1].append(len(paths.delays))
 
         t0 = time.time()
         hest5,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0)

@@ -36,7 +36,7 @@ parser.add_argument('--noloc',help='Do not perform location estimation, load pri
 parser.add_argument('--show', help='Open plot figures in window', action='store_true')
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
-args = parser.parse_args("-N 100 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
+args = parser.parse_args("--nompg --noloc -N 100 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
@@ -91,6 +91,9 @@ if not os.path.isdir(outfoldername):
 #TODO: create command line arguments for these parameters
 Xmax=50
 Xmin=-50
+        #locations from angles
+        #generate angles 3GPP
+        #adaptation of angles and locations
 Ymax=50
 Ymin=-50
 
@@ -137,7 +140,9 @@ else:
         tau0=y0/np.sin(theta0)/c
         tauE=tau0+np.random.randn(1,Nsims)*40e-9
     elif mpgen == "3gpp":
-        #TBW
+        #locations from angles
+        #generate angles 3GPP
+        #adaptation of angles and locations
         print("MultiPath generation method %s to be written"%mpgen)
     else:
         print("MultiPath generation method %s not recognized"%mpgen)

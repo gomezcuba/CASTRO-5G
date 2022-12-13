@@ -67,14 +67,14 @@ def fitMmWaveChanDelForLocation(x0,y0,phi0,AoD,AoA):
     exdel=(l-l0)/c
     return (exdel,x,y)
 
-GEN_CHANS=False
-GEN_PLOT=False
+GEN_CHANS=True
+GEN_PLOT=True
 Nstrongest=40
 Nmaxpaths=400
 Nsims=100
 
-EST_CHANS=True
-EST_PLOT=True
+EST_CHANS=False
+EST_PLOT=False
 Nd=16
 Na=16
 Nt=128
@@ -89,8 +89,8 @@ sigma2=.01
 MATCH_CHANS=False
 #MATCH_PLOT=True
 
-EST_LOCS=True
-PLOT_LOCS=True
+EST_LOCS=False
+PLOT_LOCS=False
 
 t_total_run_init=time.time()
 fig_ctr=0
@@ -121,13 +121,19 @@ if GEN_CHANS:
     refPos=np.zeros((Nmaxpaths,Nsims,2))
     dels=np.zeros((Nmaxpaths,Nsims))
     coefs=np.zeros((Nmaxpaths,Nsims),dtype=complex)
-    for nsim in range(Nsims):    
+    for nsim in range(Nsims):
+        #chamar ao xenerador de canle do 3GPP
         mpch = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
+        #mpch é unha canle estrictamente acorde ao modelo, gardada en listas python normais.
+        # convertimolo en arrays de numpy
         amps = np.array([x.complexAmplitude[0] for x in mpch.channelPaths])
-        allaoa_shifted = np.mod( np.array([x.azimutOfArrival[0] for x in mpch.channelPaths])-phi0[nsim] ,np.pi*2)
+        allaoa_shifted_old = np.mod( np.array([x.azimutOfArrival[0] for x in mpch.channelPaths])-phi0[nsim] ,np.pi*2)
         allaod = np.mod( np.array([x.azimutOfDeparture[0] for x in mpch.channelPaths]) ,np.pi*2)
         alldelay = np.array([x.excessDelay[0] for x in mpch.channelPaths])*1e-9    
        
+        #temos todolos camiños en numpy pero non son reflexions fisicamente consistentes
+        #descartamos completamente os AoA do modelo 3GPP e xeneramos uns AoA propios
+        #que se resultan de respetar o AoD e delay do modelo 3GPPP e as ecuacions trigonometricas da reflexion
         (allaoa_shifted,xpos,ypos) = fitMmWaveChanAoAForLocation(x0[nsim],y0[nsim],phi0[nsim],allaod,alldelay) 
     #  
         
