@@ -157,9 +157,9 @@ else:
             phi_est[nv,:,:]=np.mod(phi-phi0,2*np.pi)
             tau_est[nv,:,:]=tau-tauE
         elif errType=='std': 
-            theta_est[nv,:,:]=np.mod(theta+c1*2*np.pi*np.random.rand(Npath,Nsims),2*np.pi)
-            phi_est[nv,:,:]=np.mod(phi-phi0+c2*2*np.pi*np.random.rand(Npath,Nsims),2*np.pi)
-            tau_est[nv,:,:]=tau-tauE+c3*320e-9*np.random.rand(Npath,Nsims)
+            theta_est[nv,:,:]=np.mod(theta+c1*2*np.pi*np.random.randn(Npath,Nsims),2*np.pi)
+            phi_est[nv,:,:]=np.mod(phi-phi0+c2*2*np.pi*np.random.randn(Npath,Nsims),2*np.pi)
+            tau_est[nv,:,:]=tau-tauE+c3*320e-9*np.random.randn(Npath,Nsims)
         elif errType=='dic':
             if c1=='inf':
                 theta_est[nv,:,:]=np.mod(theta,2*np.pi)
@@ -325,6 +325,12 @@ if args.S:
             color='b' if optimMthd=='brute' else 'g'
         plt.semilogx(np.percentile(location_error[nc,P1pos,~np.isnan(location_error[nc,P1pos,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
     plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
+    Ts = loc.getTParamToLoc(x0,y0,tauE,phi0,x,y,['dTau','dAoA'],['dx0','dy0'])
+    varPhiDist=np.var(np.mod(phi_est[P1pos,:,:]+phi0-phi,np.pi*2))
+    varTauDist=np.var((tau_est[P1pos,:,:]-tau+tauE)*1e9)
+    M=np.matmul(Ts.transpose([2,1,0]),np.matmul(np.kron(np.diag([1/varTauDist,1/varPhiDist]),np.eye(20)),Ts.transpose([2,0,1])))
+    errorCRLB = np.array([np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0]) for n in range(M.shape[0])])
+    plt.semilogx(np.percentile(errorCRLB,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="CRLB")    
     plt.xlabel('Location error(m)')
     plt.ylabel('C.D.F.')
     plt.legend()
@@ -485,6 +491,34 @@ if args.D:
     plt.legend()
     if args.print:
         plt.savefig(outfoldername+'/cdflocerr_Kt256.eps')
+        
+    fig_ctr=fig_ctr+1
+    plt.figure(fig_ctr)
+    Kp2pos=np.argmax([x[2]=='256' and x[0]=='dic' for x in lErrMod])
+    for nc in range(Ncases):
+        (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
+        if phi0Apriori:
+            caseStr="phi0 quantized sensor" if phi0Quant else "phi0 known"
+            color='r'
+            marker='*' if phi0Quant else 'o'
+            line=':'
+        else:
+            caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
+            line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
+            marker='x' if phi0Quant else 's'
+            color='b' if optimMthd=='brute' else 'g'
+        plt.semilogx(np.percentile(location_error[nc,Kp2pos,~np.isnan(location_error[nc,Kp2pos,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
+    plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
+    Ts = loc.getTParamToLoc(x0,y0,tauE,phi0,x,y,['dAoA'],['dx0','dy0'])
+    varPhiDist=np.var(np.minimum(np.mod(phi-phi0-phi_est[Kp2pos,:,:],np.pi*2),2*np.pi-np.mod(phi-phi0-phi_est[Kp2pos,:,:],np.pi*2)))
+    M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
+    errorCRLB = np.array([varPhiDist*np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0]) for n in range(M.shape[0])])
+    plt.semilogx(np.percentile(errorCRLB,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="CRLB")    
+    plt.xlabel('Location error(m)')
+    plt.ylabel('C.D.F.')
+    plt.legend()
+    if args.print:
+        plt.savefig(outfoldername+'/cdflocerr_Kp256.eps')
     
     fig_ctr=fig_ctr+1
     plt.figure(fig_ctr)
