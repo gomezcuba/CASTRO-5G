@@ -650,6 +650,33 @@ class MultipathLocationEstimator:
         (d0x, d0y, tauerr, vx, vy) = self.computeAllPaths(AoD, AoA, dels, phi0_est)
 
         return(phi0_est, d0x, d0y, tauerr, vx, vy, cov_phi0)
+        
+    def getTParamToLoc(self,x0,y0,tauE,phi0,x,y,dAxes,vAxes):
+        dfun={
+            ('dTau','dx0') : lambda x0,y0,x,y: x0/3e-1/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dTau','dy0') : lambda x0,y0,x,y: y0/3e-1/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dTau','dTauE') : lambda x0,y0,x,y: -np.ones_like(x[:,None,:]),
+            ('dTau','dPhi0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
+            ('dTau','dx') : lambda x0,y0,x,y: ((x[:,None,:]==x)*x)/3e-1*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
+            ('dTau','dy') : lambda x0,y0,x,y: ((y[:,None,:]==y)*y)/3e-1*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
+            
+            ('dAoD','dx0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
+            ('dAoD','dy0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
+            ('dAoD','dTauE') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
+            ('dAoD','dPhi0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
+            ('dAoD','dx') : lambda x0,y0,x,y: ((x[:,None,:]==x)*x)/((x)**2+(y)**2),
+            ('dAoD','dy') : lambda x0,y0,x,y: -1*(y[:,None,:]==y)/((x)**2+(y)**2),
+            
+            ('dAoA','dx0') : lambda x0,y0,x,y: (x0-x[:,None,:])/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dAoA','dy0') : lambda x0,y0,x,y: -1/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dAoA','dTauE') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
+            ('dAoA','dPhi0') : lambda x0,y0,x,y: -np.ones_like(x[:,None,:]),
+            ('dAoA','dx') : lambda x0,y0,x,y: (x0-((x[:,None,:]==x)*x))/((x0-x)**2+(y0-y)**2),
+            ('dAoA','dy') : lambda x0,y0,x,y: -1*(y[:,None,:]==y)/((x0-x)**2+(y0-y)**2)
+              }
+        T= np.concatenate([np.vstack([dfun[term,var](x0,y0,x,y) for term in dAxes]) for var in vAxes],axis=1)
+#        T=np.concatenate(listOfPartials,axis=0)
+        return(T)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
