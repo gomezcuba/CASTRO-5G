@@ -664,15 +664,15 @@ class MultipathLocationEstimator:
             ('dAoD','dy0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
             ('dAoD','dTauE') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
             ('dAoD','dPhi0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dAoD','dx') : lambda x0,y0,x,y: ((x[:,None,:]==x)*x)/((x)**2+(y)**2),
-            ('dAoD','dy') : lambda x0,y0,x,y: -1*(y[:,None,:]==y)/((x)**2+(y)**2),
+            ('dAoD','dx') : lambda x0,y0,x,y: (-y*(y[:,None,:]==y))/((x)**2+(y)**2),
+            ('dAoD','dy') : lambda x0,y0,x,y: (x*(x[:,None,:]==x))/((x)**2+(y)**2),
             
-            ('dAoA','dx0') : lambda x0,y0,x,y: (x0-x[:,None,:])/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            ('dAoA','dy0') : lambda x0,y0,x,y: -1/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dAoA','dx0') : lambda x0,y0,x,y: (y[:,None,:]-y0)/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dAoA','dy0') : lambda x0,y0,x,y: (x0-x[:,None,:])/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
             ('dAoA','dTauE') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
             ('dAoA','dPhi0') : lambda x0,y0,x,y: -np.ones_like(x[:,None,:]),
-            ('dAoA','dx') : lambda x0,y0,x,y: (x0-((x[:,None,:]==x)*x))/((x0-x)**2+(y0-y)**2),
-            ('dAoA','dy') : lambda x0,y0,x,y: -1*(y[:,None,:]==y)/((x0-x)**2+(y0-y)**2)
+            ('dAoA','dx') : lambda x0,y0,x,y: (y0-y[:,None,:])/((x0-x)**2+(y0-y)**2),
+            ('dAoA','dy') : lambda x0,y0,x,y: (x[:,None,:]-x0)/((x0-x)**2+(y0-y)**2)
               }
         T= np.concatenate([np.vstack([dfun[term,var](x0,y0,x,y) for term in dAxes]) for var in vAxes],axis=1)
 #        T=np.concatenate(listOfPartials,axis=0)
