@@ -571,7 +571,8 @@ class ThreeGPPMultipathChannelModel:
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         self.dMacrosGenerated[key]=self.ThreeGPPMacroParams(los,PL,ds,asa,asd,zsa,zsd,K,sf,zod_offset_mu)
    
-    def create_small_param(self, angles, macro):
+    
+    def create_clusters(self,macro,angles):    
         los = macro.los
         DS = macro.ds
         ASA = macro.asa
@@ -586,7 +587,6 @@ class ThreeGPPMultipathChannelModel:
         else:
             param = self.scenarioParamsNLOS
         N = param.N
-        M = param.M
         rt = param.rt
         
         #Generate cluster delays
@@ -598,8 +598,8 @@ class ThreeGPPMultipathChannelModel:
             tau = tau / Ctau 
         
         #Generate cluster powers
-        xi = self.scenarioParamsLOS.xi
-        powPrima = np.exp(-tau*((rt-1)/(rt*DS)))*10**(-(xi*np.random.normal(1,1)/10))
+        xi = param.xi
+        powPrima = np.exp(-tau*((rt-1)/(rt*DS)))*10**(-(xi*np.random.normal(1,1,size=N)/10))
         if los:
             p1LOS = K/(K+1)
             powC = (1/K+1)*(powPrima/np.sum(powPrima))
@@ -608,12 +608,11 @@ class ThreeGPPMultipathChannelModel:
             powC = powPrima/np.sum(powPrima)
         #Remove clusters with less than -25 dB power compared to the maximum cluster power. The scaling factors need not be 
         #changed after cluster elimination 
-        maxTau = np.amax(tau)
-        maxP =np.amax(powC)
+        maxP = np.amax(powC)
         #------------------------------------------------
-        tau = tau[tau > (maxTau*10**(-2.5))] #natural units
+        tau = tau[powC > (maxP*10**(-2.5))] #natural units
         powC = powC[powC > (maxP*10**(-2.5))]
-        nClusters=np.size(powC)
+        nClusters = np.size(powC)
         
         #Generate arrival angles and departure angles for both azimuth and elevation   
         #Azimut
@@ -629,15 +628,8 @@ class ThreeGPPMultipathChannelModel:
         phiAOA = X*phiAOAprima + Y -(los==1)*(X[0]*phiAOAprima[0] + Y[0]) + angles[1]
         phiAOD = X*phiAODprima + Y -(los==1)*(X[0]*phiAODprima[0] + Y[0]) + angles[0]
         
-        casa = param.casa
-        row = powC.shape[0]
-        mphiAOA = np.zeros((row,M))
-        mphiAOD = mphiAOA
-        for i in range(row):
-            for j in range(M):
-                mphiAOA[i,j] = phiAOA[i] + casa*self.alpham.get(j)
-                mphiAOD[i,j] = phiAOD[i] + casa*self.alpham.get(j)
-        
+        phi = [phiAOA,phiAOD]
+    
         #Zenith 
         if los:
             Cteta = self.CtetaNLOS.get(N)*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
@@ -645,26 +637,97 @@ class ThreeGPPMultipathChannelModel:
             Cteta = Cteta = self.CtetaNLOS.get(N)
         
         tetaZOAprima = -((ZSA*np.log(powC/maxP))/Cteta)
-        tetaZODprima = -((ZSD*np.log(powC[i]/maxP))/Cteta)
+        tetaZODprima = -((ZSD*np.log(powC/maxP))/Cteta)
         
         Y1 = np.random.normal(0,(ZSA/7)**2,size=powC.shape)
         Y2 = np.random.normal(0,(ZSD/7)**2,size=powC.shape)   
         tetaZOA = X*tetaZOAprima + Y1 - (los==1)*(X[0]*tetaZOAprima[0] + Y1[0]) + angles[3]
         tetaZOD = X*tetaZODprima + Y2 - (los==1)*(X[0]*tetaZODprima[0] + Y2[0]- ZOD) + angles[2]
         
-        czsa = param.czsa
-        mtetaZOA = np.zeros((row,M))
-        mtetaZOD = mtetaZOA
-        for i in range(row):
-            for j in range(M):
-                mtetaZOA[i,j] = tetaZOA[i] + czsa*self.alpham.get(j)
-                mtetaZOD[i,j] = tetaZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j)
+        teta = [tetaZOA,tetaZOD]
         
+        clusters = [nClusters,tau,powC,phi,teta]
+        return(clusters)
+   
+    
+    def create_subpaths(self,macro,clusters):
+        los = macro.los
+        ZSD = macro.zsd
+    
+        if los:
+            param = self.scenarioParamsLOS
+        else:
+            param = self.scenarioParamsNLOS
+        M = param.M
+        cds = param.cds
+        
+        nClusters = clusters[0]
+        tau = clusters[1]
+        powC = clusters[2]
+        phi = clusters[3]
+        teta = clusters[4]
+        
+        #Generate subpaths delays and powers
+        powC_cluster = powC/M #Power of each cluster
+        
+        powC_sp = np.zeros((nClusters,M)) 
+        tau_sp = powC_sp
+        for i in range(nClusters):
+            for j in range(M):
+                powC_sp[i,j] = powC_cluster[i]
+                tau_sp[i,j] = tau[i]
+                
+        row1 = np.array([0,0,0,0,0,0,0,0,1.28*cds,1.28*cds,1.28*cds,1.28*cds,2.56*cds,2.56*cds,2.56*cds,2.56*cds,1.28*cds,1.28*cds,0,0])
+        tau_sp[0] = row1
+        tau_sp[1] = row1
+        
+        """
+        #Subclusters
+        R1 = (1,2,3,4,5,6,7,8,19,20)
+        R2 = (9,10,11,12,17,18)
+        R3 = (13,14,15,16)
+        
+        P1 = len(R1)/M
+        P2 = len(R2)/M
+        P3 = len(R3)/M
+        
+        tau1 = 0
+        tau2 = 1.28*cds
+        tau3 = 2.56*cds
+        """   
+        casa = param.casa
+        mphiAOA = np.zeros((nClusters,M))
+        mphiAOD = mphiAOA
+
+        for i in range(nClusters):
+            for j in range(M):
+                mphiAOA[i,j] = phi[0][i] + casa*self.alpham.get(j)
+                mphiAOD[i,j] = phi[1][i] + casa*self.alpham.get(j)
+
+        phi_sp = [mphiAOA,mphiAOD]
+        
+        czsa = param.czsa
+        mtetaZOA = np.zeros((nClusters,M))
+        mtetaZOD = mtetaZOA
+        for i in range(nClusters):
+            for j in range(M):
+                mtetaZOA[i,j] = teta[0][i] + czsa*self.alpham.get(j)
+                mtetaZOD[i,j] = teta[1][i] + (3/8)*(10**ZSD)*self.alpham.get(j)
         #if 180 < mtetaZOA < 360:
          #   mtetaZOA = 360 - mtetaZOA 
          
-        angles = [mphiAOA,mtetaZOA,mphiAOD,mtetaZOD]
-        return(tau,powC,angles)
+        teta_sp = [mtetaZOA,mtetaZOD]
+        
+        subpaths = [tau_sp,powC_sp,phi_sp,teta_sp]
+        return(subpaths)
+    
+    
+    def create_small_param(self,angles,macro):
+        clusters = self.create_clusters(macro,angles)
+        subpaths = self.create_subpaths(macro,clusters)
+
+        return(clusters,subpaths)
+    
         
     def create_channel(self, txPos, rxPos):
         aPos = np.array(txPos)
@@ -710,7 +773,7 @@ class ThreeGPPMultipathChannelModel:
             ##print(type(lista[i]))
             
         #print("Macro for BS: (" + str(txPos[0]) +"," + str(txPos[1]) + ")m and UT: (" + str(rxPos[0]) + "," + str(rxPos[1]) + ")m.")
-        df = pd.Series({'LOS' : str(lista[0]), 'Path Loss' : lista[1], 'DS' : lista[2], 'ASA' : lista[3],'ASD' : lista[4],'ZSA' : lista[5],'ZSD' : lista[6],'K' : lista[7],'SF' : lista[8],'ZOD' : str(lista[9])})
+        #df = pd.Series({'LOS' : str(lista[0]), 'Path Loss' : lista[1], 'DS' : lista[2], 'ASA' : lista[3],'ASD' : lista[4],'ZSA' : lista[5],'ZSD' : lista[6],'K' : lista[7],'SF' : lista[8],'ZOD' : str(lista[9])})
         #print(df)
         
         
