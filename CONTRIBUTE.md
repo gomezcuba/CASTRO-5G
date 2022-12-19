@@ -23,7 +23,7 @@ The goal of this project is the creation of a **library** with great reusablity 
 
 ### Code of Conduct
 
-The project adheres to the [Contributor Covenant Code of Conduct version 2.1](https://raw.githubusercontent.com/gomezcuba/CASTRO-5G/main/code_of_conduct.md), also available at
+The project adheres to the [Contributor Covenant Code of Conduct version 2.1](https://github.com/gomezcuba/CASTRO-5G/blob/main/code_of_conduct.md), also available at
 [https://www.contributor-covenant.org/version/2/1/code_of_conduct.html][v2.1].
 
 ### Goals and Responsibilities
