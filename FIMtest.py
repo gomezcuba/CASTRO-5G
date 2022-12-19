@@ -1,26 +1,18 @@
 #!/usr/bin/python
 
 import threeGPPMultipathGenerator as mp3g
-import multipathChannel as ch
-import OMPCachedRunner as oc
 import MIMOPilotChannel as pil
-import csProblemGenerator as prb
-#import testRLmp as rl
-
-import matplotlib.pyplot as plt
+import OMPCachedRunner as oc
 import numpy as np
-
-import time
-from progress.bar import Bar
 import pandas as pd
 
-Nd=4
-Na=4
-Nt=8
+Nd=16
+Na=16
+Nt=128
 Nxp=3
 Nrft=1
 Nrfr=2
-K=16
+K=128
 Ts=300/Nt#2.5
 Ds=Ts*Nt
 sigma2=.01
@@ -68,9 +60,9 @@ def d_beta(w,ang):
     
 def diffGen(p,w,v,dAxis='tau'):
     if dAxis=='tau':
-        tau_term=-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] *np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * p.delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+        tau_term=-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] *np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * p.delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
     else:
-        tau_term=np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * p.delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
+        tau_term=np.exp(-2j*np.pi* np.arange(K)[...,np.newaxis,np.newaxis,np.newaxis] * p.delay[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis]/Ts)
     if dAxis=='theta':
         theta_term=d_beta( np.transpose(v,(0,1,3,2)) ,p.AoD[:,np.newaxis,np.newaxis,np.newaxis,np.newaxis])
     else:
@@ -85,15 +77,47 @@ print(diffGen(paths,w,v,'theta').shape)
 print(diffGen(paths,w,v,'phi').shape)
 print(diffGen(paths,w,v,'tau').shape)
 
-npth=40
+npth=5
 partialD=np.concatenate((
         diffGen(paths[0:npth],w,v,'tau').reshape(npth,-1),
         diffGen(paths[0:npth],w,v,'theta').reshape(npth,-1),
         diffGen(paths[0:npth],w,v,'phi').reshape(npth,-1)
         ),axis=0)
 
-J=np.real(partialD@partialD.conj().T)
 sigma2=1e-2
+J=2*np.real(partialD@partialD.conj().T)*sigma2*K*Nd*Na*Nxp
 
-MSE=np.trace(np.linalg.inv(J))*sigma2/K/Nd/Na/Nxp
-print("MSE: %f"%MSE)
+pathMSE=np.trace(np.linalg.inv(J))
+print("Path param MSE: %f"%pathMSE)
+
+pos0=np.array([30,0])#we will not actually test with a consistent case, so the MSE will be bad
+posPaths=np.random.rand(npth,2)
+def diffTau(p0,pP):
+    c=3e-1#in m/ns
+    return (p0/np.linalg.norm(p0-pP,axis=1)[:,np.newaxis]/c)
+
+def diffPhi(p0,pP):
+    g=(p0[1]-pP[:,1])/(p0[0]-pP[:,0])
+    dgx= 1/(p0[0]-pP[:,0])
+    dgy= -1/((p0[0]-pP[:,0])**2)
+    return np.concatenate([dgx[:,np.newaxis],dgy[:,np.newaxis]],axis=1) * 1/(1+g[:,np.newaxis]**2)
+
+print(diffTau(pos0,posPaths).shape)
+print(diffPhi(pos0,posPaths).shape)
+
+#diffTheta / d p0 turns out to be zero
+partialD_notheta=np.concatenate((
+        diffGen(paths[0:npth],w,v,'tau').reshape(npth,-1),
+        diffGen(paths[0:npth],w,v,'phi').reshape(npth,-1)
+        ),axis=0)
+
+J_notheta=2*np.real(partialD_notheta@partialD_notheta.conj().T) *K*Nd*Na*Nxp
+
+partialP=np.concatenate((
+        diffTau(pos0,posPaths),
+        diffPhi(pos0,posPaths)
+        ),axis=0)
+
+J2=partialP.conj().T @ J_notheta @ partialP
+posMSE=np.trace(np.linalg.inv(J2))
+print("Path position MSE: %f"%posMSE)

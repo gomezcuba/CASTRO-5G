@@ -35,6 +35,7 @@ ax.text3D(0,0,np.ceil(maxdel/100)*100,"delay [ns]",color='k')
 mpchan=next(iter(model.dChansGenerated.values()))
 allAoA=np.array([x.azimutOfArrival[0] for x in mpchan.channelPaths])
 allDel=np.array([x.excessDelay[0] for x in mpchan.channelPaths])
+allAoD=np.array([x.azimutOfDeparture[0] for x in mpchan.channelPaths])
 allGain=np.abs(np.array([x.complexAmplitude[0] for x in mpchan.channelPaths]))**2
 
 inds=np.argpartition(-allGain,4,axis=0)[0:50]
