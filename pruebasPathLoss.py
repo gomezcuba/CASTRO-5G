@@ -17,15 +17,15 @@ model2 = pg.ThreeGPPMultipathChannelModel(sce="UMa")
 model3 = pg.ThreeGPPMultipathChannelModel(sce="InH-Office-Mixed")
 #model.bLargeBandwidthOption=True
 
-txPos = [0,0,0]
+txPos = (0,0,20)
 rxPos = (10,0,1.5)
 aPos = np.array(txPos)
 bPos = np.array(rxPos)
 d3D=np.linalg.norm(bPos-aPos)
 
 d2D = rxPos[0]
-hbs = txPos[1]
-hut = rxPos[1]
+hbs = txPos[2]
+hut = rxPos[2]
 h = 5
 W = 20
 
@@ -42,9 +42,10 @@ pathlossRMaLOS = []
 
 
 for i in range(5000):
-    aux=np.sqrt(np.power(i,2) + np.power(hbs-hut,2))
-    pathlossRMaLOS.append(model.scenarioPlossRMaLOS(aux,i))
-    pathLossRMaNLOS.append(model.scenarioPlossRMaNLOS(aux,i))
+    d3D=np.sqrt(np.power(i,2) + np.power(hbs-hut,2))
+    print(d3D)
+    pathlossRMaLOS.append(model.scenarioPlossRMaLOS(d3D,i))
+    pathLossRMaNLOS.append(model.scenarioPlossRMaNLOS(d3D,i))
     distance.append(i)
     
 plt.plot(distance,pathlossRMaLOS, color='tab:blue', linestyle = 'dashed' , label = 'RMa LOS')
