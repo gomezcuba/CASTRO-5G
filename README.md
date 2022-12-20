@@ -2,6 +2,25 @@
 
 This Open Source repo presents a collection of 5G sparse multipath channel simulation, estimation and location signal processing tools in Python. CASTRO-5G is a repository started as a means to publish the software results of the research project Communications And Spatial Tracking RatiO (CASTRO) funded by Spanish Ministerio de Ciencia e Innovación (MICINN) - Proyectos de Generación de Conocimiento 2021 PID2021-122483OA-I00.
 
+## How to contribute
+
+Please read [CONTRIBUTING.md](https://github.com/gomezcuba/CASTRO-5G/blob/main/CONTRIBUTE.md) for details on our code of conduct, and the process for submitting pull requests to us.
+
+## Versions
+
+* Version 0.0.1 - initialized a private github repo with [gomezcuba](https://github.com/gomezcuba)'s draft code, which was still very deficient
+* Version 0.0.2 - [gonzaFero](https://github.com/gonzaFero) finished his TFG, upgrading MultipathLocationEstimator.py and creating its tutorials
+* Version 0.1.0 (this release) - [gomezcuba](https://github.com/gomezcuba) prepared the repo for going public, 
+* Version 0.1.1 (upcoming) - [iagoalvarez](https://github.com/iagoalvarez) is finishing his TFG, upgrading threeGPPMultipathGenerator.py and creating its test files
+
+## Authors
+
+* **Felipe Gomez Cuba** - *Initial work* - [gomezcuba](https://github.com/gomezcuba) [website](https://www.felipegomezcuba.info/)
+* **Gonzalo Feijoo Rodriguez (TFG)** - *Multipath Location module v2 and tutorials* - [gonzaFero](https://github.com/gonzaFero)
+* **Iago Dafonte (TFG)** - *3GPP Channel Generator module v2 and example files* - [iagoalvarez](https://github.com/iagoalvarez)
+
+See also the list of [contributors](https://github.com/your/project/contributors) actively submitting to this project.
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
@@ -31,47 +50,37 @@ python raygeometry.py
 
 the expected result is that this script should run without warnings, print several debug lines, and generate several .eps results files in the working folder.
 
-## tests
+## Structure of the Code
 
 TBW
 
-## Structure of the Code and Tutorials
+## Tests, Examples and Tutorials
 
 TBW
 
 ## Deployment
 
-TBW
+The following files can be added to your PATH and employed as python libraries or shell commands
 
-## Built With
+* multipathChannel.py
+* threeGPPMultipathGenerator.py
+* OMPCachedRunner.py
+* mpraylocsim.py
 
-### Code
+##  Acknowledgments
 
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
+### OSS
 
-### Academic Results
+* [Numpy](https://numpy.org/)
+* [Scipy](https://scipy.org/)
+* [Matplotlib](https://matplotlib.org/)
+* [Spyder3](https://www.spyder-ide.org/)
 
-TBW
+### Featured academic Results
 
-## Contributing
-
-Please read [CONTRIBUTING.md](https://github.com/gomezcuba/CASTRO-5G/blob/main/CONTRIBUTE.md) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versions
-
-* Version 0.1 - initialized a private github repo with [gomezcuba](https://github.com/gomezcuba)'s draft code, which was still very deficient
-* Version 0.2 [this release] - [gomezcuba](https://github.com/gomezcuba) prepared the repo for going public
-* Version 0.3 [upcoming]
-
-## Authors
-
-* **Felipe Gomez Cuba** - *Initial work* - [gomezcuba](https://github.com/gomezcuba) [website](https://www.felipegomezcuba.info/)
-* **Gonzalo Feijoo Rodriguez (TFG)** - *Multipath Location module v2 and tutorials* - [gonzaFero](https://github.com/gonzaFero)
-* **Iago Dafonte (TFG)** - *3GPP Channel Generator module v2 and example files* - [iagoalvarez](https://github.com/iagoalvarez)
-
-See also the list of [contributors](https://github.com/your/project/contributors) actively submitting to this project.
+* F. Gómez-Cuba and A. J. Goldsmith, "Compressed Sensing Channel Estimation for OFDM With Non-Gaussian Multipath Gains," in IEEE Transactions on Wireless Communications, vol. 19, no. 1, pp. 47-61, Jan. 2020
+* F. Gómez-Cuba, "Compressed Sensing Channel Estimation for OTFS Modulation in Non-Integer Delay-Doppler Domain," 2021 IEEE Global Communications Conference (GLOBECOM), 2021,
+* 3GPP. (2022). 3rd Generation Partnership Project; Technical Specification Group Radio Access Network; Study on channel model for frequencies from 0.5 to 100 GHz (Release 17). ETSI TR 38.901, 17.0.
 
 ## License
 
