@@ -1,23 +1,10 @@
 #!/usr/bin/python
-from progress.bar import Bar
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
-import scipy.optimize as opt
-
-
 from mpl_toolkits import mplot3d
 
-import cairosvg
-from PIL import Image
-from io import BytesIO
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-
 import numpy as np
-import time
-import os
-import sys
-import argparse
 
 plt.close('all')
 

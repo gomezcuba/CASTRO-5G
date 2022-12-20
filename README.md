@@ -8,29 +8,28 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
+Our project aims to maintain dependencies low. On a standard python3 install, you would only need the following dependencies:
 
-```
-Give examples
-```
+* [Numpy](https://numpy.org/)
+* [Scipy](https://scipy.org/)
+* [Matplotlib](https://matplotlib.org/)
+* (Our roadmap foresees including [Pandas](https://pandas.pydata.org/) as a default dependency, as it can enable a very elegant storage of multipath data. This may become a prerequisite in the future. Currently, the code can be run without this dependency. However, we highly recommend to have Pandas installed from the begining of your work, specially if you plan to upgrade to next versions of CASTRO-5G)
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running
-
-Say what the step will be
+You may simply download the code into a folder or clone the repo
 
 ```
-Give the example
+git clone https://github.com/gomezcuba/CASTRO-5G.git
 ```
 
-And repeat
+You can test that dependencies are met by running the *raygeometry.py* simulation
 
 ```
-until finished
+python raygeometry.py
 ```
 
-End with an example of getting some data out of the system or using it for a little demo
+the expected result is that this script should run without warnings, print several debug lines, and generate several .eps results files in the working folder.
 
 ## tests
 
@@ -80,6 +79,4 @@ This project is licensed under the GPLv3 license - see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
+TBW
