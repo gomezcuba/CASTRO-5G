@@ -23,7 +23,7 @@ See also the list of [contributors](https://github.com/your/project/contributors
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+To get a copy of the code up and running on a local folder follow the exteps below. See the Deployment section for notes on how to deploy the project on a live system.
 
 ### Prerequisites
 
@@ -67,6 +67,11 @@ The following files can be added to your PATH and employed as python libraries o
 * OMPCachedRunner.py
 * mpraylocsim.py
 
+##  Publications
+
+* F. Gómez-Cuba, "Compressed Sensing Channel Estimation for OTFS Modulation in Non-Integer Delay-Doppler Domain," 2021 IEEE Global Communications Conference (GLOBECOM), 2021,
+* F. Gómez-Cuba, G. Feijoo-Rodríguez, N. González-Prelcic "Clock and Orientation-Robust Simultaneous Radio Localization and Mapping at Millimeter Wave Bands" Accepted for publication in IEEE WCNC 2023, Glassgow, Scotland.
+
 ##  Acknowledgments
 
 ### OSS
@@ -76,16 +81,11 @@ The following files can be added to your PATH and employed as python libraries o
 * [Matplotlib](https://matplotlib.org/)
 * [Spyder3](https://www.spyder-ide.org/)
 
-### Featured academic Results
+### Featured Research
 
-* F. Gómez-Cuba and A. J. Goldsmith, "Compressed Sensing Channel Estimation for OFDM With Non-Gaussian Multipath Gains," in IEEE Transactions on Wireless Communications, vol. 19, no. 1, pp. 47-61, Jan. 2020
-* F. Gómez-Cuba, "Compressed Sensing Channel Estimation for OTFS Modulation in Non-Integer Delay-Doppler Domain," 2021 IEEE Global Communications Conference (GLOBECOM), 2021,
-* 3GPP. (2022). 3rd Generation Partnership Project; Technical Specification Group Radio Access Network; Study on channel model for frequencies from 0.5 to 100 GHz (Release 17). ETSI TR 38.901, 17.0.
-
+* The OMPBR Compressed Sensing algorithm was first discussed in: F. Gómez-Cuba and A. J. Goldsmith, "Compressed Sensing Channel Estimation for OFDM With Non-Gaussian Multipath Gains," in IEEE Transactions on Wireless Communications, vol. 19, no. 1, pp. 47-61, Jan. 2020
+* The 3GPP channel model is defined in: 3GPP. (2022). 3rd Generation Partnership Project; Technical Specification Group Radio Access Network; Study on channel model for frequencies from 0.5 to 100 GHz (Release 17). ETSI TR 38.901, 17.0.
+1
 ## License
 
 This project is licensed under the GPLv3 license - see the [LICENSE](LICENSE) file for details
-
-## Acknowledgments
-
-TBW
