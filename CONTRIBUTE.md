@@ -68,7 +68,7 @@ A process is yet to be established for all of the above. In the interim, please 
 
 ### Project CASTRO
 
-Code developed within the scope of project CASTRO shall be first reviewed by the PI
+Code developed within the scope of project CASTRO shall be first reviewed by the PI while on its dev branch and integrated into the branch dev-integration for further adjustment. Finally, when signficiant functionalities are stable, they will be merged into the main branch and a new release shall be created.
 
 ### Third parties
 
