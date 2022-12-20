@@ -1,6 +1,6 @@
 # CASTRO-5G
 
-This Open Source repo presents a collection of 5G sparse multipath channel simulation, estimation and location signal processing tools in Python. CASTRO-5G is a repository started as a means to publish the software results of the research project Communications And Spatial Tracking RatiO (CASTRO) funded by Spanish Ministerio de Ciencia e Innovación (MICINN) - Proyectos de Generación de Conocimiento 2021 PID2021-122483OA-I00.
+This Open Source repo presents a collection of 5G sparse multipath channel simulation, estimation and location signal processing tools in Python. CASTRO-5G is a repository started as a means to publish the software results of the research project Communications And Spatial Tracking RatiO (CASTRO) funded by Spanish Ministerio de Ciencia e Innovación (MICINN) - Proyectos de Generación de Conocimiento 2021 PID2021-122483OA-I00. The project is part of the [AtlanTTic](atlanttic.uvigo.es/) research center at University of Vigo.
 
 ## How to contribute
 
@@ -8,14 +8,14 @@ Please read [CONTRIBUTING.md](CONTRIBUTE.md) for details on our code of conduct,
 
 ## Versions
 
-* Version [0.0.1](commit/4bec7196ccf48104f0ba5c6844e80f751b8f4db1) - initialized a private github repo with [gomezcuba](https://github.com/gomezcuba)'s draft code, which was still very deficient
+* Version [0.0.1](https://github.com/gomezcuba/CASTRO-5G/commit/4bec7196ccf48104f0ba5c6844e80f751b8f4db1) - initialized a private github repo with [gomezcuba](https://github.com/gomezcuba)'s draft code, which was still very deficient
 * Version [0.0.2](https://github.com/gomezcuba/CASTRO-5G/commit/2cdb85b31b8327e2401333abb74ab661c051118a) - [gonzaFero](https://github.com/gonzaFero) finished his TFG, upgrading MultipathLocationEstimator.py and creating its tutorials
 * Version [0.1.0 (current release)](https://github.com/gomezcuba/CASTRO-5G/releases/tag/v0.1.0-alpha.multipathlocationlibrary) - [gomezcuba](https://github.com/gomezcuba) prepared the repo for going public, 
 * Version 0.1.1 (upcoming) - [iagoalvarez](https://github.com/iagoalvarez) is finishing his TFG, upgrading threeGPPMultipathGenerator.py and creating its test files
 
 ## Authors
 
-* **Felipe Gomez Cuba** - *Initial work* - [gomezcuba](https://github.com/gomezcuba) [website](https://www.felipegomezcuba.info/)
+* **Felipe Gomez Cuba** - *Initial work and and release integration* - [gomezcuba](https://github.com/gomezcuba) - [website](https://www.felipegomezcuba.info/)
 * **Gonzalo Feijoo Rodriguez (TFG)** - *Multipath Location module v2 and tutorials* - [gonzaFero](https://github.com/gonzaFero)
 * **Iago Dafonte (TFG)** - *3GPP Channel Generator module v2 and example files* - [iagoalvarez](https://github.com/iagoalvarez)
 
@@ -23,11 +23,11 @@ See also the list of [contributors](https://github.com/your/project/contributors
 
 ## Getting Started
 
-To get a copy of the code up and running on a local folder follow the exteps below. See the Deployment section for notes on how to deploy the project on a live system.
+To get a copy of the code up and running on a local folder follow the steps below. See the [Deployment](#deployment) section for notes on how to deploy the project on a live system.
 
 ### Prerequisites
 
-Our project aims to maintain dependencies low. On a standard python3 install, you would only need the following dependencies:
+Our project aims to maintain a reduced number of dependencies. On a standard python3 install, you would only need to intall the following libraries according to your preferred installation method.
 
 * [Numpy](https://numpy.org/)
 * [Scipy](https://scipy.org/)
@@ -71,6 +71,10 @@ The following files can be added to your PATH and employed as python libraries o
 
 * F. Gómez-Cuba, "Compressed Sensing Channel Estimation for OTFS Modulation in Non-Integer Delay-Doppler Domain," 2021 IEEE Global Communications Conference (GLOBECOM), 2021,
 * F. Gómez-Cuba, G. Feijoo-Rodríguez, N. González-Prelcic "Clock and Orientation-Robust Simultaneous Radio Localization and Mapping at Millimeter Wave Bands" Accepted for publication in IEEE WCNC 2023, Glasgow, Scotland.
+
+###  [TFGs](https://teleco.uvigo.es/es/estudos/organizacion-academica/tfg-tfm/)
+
+* Gonzalo Feijoo Rodríguez, "Implementación de un algoritmo de localización de usuarios empleando señales 5G en lenguaje Python"
 
 ##  Acknowledgments
 

@@ -1,5 +1,6 @@
 import numpy as np
 
+#TODO: this class only purpose is to hold all data pertaining to a single path reflectoin, it should be replaced with a Pandas data frame
 class ParametricPath:
     def __init__(self, g = 0, d = 0, aod = 0, aoa = 0, zod = 0, zoa = 0, nu = 0):
         self.complexAmplitude = g
@@ -13,7 +14,7 @@ class ParametricPath:
         return "(%s,%f,%f,%f,%f,%f,%f)"%(self.complexAmplitude,self.excessDelay,self.azimutOfDeparture,self.azimutOfArrival,self.zenithOfDeparture,self.zenithOfArrival,self.environmentDoppler)
 
 class MultipathChannel:
-    def __init__(self, tPos = (0,0), rPos = (0,0), lPaths = [] ):
+    def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), lPaths = [] ):
         self.txLocation = tPos
         self.rxLocation = rPos
         self.channelPaths = lPaths
