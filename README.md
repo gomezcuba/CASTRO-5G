@@ -52,7 +52,50 @@ the expected result is that this script should run without warnings, print sever
 
 ## Structure of the Code
 
-TBW
+![](code_structure.png)
+
+The aim the repo CASTRO-5G is the simulation of the interplays between location and communications in multipath channels. For this, there are four high level  
+
+* Establish the device locatios. The current release does not provide advanced location models. Static user locations may be selected by the simulation scripts. For example, a fixed topology may be used to test algorithms, or random user locations may be used in monte-carlo simulations. Mobility is not currently supported.
+
+```
+x0_true=np.random.rand(1)*40-10
+y0_true=np.random.rand(1)*40-10
+```
+
+* Generate the actual multipath channel data. The current version of the code provides a draft implementation of the 3GPP UMi channel model without spatial consistency. Support for spatial consistency and other scenarios is currently under development.
+
+```
+import threeGPPMultipathGenerator
+
+chgen = threeGPPMultipathGenerator.ThreeGPPMultipathChannelModel()
+mpch = chgen.create_channel((0,0,10),(x0_true,y0_true,1.5))
+```
+
+* Simulate communications in a Discrete Equivalent Channel (DEC) according to the channel model, possibly featuring multipath data estimation. The current version of the code provides a draft implementation of the OMPBR Compressed Sensing algorithm for a single-user Hybrid BeamForming (HBF) MIMO OFDM channel. Auxiliar classes are provided for the generation of the DEC channel impulse response, the antenna array responses, and the generation of HBF MIMO pilots. Additional CS channel estimation algorithm and general code improvements are in active development.
+
+```
+import multipathChannel
+ht=mpch.getDEC(Na,Nd,Nt,Ts)
+hk=np.fft.fft(ht.transpose([2,0,1]),Kfft,axis=0) %this reshape will be avoided in future updates
+...
+import MIMOPilotChannel
+pilgen = pil.MIMOPilotChannel("UPhase")
+(txPilot,rxPilot)=pilgen.generatePilots(dimensions,)
+yp=pilgen.applyPilotChannel(hk,txPilot,rxPilot,noise)
+...
+import OMPCachedRunner
+omprunner = OMPCachedRunner.OMPCachedRunner()
+estimation = omprunner.OMPBR(y,xi,cacheID,txPilot,rxPilot,delayOversampling,aodOversampling,aoaOversampling,brOversampling)
+```
+
+* Estimate the location of the receiver, relative to the transmitter position, from the multipath information (exact or estimated). It must be noted that the "proper" 3GPP channel model does not produce multipath results according to the assumptions of the location algorithm. An adaptation is in active development.
+
+```
+import MultipathLocationEstimator
+loc=MultipathLocationEstimator.MultipathLocationEstimator()
+estimatedLocationData = loc.computeAllLocationsFromPaths(AoDs, AoAs, dels)
+```
 
 ## Tests, Examples and Tutorials
 
