@@ -61,6 +61,8 @@ The aim the repo CASTRO-5G is the simulation of the interplays between location 
 * Simulation of a Discrete Equivalent Channel
 * Estimation of the location
 
+In the current release, the four functionalities are connected in an open loop (locations are inputs to the channel generator, and so on...). However, in the future, we plan to consider more sophisticated models such as, for example, spatial consistency and mobility for the channel generator, channel prediction based on the receiver accelerometer for channel estimation, and connected vehicle mobility models based on the location estimations derived from the multipath data. These future extensions are depicted in red in the figure.
+
 ### Modeling the device locations
 
 The current release does not provide advanced location models. Static user locations may be selected by the simulation scripts. For example, a fixed topology may be used to test algorithms, or random user locations may be used in monte-carlo simulations. Mobility is not currently supported.
