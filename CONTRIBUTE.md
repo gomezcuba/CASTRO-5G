@@ -17,7 +17,7 @@ The goal of OS project CASTRO-5G is to create a set of Python **libraries** desi
 
 ### Please share one-time research results elsewhere
 
-The goal of this project is the creation of a **library** offering general reusablity, that can be installed and imported by researchers in order to facilitate their work. On the other hand, while we would greatly appreciate participation their participation in the community, we kindly ask researchers that wish to share the specific simulation scripts for the generation a one-time research result to do so in their own repos. We do not believe that contributions  with limited reusability potential are a good fit for this repo, in order to prevent accruing a large number of dependencies as more and more niche simulation scenarios are added.
+The goal of this project is the creation of a **library** offering general reusablity, that can be installed and imported by researchers in order to facilitate their work. On the other hand, while we would greatly appreciate their participation in the community, we kindly ask researchers that wish to share the specific simulation scripts for the generation a one-time research result to do so in their own repos. We do not believe that contributions  with limited reusability potential are a good fit for this repo, in order to prevent accruing a large number of dependencies as more and more niche simulation scenarios are added.
 
 # Ground Rules
 
