@@ -7,8 +7,6 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 
 from matplotlib import animation, rc
-from IPython.display import HTML, Image
-# equivalent to rcParams['animation.html'] = 'html5'
 rc('animation', html='html5')
 
 
@@ -59,8 +57,6 @@ plt.savefig('animation_frame1.png')
 import os
 os.system('convert -delay 10 -loop 0 animation_frame0.png animation_frame1.png animated.gif')
 
-from matplotlib import animation, rc
-rc('animation', html='html5')
 # animation function. This is called sequentially
 def animate(i):
     if ax.azim==-60:
