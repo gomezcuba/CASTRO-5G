@@ -721,7 +721,7 @@ class ThreeGPPMultipathChannelModel:
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
         vLOS = bPos-aPos
-        d2D= bPos[0]
+        d2D=np.linalg.norm(bPos[0:-1]-aPos[0:-1])
         d3D=np.linalg.norm(bPos-aPos)
         hut=bPos[2]
         d=np.linalg.norm(vLOS)
@@ -766,5 +766,6 @@ class ThreeGPPMultipathChannelModel:
         
         
         
-        #self.dChansGenerated[key] = ch.MultipathChannel(txPos,rxPos,macro,small)
+#        self.dChansGenerated[key] = ch.MultipathChannel(txPos,rxPos,macro,small)
+        self.dChansGenerated[key] = (macro,small)
         return(macro,small)

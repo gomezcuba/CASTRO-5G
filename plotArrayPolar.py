@@ -14,21 +14,22 @@ import multipathChannel as mc
 
 model = pg.ThreeGPPMultipathChannelModel()
 model.bLargeBandwidthOption=True
-model.create_channel((0,0,10),(40,0,1.5))
-chparams = model.dChansGenerated[(0,0,40,0)]
+macro,small = model.create_channel((0,0,10),(40,0,1.5))
+clusters,subpaths = small
+nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
+tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
 
 plt.close('all')
 fig_ctr=0
 
 #2D polar plots of AoA
-AoAs = np.array([x.azimutOfArrival[0] for x in chparams.channelPaths])
-pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
+AoAs = AOA_sp.reshape(-1)
 Npath=np.size(AoAs)
+pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
 
 #plot of rx AoAs and channel gains
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
 pathAmplitudesdBtrunc25 = np.maximum(10*np.log10(np.abs(pathAmplitudes)**2),-45)
 
 plt.polar(AoAs*np.ones((2,1)),np.vstack([-40*np.ones((1,Npath)),pathAmplitudesdBtrunc25]),':')
