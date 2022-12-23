@@ -702,12 +702,10 @@ class ThreeGPPMultipathChannelModel:
         ZOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
             for j in range(M):
-                ZOA_sp[i,j] = teta[0][i] + czsa*self.alpham.get(j)
-                ZOD_sp[i,j] = teta[1][i] + (3/8)*(10**ZSD)*self.alpham.get(j)
+                ZOA_sp[i,j] = ZOA[i] + czsa*self.alpham.get(j)
+                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j)
         #if 180 < mtetaZOA < 360:
-         #   mtetaZOA = 360 - mtetaZOA 
-         
-        teta_sp = [mtetaZOA,mtetaZOD]
+         #   mtetaZOA = 360 - mtetaZO
         
         return(tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
     
