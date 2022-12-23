@@ -16,13 +16,16 @@ fig_ctr=0
 
 model = pg.ThreeGPPMultipathChannelModel()
 model.bLargeBandwidthOption=True
-model.create_channel((0,0,10),(40,0,1.5))
-chparams = model.dChansGenerated[(0,0,40,0)]
+macro,small = model.create_channel((0,0,10),(40,0,1.5))
+clusters,subpaths = small
+nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
+tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
 
 #3D delay-and-polar plots of delay vs AoA
-AoAs = np.array([x.azimutOfArrival[0] for x in chparams.channelPaths])
-pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
-delays = np.array([x.excessDelay[0] for x in chparams.channelPaths])
+AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
+delays = tau_sp.reshape(-1)*1e9#nanoseconds
+Npath=np.size(delays)
+pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
 Npath=np.size(AoAs)
 
 fig_ctr+=1

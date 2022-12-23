@@ -14,16 +14,19 @@ import multipathChannel as mc
 
 model = pg.ThreeGPPMultipathChannelModel()
 model.bLargeBandwidthOption=True
-model.create_channel((0,0,10),(40,0,1.5))
-chparams = model.dChansGenerated[(0,0,40,0)]
+macro,small = model.create_channel((0,0,10),(40,0,1.5))
+clusters,subpaths = small
+nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
+tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
 
 plt.close('all')
 fig_ctr=0
 
 #2D polar plots of AoA
-AoAs = np.array([x.azimutOfArrival[0] for x in chparams.channelPaths])
-ZoAs = np.array([np.pi/2-x.zenithOfArrival[0] for x in chparams.channelPaths])
+AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
+ZoAs = ZOA_sp.reshape(-1)*np.pi/180#radians
 Npath=np.size(AoAs)
+pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
 
 # compute the response of the antenna array with Nant antennas
 Nant = 16
@@ -34,7 +37,6 @@ ZAntennaResponses =mc.fULA(np.pi/2-ZoAs,Nant)#zenit goes from vertical down
 #AntennaResponses=np.zeros((Npath,Nant*Nant,1))
 #for i in range(Npath):
 #   AntennaResponses[i,:,:]=np.kron(AAntennaResponses[i,:,:], AAntennaResponses[i,:,:])
-pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
 
 Npointsplot=401
 # compute the "beamforming vector". This vector is multiplied by the "response" when we want to receive from the desired angle

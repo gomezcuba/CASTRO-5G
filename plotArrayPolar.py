@@ -23,7 +23,7 @@ plt.close('all')
 fig_ctr=0
 
 #2D polar plots of AoA
-AoAs = AOA_sp.reshape(-1)
+AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
 Npath=np.size(AoAs)
 pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
 

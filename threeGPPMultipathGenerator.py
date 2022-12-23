@@ -664,15 +664,15 @@ class ThreeGPPMultipathChannelModel:
         powC_cluster = powC/M #Power of each cluster
         
         powC_sp = np.zeros((nClusters,M)) 
-        tau_sp = powC_sp
+        tau_sp = np.zeros((nClusters,M)) 
         for i in range(nClusters):
             for j in range(M):
                 powC_sp[i,j] = powC_cluster[i]
                 tau_sp[i,j] = tau[i]
                 
         row1 = np.array([0,0,0,0,0,0,0,0,1.28*cds,1.28*cds,1.28*cds,1.28*cds,2.56*cds,2.56*cds,2.56*cds,2.56*cds,1.28*cds,1.28*cds,0,0])
-        tau_sp[0] = row1
-        tau_sp[1] = row1
+        tau_sp[0,:] = tau_sp[0,:] + row1*1e-9#ns
+        tau_sp[1,:] = tau_sp[1,:] + row1*1e-9#ns
         
         """
         #Subclusters
