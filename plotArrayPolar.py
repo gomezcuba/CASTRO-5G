@@ -25,6 +25,16 @@ AoAs = np.array([x.azimutOfArrival[0] for x in chparams.channelPaths])
 pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
 Npath=np.size(AoAs)
 
+#plot of rx AoAs and channel gains
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
+pathAmplitudesdBtrunc25 = np.maximum(10*np.log10(np.abs(pathAmplitudes)**2),-45)
+
+plt.polar(AoAs*np.ones((2,1)),np.vstack([-40*np.ones((1,Npath)),pathAmplitudesdBtrunc25]),':')
+plt.scatter(AoAs,pathAmplitudesdBtrunc25,color='k',marker='x')
+plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
+
 # compute the response of the antenna array with Nant antennas
 Nant = 16
 AntennaResponses =mc.fULA(AoAs,Nant)
@@ -54,15 +64,6 @@ plt.polar(angles_plot,arrayGainAllPathsdBtrunc25)
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 
 
-#plot of rx AoAs and channel gains
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
-pathAmplitudesdBtrunc25 = np.maximum(10*np.log10(np.abs(pathAmplitudes)**2),-45)
-
-plt.polar(AoAs*np.ones((2,1)),np.vstack([-40*np.ones((1,Npath)),pathAmplitudesdBtrunc25]),':v')
-plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
-
 #plot of receive array response of ALL paths in SEPARATE LINES, WITH the effect of power
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
@@ -83,6 +84,8 @@ channelArrayGainBigPaths =  arrayGainAllPaths[:,sortIndices[-Nbig:]]*pathAmplitu
 channelArrayGainBigPathsdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(channelArrayGainBigPaths)**2),-35)
 
 plt.polar(angles_plot,channelArrayGainBigPathsdBtrunc25)
+plt.polar(AoAs[sortIndices[-Nbig:]]*np.ones((2,1)),np.vstack([-35*np.ones((1,Nbig)),10*np.log10(np.abs(pathAmplitudes [sortIndices[-Nbig:]])**2)]),':')
+plt.scatter(AoAs[sortIndices[-Nbig:]],10*np.log10(np.abs(pathAmplitudes [sortIndices[-Nbig:]])**2),color='k',marker='x')
 plt.yticks(ticks=[-30,-20,-10,0],labels=['-20dB','-30dB','-10dB','0dB'])
 
 

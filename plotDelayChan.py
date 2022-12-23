@@ -25,6 +25,7 @@ delays = np.array([x.excessDelay[0] for x in chparams.channelPaths])
 Npath=np.size(delays)
 pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
 
+#real and imaginary complex channel
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
@@ -37,7 +38,7 @@ plt.stem(delays,np.imag(pathAmplitudes))
 plt.xlabel('t (ns)')
 plt.ylabel('$\Im\{h(t)\}$')
 
-
+#power of each delta
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
@@ -49,12 +50,16 @@ plt.plot((delays*np.ones((2,1))),np.vstack([mindB*np.ones_like(pathAmpdBtrunc25)
 plt.xlabel('t (ns)')
 plt.ylabel('$|h(t)|^2$ [dB]')
 
-#plots of discree equivalent channels (FIR filter)
-Ds=np.max(delays)
+#plots of discree equivalent channels
+#the DEC h[n] is a digital transmission pulse convolved with the channel and sampled p(t)*h(t)|_{t=nTs}
 Ts=5 #ns
+#while the DEC is an IIR filter, we approximate it as a FIR filter with a length that can cover the delays
+Ds=np.max(delays)
 Ntaps = int(np.ceil(Ds/Ts))
 
-#1 path becomes 1 sinc pulse
+
+#1 path becomes 1 pulse (we choose sinc in this example)
+#without multiplying by the complex gain, the pluse itself is real
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 t=np.linspace(0,Ds,10*Ntaps)
@@ -64,10 +69,13 @@ plt.plot(t/Ts,pulsesOversampling[0,:],'k-.')
 n=np.linspace(0,Ntaps-1,Ntaps)
 pulses = np.sinc(n-delays[:,None]/Ts)
 plt.stem(n,pulses[0,:])
+plt.xlabel('n=t/Ts')
+plt.ylabel('$|h[n]|^2$ [dB]')
 
-#all paths together becomes 1 sinc pulse
+#all paths together become a sum of complex-coefficients x sinc pulses
 hn=np.sum(pulses*pathAmplitudes[:,None],axis=0)
 hnOversampling=np.sum(pulsesOversampling*pathAmplitudes[:,None],axis=0)
+#real and imaginary complex DEC
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 plt.subplot(2,1,1)
@@ -81,7 +89,7 @@ plt.stem(n,np.imag(hn))
 plt.xlabel('n=t/Ts')
 plt.ylabel('$\Im\{h[n]\}$')
 
-
+#power of each tap
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 

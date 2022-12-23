@@ -48,9 +48,9 @@ fig_ctr+=1
 fig = plt.figure(fig_ctr)
 ax = Axes3D(fig)
 angTx, angRx = np.meshgrid(angles_plot, angles_plot)
-surf = ax.plot_surface(angTx, angRx, channelResponseCombineddB, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+surf = ax.plot_surface(angTx, angRx, channelResponseCombineddB, cmap=cm.jet, linewidth=0, antialiased=False)
 
-plt.colorbar(surf, label = 'Directive Array Channel Gain dB')
+plt.colorbar(surf,shrink=0.8, label = 'Directive Array Channel Gain dB')
 plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
 plt.yticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
 plt.xlabel('AoD')
@@ -58,7 +58,7 @@ plt.ylabel('AoA')
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-plt.pcolor(angTx, angRx, channelResponseCombineddB, cmap=cm.coolwarm)
+plt.pcolor(angTx, angRx, channelResponseCombineddB, cmap=cm.jet)
 plt.colorbar(surf, label = 'Directive Array Channel Gain dB')
 plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
 plt.yticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])

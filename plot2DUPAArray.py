@@ -26,7 +26,7 @@ ZoAs = np.array([np.pi/2-x.zenithOfArrival[0] for x in chparams.channelPaths])
 Npath=np.size(AoAs)
 
 # compute the response of the antenna array with Nant antennas
-Nant = 8
+Nant = 16
 
 AAntennaResponses =mc.fULA(AoAs,Nant)
 ZAntennaResponses =mc.fULA(np.pi/2-ZoAs,Nant)#zenit goes from vertical down
@@ -56,7 +56,7 @@ arrayResponseOnePathdBtrunc30 = np.maximum(10*np.log10(Nant*Nant*np.abs(arrayRes
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 Aang,Zang = np.meshgrid(azimut_plot,zenit_plot)
-plt.pcolor(Aang,Zang, arrayResponseOnePathdBtrunc30, cmap=cm.coolwarm)
+plt.pcolor(Aang,Zang, arrayResponseOnePathdBtrunc30, cmap=cm.jet)
 plt.colorbar(label = 'Directive Array Channel Gain dB')
 plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
 plt.yticks(ticks=np.pi*np.array([0,.25,.5,.75,1]),labels=['0','$\\frac{\\pi}{4}$','$\\frac{\\pi}{2}$','$\\frac{3\\pi}{4}$','$\pi$',])
@@ -71,11 +71,13 @@ sphereY = np.sin(Aang)*np.cos(np.pi/2-Zang)
 sphereZ = np.sin(np.pi/2-Zang)
 ax = Axes3D(fig)
 manual_colors = (arrayResponseOnePathdBtrunc30 -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30))
-surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.coolwarm(manual_colors), linewidth=0, antialiased=False)
+surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.jet(manual_colors), linewidth=0, antialiased=False)
 ax.set_xlabel('cos(AoA)')
 ax.set_ylabel('sin(AoA)')
 ax.set_zlabel('cos(ZoA)')
-
+cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),shrink=0.8,label = 'Directive Array Channel Gain dB')
+cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
+cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
@@ -85,10 +87,13 @@ sphereY = radius*np.sin(Aang)*np.cos(np.pi/2-Zang)
 sphereZ = radius*np.sin(np.pi/2-Zang)
 ax = Axes3D(fig)
 manual_colors = (arrayResponseOnePathdBtrunc30 -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30))
-surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.coolwarm(manual_colors), linewidth=0, antialiased=False)
+surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.jet(manual_colors), linewidth=0, antialiased=False)
 ax.set_xlabel('cos(AoA)')
 ax.set_ylabel('sin(AoA)')
 ax.set_zlabel('cos(ZoA)')
+cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),shrink=0.8,label = 'Directive Array Channel Gain dB')
+cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
+cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
 
 
  #plot of all the paths in the channel
@@ -100,7 +105,7 @@ channelResponseCombineddB = np.maximum(10*np.log10(Nant*Nant*np.abs(channelRespo
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 Aang,Zang = np.meshgrid(azimut_plot,zenit_plot)
-plt.pcolor(Aang,Zang, channelResponseCombineddB, cmap=cm.coolwarm)
+plt.pcolor(Aang,Zang, channelResponseCombineddB, cmap=cm.jet)
 plt.colorbar(label = 'Directive Array Channel Gain dB')
 plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
 plt.yticks(ticks=np.pi*np.array([0,.25,.5,.75,1]),labels=['0','$\\frac{\\pi}{4}$','$\\frac{\\pi}{2}$','$\\frac{3\\pi}{4}$','$\pi$',])
@@ -115,10 +120,13 @@ sphereY = np.sin(Aang)*np.cos(np.pi/2-Zang)
 sphereZ = np.sin(np.pi/2-Zang)
 ax = Axes3D(fig)
 manual_colors = (channelResponseCombineddB -np.min(channelResponseCombineddB) )/(np.max(channelResponseCombineddB)-np.min(channelResponseCombineddB))
-surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.coolwarm(manual_colors), linewidth=0, antialiased=False)
+surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.jet(manual_colors), linewidth=0, antialiased=False)
 ax.set_xlabel('cos(AoA)')
 ax.set_ylabel('sin(AoA)')
 ax.set_zlabel('cos(ZoA)')
+cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),shrink=0.8,label = 'Directive Array Channel Gain dB')
+cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
+cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
 
 
 fig_ctr+=1
@@ -129,7 +137,10 @@ sphereY = radius*np.sin(Aang)*np.cos(np.pi/2-Zang)
 sphereZ = radius*np.sin(np.pi/2-Zang)
 ax = Axes3D(fig)
 manual_colors = (channelResponseCombineddB -np.min(channelResponseCombineddB) )/(np.max(channelResponseCombineddB)-np.min(channelResponseCombineddB))
-surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.coolwarm(manual_colors), linewidth=0, antialiased=False)
+surf=ax.plot_surface(sphereX, sphereY, sphereZ, facecolors=cm.jet(manual_colors), linewidth=0, antialiased=False)
 ax.set_xlabel('cos(AoA)')
 ax.set_ylabel('sin(AoA)')
 ax.set_zlabel('cos(ZoA)')
+cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),shrink=0.8,label = 'Directive Array Channel Gain dB')
+cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
+cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
