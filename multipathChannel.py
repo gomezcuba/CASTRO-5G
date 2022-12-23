@@ -1,5 +1,6 @@
 import numpy as np
 
+#TODO: this class only purpose is to hold all data pertaining to a single path reflectoin, it should be replaced with a Pandas data frame
 class ParametricPath:
     def __init__(self, g = 0, d = 0, aod = 0, aoa = 0, zod = 0, zoa = 0, nu = 0):
         self.complexAmplitude = g
@@ -12,8 +13,17 @@ class ParametricPath:
     def __str__(self):
         return "(%s,%f,%f,%f,%f,%f,%f)"%(self.complexAmplitude,self.excessDelay,self.azimutOfDeparture,self.azimutOfArrival,self.zenithOfDeparture,self.zenithOfArrival,self.environmentDoppler)
 
+def fULA(incidAngle , Nant = 4, dInterElement = .5):
+    # returns an anttenna array response column vector corresponding to a Uniform Linear Array for each item in incidAngle (two extra dimensions are added at the end)
+    # inputs  incidAngle : numpy array containing one or more incidence angles
+    # input         Nant : number of MIMO antennnas of the array
+    # input InterElement : separation between antenna elements, default lambda/2
+    # output arrayVector : numpy array containing one or more response vectors, with simensions (incidAngle.shape ,Nant ,1 )
+                        
+    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)
+
 class MultipathChannel:
-    def __init__(self, tPos = (0,0), rPos = (0,0), lPaths = [] ):
+    def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), lPaths = [] ):
         self.txLocation = tPos
         self.rxLocation = rPos
         self.channelPaths = lPaths
@@ -41,7 +51,7 @@ MultiPathChannel %s ---> %s
                                                      lZoD[pit],
                                                      lZoA[pit],
                                                      lDopp[pit]  ) )
-        
+    
     def getDEC(self,Na=1,Nd=1,Nt=1,Ts=1):
         h=np.zeros((Na,Nd,Nt))
         for pind in range(0,len( self.channelPaths )):
