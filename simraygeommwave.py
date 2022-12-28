@@ -120,13 +120,16 @@ if GEN_CHANS:
     coefs=np.zeros((Nmaxpaths,Nsims),dtype=complex)
     for nsim in range(Nsims):
         #chamar ao xenerador de canle do 3GPP
-        mpch = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
+        macro,small = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
+        clusters,subpaths = small
+        Npath = clusters[0]*20
+        tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
         #mpch é unha canle estrictamente acorde ao modelo, gardada en listas python normais.
         # convertimolo en arrays de numpy
-        amps = np.array([x.complexAmplitude[0] for x in mpch.channelPaths])
-        allaoa_shifted_old = np.mod( np.array([x.azimutOfArrival[0] for x in mpch.channelPaths])-phi0[nsim] ,np.pi*2)
-        allaod = np.mod( np.array([x.azimutOfDeparture[0] for x in mpch.channelPaths]) ,np.pi*2)
-        alldelay = np.array([x.excessDelay[0] for x in mpch.channelPaths])*1e-9    
+        amps = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
+        allaoa_shifted_old = np.mod( AOA_sp.reshape(-1)-phi0[nsim] ,np.pi*2)
+        allaod = np.mod( AOD_sp.reshape(-1) ,np.pi*2)
+        alldelay = tau_sp.reshape(-1)  
        
         #temos todolos camiños en numpy pero non son reflexions fisicamente consistentes
         #descartamos completamente os AoA do modelo 3GPP e xeneramos uns AoA propios
@@ -179,12 +182,9 @@ if GEN_CHANS:
     #    (AoA[:,nsim],refPos[:,nsim,0],refPos[:,nsim,1]) = fitMmWaveChanAoAForLocation(x0[nsim],y0[nsim],phi0[nsim],AoD[:,nsim],dels[:,nsim]) 
     #        
         #finaly, if any of these was updated, store it back in the multipath channel object
-        for pi in range(Npaths):
-            chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])].channelPaths[strongestInds[pi]].azimutOfDeparture=AoD[pi,nsim]
-            chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])].channelPaths[strongestInds[pi]].azimutOfArrival=AoA[pi,nsim]
-            chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])].channelPaths[strongestInds[pi]].excessDelay=dels[pi,nsim]*1e9
-            chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])].channelPaths[strongestInds[pi]].complexAmplitude=coefs[pi,nsim]
-        
+#        for pi in range(Npaths):
+#            chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])]#... TODO appply update here
+            
         bar.next()
     bar.finish() 
     t_run_g = time.time() - t_start_g

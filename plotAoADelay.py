@@ -16,13 +16,16 @@ fig_ctr=0
 
 model = pg.ThreeGPPMultipathChannelModel()
 model.bLargeBandwidthOption=True
-model.create_channel((0,0,10),(40,0,1.5))
-chparams = model.dChansGenerated[(0,0,40,0)]
+macro,small = model.create_channel((0,0,10),(40,0,1.5))
+clusters,subpaths = small
+nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
+tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
 
 #3D delay-and-polar plots of delay vs AoA
-AoAs = np.array([x.azimutOfArrival[0] for x in chparams.channelPaths])
-pathAmplitudes = np.array([x.complexAmplitude[0] for x in chparams.channelPaths])
-delays = np.array([x.excessDelay[0] for x in chparams.channelPaths])
+AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
+delays = tau_sp.reshape(-1)*1e9#nanoseconds
+Npath=np.size(delays)
+pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
 Npath=np.size(AoAs)
 
 fig_ctr+=1
@@ -33,6 +36,8 @@ ax = Axes3D(fig)
 #polar "circle" levels axis
 dBlevels=[-30,-20,-10,0]
 dBat0polar=-40
+Npointsplot=1001
+angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 for dBref in dBlevels:
     radius=dBref - dBat0polar
     ax.plot3D(radius*np.cos(angles_plot),radius*np.sin(angles_plot),-np.ones_like(angles_plot),color='k')
@@ -55,9 +60,7 @@ ax.text3D(0,0,maxdelCentenas,"delay [ns]",color='k')
 # compute the response of the antenna array with Nant antennas
 Nant = 16
 AntennaResponses =mc.fULA(AoAs,Nant)
-Npointsplot=1001
 # compute the "beamforming vector". This vector is multiplied by the "response" when we want to receive from the desired angle
-angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
 
 arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
@@ -80,6 +83,8 @@ ax = Axes3D(fig)
 #polar "circle" levels axis
 dBlevels=[-30,-20,-10,0]
 dBat0polar=-40
+Npointsplot=1001
+angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 for dBref in dBlevels:
     radius=dBref - dBat0polar
     ax.plot3D(radius*np.cos(angles_plot),radius*np.sin(angles_plot),-np.ones_like(angles_plot),color='k')

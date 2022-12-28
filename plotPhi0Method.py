@@ -35,7 +35,7 @@ dels = tau_true-tau0_true
 
 plt.figure(1)
 scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
-
+t=np.linspace(0,1,100)
 for p in range(Npath):
     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k', label='_nolegend_')
 plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'c--', label='_nolegend_')

@@ -52,7 +52,19 @@ legStrAlgs=[
 bar = Bar("CS sims", max=Nchan)
 bar.check_tty = False
 for ichan in range(0,Nchan):
-    mpch = chgen.create_channel((0,0,10),(x0[ichan],y0[ichan],1.5))
+    
+    macro,small = chgen.create_channel((0,0,10),(40,0,1.5))
+    clusters,subpaths = small
+    tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
+    mpch = ch.MultipathChannel((0,0,10),(40,0,1.5),[])
+    tau_sp = tau_sp.reshape(-1)
+    Npath = tau_sp.size
+    AOA_sp = AOA_sp.reshape(-1)
+    AOD_sp = AOD_sp.reshape(-1)
+    ZOA_sp = ZOA_sp.reshape(-1)
+    ZOD_sp = ZOD_sp.reshape(-1)
+    pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
+    mpch.insertPathsFromListParameters(pathAmplitudes,tau_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,np.zeros_like(pathAmplitudes))
     ht=mpch.getDEC(Na,Nd,Nt,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
     hk=np.fft.fft(ht.transpose([2,0,1]),K,axis=0)
         
