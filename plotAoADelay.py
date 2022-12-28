@@ -36,6 +36,8 @@ ax = Axes3D(fig)
 #polar "circle" levels axis
 dBlevels=[-30,-20,-10,0]
 dBat0polar=-40
+Npointsplot=1001
+angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 for dBref in dBlevels:
     radius=dBref - dBat0polar
     ax.plot3D(radius*np.cos(angles_plot),radius*np.sin(angles_plot),-np.ones_like(angles_plot),color='k')
@@ -58,9 +60,7 @@ ax.text3D(0,0,maxdelCentenas,"delay [ns]",color='k')
 # compute the response of the antenna array with Nant antennas
 Nant = 16
 AntennaResponses =mc.fULA(AoAs,Nant)
-Npointsplot=1001
 # compute the "beamforming vector". This vector is multiplied by the "response" when we want to receive from the desired angle
-angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
 
 arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
@@ -83,6 +83,8 @@ ax = Axes3D(fig)
 #polar "circle" levels axis
 dBlevels=[-30,-20,-10,0]
 dBat0polar=-40
+Npointsplot=1001
+angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 for dBref in dBlevels:
     radius=dBref - dBat0polar
     ax.plot3D(radius*np.cos(angles_plot),radius*np.sin(angles_plot),-np.ones_like(angles_plot),color='k')
