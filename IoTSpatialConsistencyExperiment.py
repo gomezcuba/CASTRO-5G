@@ -31,7 +31,7 @@ class UIMultipathChannelModel:
         tpulse=np.sinc(np.arange(self.Nt).reshape(self.Nt,1,1,1)-delay)
         arrayA=np.exp(-1j*np.pi*np.sin(AoA)*np.arange(self.Na).reshape(1,self.Na,1,1))
         arrayD=np.exp(-1j*np.pi*np.sin(AoD)*np.arange(self.Nd).reshape(1,1,self.Nd,1))        
-        return(np.sum(coefs*tpulse*arrayA*arrayD,3))
+        return(np.sum(coefs*tpulse*arrayA*arrayD,axis=3))
         
     def generateDEC(self,Npoints=1):
         delay=np.random.rand(Npoints)*self.Nt
@@ -168,7 +168,7 @@ for isim in range(Nsim):
     
     if bGenRand:
         ht,coefs,delay1,aod1,aoa1=chgen.generateDEC(Npath)
-    delay1-np.min(delay1)
+    delay1=delay1-np.min(delay1)
     
     ord_true=np.argsort(-np.abs(coefs)**2)
     coefs=coefs[ord_true]
