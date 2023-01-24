@@ -130,7 +130,7 @@ if GEN_CHANS:
        
         (allaoa_shifted,xpos,ypos) = fitMmWaveChanAoAForLocation(x0[nsim],y0[nsim],phi0[nsim],allaod,alldelay) 
     #  
-        
+        #comment change test
         Npaths=np.minimum(Nmaxpaths,amps.size)
         #the paths in backlobes are removed from the channel, receiver Sector may be 
         indbacklobeD=((allaod>np.pi/2)&(allaod<np.pi*3/2))
