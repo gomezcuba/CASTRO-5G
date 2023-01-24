@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-import threeGPPMultipathGenerator as pg
-import multipathChannel as ch
 import OMPCachedRunner as oc
 import MIMOPilotChannel as pil
 import csProblemGenerator as prb

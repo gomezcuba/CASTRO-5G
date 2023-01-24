@@ -764,8 +764,6 @@ class ThreeGPPMultipathChannelModel:
         #df = pd.Series({'LOS' : str(lista[0]), 'Path Loss' : lista[1], 'DS' : lista[2], 'ASA' : lista[3],'ASD' : lista[4],'ZSA' : lista[5],'ZSD' : lista[6],'K' : lista[7],'SF' : lista[8],'ZOD' : str(lista[9])})
         #print(df)
         
-        
-        
 #        self.dChansGenerated[key] = ch.MultipathChannel(txPos,rxPos,macro,small)
         self.dChansGenerated[key] = (macro,small)
         return(macro,small)
