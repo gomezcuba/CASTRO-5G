@@ -668,9 +668,8 @@ class ThreeGPPMultipathChannelModel:
         ZOA = X*tetaZOAprima + Y1 + losthetaAoA - (X[0]*tetaZOAprima[0] + Y1[0] if (los==1) else 0)
         ZOD = X*tetaZODprima + Y2 + losthetaAoD - (X[0]*tetaZODprima[0] + Y2[0]- muZOD if (los==0) else 0)
         
-        clusters = [nClusters,tau,powC,AOA,AOD,ZOA,ZOD]
-
-        return(clusters)
+        return(nClusters,tau,powC,AOA,AOD,ZOA,ZOD)
+   
     
     #Revisar los parametros de entrada
     def create_subpaths_largeBW(self,macro,clusters,maxM=20,Dh=2,Dv=2,B=2e6):
@@ -727,15 +726,16 @@ class ThreeGPPMultipathChannelModel:
         powC_cluster = powC/M #Power of each cluster
         
         powC_sp = np.zeros((nClusters,M)) 
-        tau_sp = powC_sp
+        tau_sp = np.zeros((nClusters,M)) 
         for i in range(nClusters):
             for j in range(M):
                 powC_sp[i,j] = powC_cluster[i]
                 tau_sp[i,j] = tau[i]
                 
         row1 = np.array([0,0,0,0,0,0,0,0,1.28*cds,1.28*cds,1.28*cds,1.28*cds,2.56*cds,2.56*cds,2.56*cds,2.56*cds,1.28*cds,1.28*cds,0,0])
-        tau_sp[0] = row1
-        tau_sp[1] = row1
+        tau_sp[0,:] = tau_sp[0,:] + row1*1e-9#ns
+        tau_sp[1,:] = tau_sp[1,:] + row1*1e-9#ns
+        
         """
         #Subclusters
         R1 = (1,2,3,4,5,6,7,8,19,20)
@@ -848,5 +848,5 @@ class ThreeGPPMultipathChannelModel:
         small = self.create_small_param(angles,macro)
         
         keyChannel = (txPos,rxPos)
-        self.dChansGenerated[keyChannel] = ch.MultipathChannel(macro,small)
+        self.dChansGenerated[keyChannel] = (macro,small)
         return(macro,small)
