@@ -679,12 +679,17 @@ class ThreeGPPMultipathChannelModel:
         casd = macro.casd
         casa = macro.casa
         czsa = macro.czsa
+        ASA = macro.asa
+        ASD = macro.asd
+        ZSA = macro.zsa
+        ZSD = macro.zsd
         
         if los:
             param = self.scenarioParamsLOS
         else:
             param = self.scenarioParamsNLOS
         M = param.M
+        N = param.N
         cds = param.cds
         
         #The offset angles alpha_m
@@ -706,7 +711,22 @@ class ThreeGPPMultipathChannelModel:
         m_ZOD = np.ceil(4*k*czsd*((np.pi*Dv)/(180*self.wavelength)))
         M = min(np.maximum(m_t*m_AOD,m_ZOD,20),maxM)
 
-        return(tau_prima,powC_sp)
+        #Angles generation according to 7.6-5
+        r = 1.5
+        AOD_aux = np.exp(-1j*r*ASD*np.random.normal(0,1,size=N))
+        AOD_sp = np.arctan(AOD_aux.imag/AOD_aux.real)
+        AOA_aux = np.exp(-1j*r*ASA*np.random.normal(0,1,size=N))
+        AOA_sp = np.arctan(AOA_aux.imag/AOA_aux.real)
+        
+        V = np.random.uniform(0,1,size=N)
+        ZOD_aux = np.exp(-1j*r*ZSD*np.sign(V-0.5)*np.log((1-2*np.abs(V-0.5))/np.sqrt(2)))
+        ZOD_sp = np.arctan(ZOD_aux.imag/ZOD_aux.real)
+        
+        W = np.random.uniform(0,1,size=N)
+        ZOA_aux = np.exp(-1j*r*ZSA*np.sign(W-0.5)*np.log((1-2*np.abs(W-0.5))/np.sqrt(2)))
+        ZOA_sp = np.arctan(ZOA_aux.imag/ZOA_aux.real)
+        
+        return(tau_prima,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
         
    
     def create_subpaths_basics(self,macro,clusters):
@@ -778,7 +798,7 @@ class ThreeGPPMultipathChannelModel:
         
         if self.bLargeBandwidthOption:
             subpaths = self.create_subpaths_largebw(macro,clusters)
-            (tau_sp,powC_sp) = subpaths
+            (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
         else:
             subpaths = self.create_subpaths_basics(macro,clusters)
             (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
