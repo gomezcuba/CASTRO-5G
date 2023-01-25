@@ -43,7 +43,9 @@ class ThreeGPPMultipathChannelModel:
         'Cc', #Correlations Matrix Azimut [sSF, sK, sDS, sASD, sASA, sZSD, sZSA]
         'pLossFun',
         'zsdFun',
-        'zodFun'
+        'zodFun',
+        'xpr_mu',
+        'xpr_sg'
     ])
     #Crear diccionarios
     CphiNLOS = {4 : 0.779, 5 : 0.860 , 8 : 1.018, 10 : 1.090, 
@@ -58,13 +60,14 @@ class ThreeGPPMultipathChannelModel:
     
     #RMa hasta 7GHz y el resto hasta 100GHz
     def __init__(self, fc = 28, sce = "UMi", corrDistance = 15.0):
-        self.frecRefGHz = fc
+        self.frecRefGHz = fc*1e9
         self.scenario = sce
         self.corrDistance = corrDistance
         self.dMacrosGenerated = {}
         self.dChansGenerated = {}
         self.bLargeBandwidthOption = False 
         self.clight=3e8
+        self.wavelength = 3e8/fc
         if sce.find("UMi")>=0:
             #LOS Probability (distance is in meters)
             self.scenarioLosProb = lambda d2D : 1 if d2D<18 else 18.0/d2D + np.exp(-d2D/36.0)*(1-18.0/d2D)
@@ -98,6 +101,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossUMiLOS,
                 self.ZSDUMiLOS,
                 0,
+                9,
+                3,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -0.24*np.log10(1+fc)-6.83,
@@ -129,6 +134,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossUMiNLOS,
                 self.ZSDUMiNLOS,
                 self.ZODUMiNLOS,
+                8,
+                3,
             )
         elif sce.find("UMa")>=0:
             self.scenarioLosProb = lambda d2D,hut : 1 if d2D<18 else (18.0/d2D + np.exp(-d2D/63.0)*(1-18.0/d2D))*(1 + (0 if hut<=23 else ((hut-13.0)/10.0)**1.5)*1.25*np.exp(d2D/100.0)*(-d2D/150.0)**3.0) 
@@ -162,6 +169,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossUMaLOS,
                 self.ZSDUMaLOS,
                 0,
+                8,
+                4,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -6.28 - 0.204*np.log10(fc),
@@ -193,6 +202,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossUMaNLOS,
                 self.ZSDUMaNLOS,
                 self.ZODUMaNLOS,
+                7,
+                3,
             )
         elif sce.find("RMa")>=0:
             self.scenarioLosProb = lambda d2D : 1 if d2D<10 else np.exp(-(d2D-10.0)/1000.0)
@@ -226,6 +237,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossRMaNLOS,
                 self.ZSDRMaLOS,
                 0,
+                12,
+                4,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -7.43,
@@ -257,6 +270,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossRMaNLOS,
                 self.ZSDRMaNLOS,
                 self.ZODRMaNLOS,
+                7,
+                3,
             )
         elif sce.find("InH-Office-Mixed")>=0:
             self.scenarioLosProb = lambda d2D : 1 if d2D<1.2 else (np.exp(-(d2D-1.2)/4.7) if 1.2<d2D<6.5 else (np.exp(-(d2D-6.5)/32.6))*0.32)
@@ -290,6 +305,8 @@ class ThreeGPPMultipathChannelModel:
                self.scenarioPlossInLOS,
                self.ZSDInLOS,
                0,
+               11,
+               4,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -0.28*np.log10(1+fc) - 7.173,
@@ -321,6 +338,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossInNLOS,
                 self.ZSDInNLOS,
                 0,
+                10,
+                4,
             )
         elif sce.find("InH-Office-Open")>=0:
             self.scenarioLosProb = lambda d2D : 1 if d2D<=5 else (np.exp(-(d2D-5.0)/70.8) if 5<d2D<49 else (np.exp(-(d2D-49.0)/211.7))*0.54)
@@ -354,6 +373,8 @@ class ThreeGPPMultipathChannelModel:
                self.scenarioPlossInLOS,
                self.ZSDInLOS,
                0,
+               11,
+               4,
             )
             self.scenarioParamsNLOS = self.ThreeGPPScenarioParams(
                 -0.28*np.log10(1+fc) - 7.173,
@@ -385,6 +406,8 @@ class ThreeGPPMultipathChannelModel:
                 self.scenarioPlossInNLOS,
                 self.ZSDInNLOS,
                 0,
+                10,
+                4,
             )
             
 
@@ -467,7 +490,6 @@ class ThreeGPPMultipathChannelModel:
         PL2= self.scenarioPlossInLOS(d3D,d2D,hbs,hut)
         ploss= np.maximum(PL1,PL2)
         return(ploss)  
-    
     
     
     def ZSDUMiLOS(self,d2D,hut=1.5):  
@@ -554,7 +576,6 @@ class ThreeGPPMultipathChannelModel:
             zod_offset_mu = 0
         else: 
             zod_offset_mu = param.zodFun(d2D,hut)
-        #zod_offset_mu = lambda los : 0 if los else 
         K= param.K_mu
         sf = param.sf_sg*vDep[0]
         PLdB = param.pLossFun(d3D,d2D,hbs,hut,W=20,h=5)
@@ -569,10 +590,11 @@ class ThreeGPPMultipathChannelModel:
         RgridXIndex= rxPos[0] // self.corrDistance 
         RgridYIndex= rxPos[1] //self.corrDistance 
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
-        macro=self.ThreeGPPMacroParams(los,PL,ds,asa,asd,zsa,zsd,K,sf,zod_offset_mu)
+        
+        macro = self.ThreeGPPMacroParams(los,PL,ds,asa,asd,zsa,zsd,K,sf,zod_offset_mu)
         self.dMacrosGenerated[key]=macro
         return(macro)
-   
+    
     
     def create_clusters(self,macro,angles):    
         los = macro.los
@@ -590,6 +612,8 @@ class ThreeGPPMultipathChannelModel:
             param = self.scenarioParamsNLOS
         N = param.N
         rt = param.rt
+        
+        (losphiAoD,losphiAoA,losthetaAoD,losthetaAoA) = angles
         
         #Generate cluster delays
         tau_prima = -rt*DS*np.log(np.random.uniform(0,1,size=N))
@@ -627,8 +651,8 @@ class ThreeGPPMultipathChannelModel:
         
         X = np.random.uniform(-1,1,size=powC.shape)
         Y = np.random.normal(0,(ASA/7)**2,size=powC.shape)
-        AOA = X*phiAOAprima + Y + angles[1] - (X[0]*phiAOAprima[0] + Y[0] if los==1 else 0)
-        AOD = X*phiAODprima + Y + angles[0] - (X[0]*phiAODprima[0] + Y[0] if los==1 else 0)
+        AOA = X*phiAOAprima + Y + losphiAoA - (X[0]*phiAOAprima[0] + Y[0] if los==1 else 0)
+        AOD = X*phiAODprima + Y + losphiAoD - (X[0]*phiAODprima[0] + Y[0] if los==1 else 0)
         
         #Zenith 
         if los:
@@ -641,13 +665,51 @@ class ThreeGPPMultipathChannelModel:
         
         Y1 = np.random.normal(0,(ZSA/7)**2,size=powC.shape)
         Y2 = np.random.normal(0,(ZSD/7)**2,size=powC.shape)   
-        ZOA = X*tetaZOAprima + Y1 + angles[3] - (X[0]*tetaZOAprima[0] + Y1[0] if (los==1) else 0)
-        ZOD = X*tetaZODprima + Y2 + angles[2] - (X[0]*tetaZODprima[0] + Y2[0]- muZOD if (los==0) else 0)
+        ZOA = X*tetaZOAprima + Y1 + losthetaAoA - (X[0]*tetaZOAprima[0] + Y1[0] if (los==1) else 0)
+        ZOD = X*tetaZODprima + Y2 + losthetaAoD - (X[0]*tetaZODprima[0] + Y2[0]- muZOD if (los==0) else 0)
         
         return(nClusters,tau,powC,AOA,AOD,ZOA,ZOD)
    
     
-    def create_subpaths(self,macro,clusters):
+    #Revisar los parametros de entrada
+    def create_subpaths_largeBW(self,macro,clusters,maxM=20,Dh=2,Dv=2,B=2e6):
+        (nClusters,tau,powC,AOA,AOD,ZOA,ZOD) = clusters
+        
+        los = macro.los
+        casd = macro.casd
+        casa = macro.casa
+        czsa = macro.czsa
+        
+        if los:
+            param = self.scenarioParamsLOS
+        else:
+            param = self.scenarioParamsNLOS
+        M = param.M
+        cds = param.cds
+        
+        #The offset angles alpha_m
+        alpha = np.random.uniform(-2,2,size=(nClusters,M))
+        
+        #The relative delay of m-th ray
+        tau_primaprima = np.random.uniform(0,2*cds,size=(nClusters,M))
+        tau_prima = tau_primaprima-np.amin(tau_primaprima)
+    
+        #Ray powers
+        czsd = (3/8)*10**(self.zsd_mu)
+        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha))/casa)*np.exp(-(np.sqrt(2)*abs(alpha))/casd)*np.exp(-(np.sqrt(2)*abs(alpha))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha))/czsd)
+        powC_sp = powC*(powPrima/np.sum(powPrima))
+        
+        #The number of rays per cluster
+        k = 0.5
+        m_t = np.ceil(4*k*cds*B)
+        m_AOD = np.ceil(4*k*casd*((np.pi*Dh)/(180*self.wavelength)))
+        m_ZOD = np.ceil(4*k*czsd*((np.pi*Dv)/(180*self.wavelength)))
+        M = min(np.maximum(m_t*m_AOD,m_ZOD,20),maxM)
+
+        return(tau_prima,powC_sp)
+        
+   
+    def create_subpaths_basics(self,macro,clusters):
         los = macro.los
         ZSD = macro.zsd
     
@@ -694,26 +756,64 @@ class ThreeGPPMultipathChannelModel:
 
         for i in range(nClusters):
             for j in range(M):
-                AOA_sp[i,j] = AOA[i] + casa*self.alpham.get(j)
-                AOD_sp[i,j] = AOD[i] + casa*self.alpham.get(j)
+                AOA_sp[i,j] = AOA[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
+                AOD_sp[i,j] = AOD[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
         
         czsa = param.czsa
         ZOA_sp = np.zeros((nClusters,M))
         ZOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
             for j in range(M):
-                ZOA_sp[i,j] = ZOA[i] + czsa*self.alpham.get(j)
-                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j)
-        #if 180 < mtetaZOA < 360:
-         #   mtetaZOA = 360 - mtetaZO
+                ZOA_sp[i,j] = ZOA[i] + czsa*self.alpham.get(j)*np.random.choice([1, -1])
+                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j)*np.random.choice([1, -1])
+        
+        #mask = (ZOA_sp>=180) & (ZOA_sp<=360)
+        #ZOA_sp[mask] = 360 - ZOA_sp
         
         return(tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
     
     
     def create_small_param(self,angles,macro):
         clusters = self.create_clusters(macro,angles)
-        subpaths = self.create_subpaths(macro,clusters)
-
+        
+        if self.bLargeBandwidthOption:
+            subpaths = self.create_subpaths_largebw(macro,clusters)
+            (tau_sp,powC_sp) = subpaths
+        else:
+            subpaths = self.create_subpaths_basics(macro,clusters)
+            (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
+        
+        los = macro.los
+        if los:
+            param = param = self.scenarioParamsLOS
+        else:
+            param = self.scenarioParamsNLOS
+       
+        for row in AOD_sp:
+            np.random.shuffle(row)
+        
+        for row in ZOD_sp:
+            np.random.shuffle(row)
+        
+        indicesSubcluster1 = [0,1,2,3,4,5,6,7,18,19]
+        indicesSubcluster2 = [8,9,10,11,16,17]
+        indicesSubcluster3 = [12,13,14,15]
+        
+        for i in range(2):
+            AOD_sp[i][indicesSubcluster1] = AOD_sp[i][np.random.permutation(indicesSubcluster1)]
+            AOD_sp[i][indicesSubcluster2] = AOD_sp[i][np.random.permutation(indicesSubcluster2)]
+            AOD_sp[i][indicesSubcluster3] = AOD_sp[i][np.random.permutation(indicesSubcluster3)]
+            
+            ZOD_sp[i][indicesSubcluster1] = ZOD_sp[i][np.random.permutation(indicesSubcluster1)]
+            ZOD_sp[i][indicesSubcluster2] = ZOD_sp[i][np.random.permutation(indicesSubcluster2)]
+            ZOD_sp[i][indicesSubcluster3] = ZOD_sp[i][np.random.permutation(indicesSubcluster3)]
+        
+        # Generate the cross polarization power ratios
+        xpr_mu = param.xpr_mu
+        xpr_sg = param.xpr_sg
+        X = np.random.normal(xpr_mu,xpr_sg,size=tau_sp.shape)
+        kappa =  10**(X/10)
+    
         return(clusters,subpaths)
     
         
@@ -721,15 +821,13 @@ class ThreeGPPMultipathChannelModel:
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
         vLOS = bPos-aPos
-        d2D=np.linalg.norm(bPos[0:-1]-aPos[0:-1])
-        d3D=np.linalg.norm(bPos-aPos)
-        hut=bPos[2]
-        d=np.linalg.norm(vLOS)
+        
         losphiAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
         losphiAoA=np.mod(np.pi+losphiAoD, 2*np.pi ) # revise
         vaux = (np.linalg.norm(vLOS[0:2]), vLOS[2] )
         losthetaAoD=np.pi/2-np.arctan( vaux[1] / vaux[0] )
         losthetaAoA=np.pi-losthetaAoD # revise
+        
         #3GPP model is in degrees but numpy uses radians
         losphiAoD=(180.0/np.pi)*losphiAoD #angle of departure 
         losthetaAoD=(180.0/np.pi)*losthetaAoD 
@@ -749,21 +847,6 @@ class ThreeGPPMultipathChannelModel:
         
         small = self.create_small_param(angles,macro)
         
-        lista = []
-        for i in range(len(macro)):
-            lista.append(macro[i])
-
-        for i in range(len(lista)):
-            if isinstance(lista[i], int):
-                lista[i] = str(lista[i])
-            #else:
-             #   lista[i] = np.array_str(lista[i])
-            ##print(type(lista[i]))
-            
-        #print("Macro for BS: (" + str(txPos[0]) +"," + str(txPos[1]) + ")m and UT: (" + str(rxPos[0]) + "," + str(rxPos[1]) + ")m.")
-        #df = pd.Series({'LOS' : str(lista[0]), 'Path Loss' : lista[1], 'DS' : lista[2], 'ASA' : lista[3],'ASD' : lista[4],'ZSA' : lista[5],'ZSD' : lista[6],'K' : lista[7],'SF' : lista[8],'ZOD' : str(lista[9])})
-        #print(df)
-        
-#        self.dChansGenerated[key] = ch.MultipathChannel(txPos,rxPos,macro,small)
-        self.dChansGenerated[key] = (macro,small)
+        keyChannel = (txPos,rxPos)
+        self.dChansGenerated[keyChannel] = (macro,small)
         return(macro,small)
