@@ -679,6 +679,7 @@ class ThreeGPPMultipathChannelModel:
         casd = macro.casd
         casa = macro.casa
         czsa = macro.czsa
+        ZSD = macro.zsd
         
         if los:
             param = self.scenarioParamsLOS
@@ -704,9 +705,25 @@ class ThreeGPPMultipathChannelModel:
         m_t = np.ceil(4*k*cds*B)
         m_AOD = np.ceil(4*k*casd*((np.pi*Dh)/(180*self.wavelength)))
         m_ZOD = np.ceil(4*k*czsd*((np.pi*Dv)/(180*self.wavelength)))
-        M = min(np.maximum(m_t*m_AOD,m_ZOD,20),maxM)
+        M = min(np.maximum(m_t*m_AOD*m_ZOD,20),maxM)
 
-        return(tau_prima,powC_sp)
+        #Angles generation 
+        AOA_sp = np.zeros((nClusters,M))
+        AOD_sp = np.zeros((nClusters,M))
+
+        for i in range(nClusters):
+            for j in range(M):
+                AOA_sp[i,j] = AOA[i] + casa*alpha[i,j]
+                AOD_sp[i,j] = AOD[i] + casa*alpha[i,j]
+        
+        ZOA_sp = np.zeros((nClusters,M))
+        ZOD_sp = np.zeros((nClusters,M))
+        for i in range(nClusters):
+            for j in range(M):
+                ZOA_sp[i,j] = ZOA[i] + czsa*alpha[i,j]
+                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha[i,j]
+        
+        return(tau_prima,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
         
    
     def create_subpaths_basics(self,macro,clusters):
@@ -778,7 +795,7 @@ class ThreeGPPMultipathChannelModel:
         
         if self.bLargeBandwidthOption:
             subpaths = self.create_subpaths_largebw(macro,clusters)
-            (tau_sp,powC_sp) = subpaths
+            (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
         else:
             subpaths = self.create_subpaths_basics(macro,clusters)
             (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
