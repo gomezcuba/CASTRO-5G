@@ -689,7 +689,10 @@ class ThreeGPPMultipathChannelModel:
         zsd,zsd_mu=param.zsdFun(d2D)
         
         #The offset angles alpha_m
-        alpha = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_AOA = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_AOD = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_ZOA = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_ZOD = np.random.uniform(-2,2,size=(nClusters,M))
         
         #The relative delay of m-th ray
         tau_primaprima = np.random.uniform(0,2*cds,size=(nClusters,M))
@@ -697,8 +700,8 @@ class ThreeGPPMultipathChannelModel:
     
         #Ray powers
         czsd = (3/8)*10**(zsd_mu)
-        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha))/casa)*np.exp(-(np.sqrt(2)*abs(alpha))/casd)*np.exp(-(np.sqrt(2)*abs(alpha))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha))/czsd)
-        powC_sp = powC@(powPrima/np.sum(powPrima))
+        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AOA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AOD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZOA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZOD))/czsd)
+        powC_sp = powC.reshape(-1,1)*(powPrima/np.sum(powPrima))
         
         #The number of rays per cluster
         k = 0.5
@@ -712,15 +715,15 @@ class ThreeGPPMultipathChannelModel:
         AOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
             for j in range(M):
-                AOA_sp[i,j] = AOA[i] + casa*alpha[i,j]
-                AOD_sp[i,j] = AOD[i] + casa*alpha[i,j]
+                AOA_sp[i,j] = AOA[i] + casa*alpha_AOA[i,j]
+                AOD_sp[i,j] = AOD[i] + casa*alpha_AOD[i,j]
         
         ZOA_sp = np.zeros((nClusters,M))
         ZOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
             for j in range(M):
-                ZOA_sp[i,j] = ZOA[i] + czsa*alpha[i,j]
-                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha[i,j]
+                ZOA_sp[i,j] = ZOA[i] + czsa*alpha_ZOA[i,j]
+                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha_ZOD[i,j]
         
         return(tau_prima,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
         
