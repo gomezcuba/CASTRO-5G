@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from progress.bar import Bar
+#from progress#bar import #bar
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
@@ -212,8 +212,8 @@ else:
     for nc in range(Ncases):
         (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
         for nv in range(NerrMod):
-            bar = Bar("Case phi known:%s phi0quant: %s grouping:%s optimMthd:%s err=%s"%(phi0Apriori,phi0Quant,grouping,optimMthd,lErrMod[nv]), max=Nsims)
-            bar.check_tty = False        
+            #bar = #bar("Case phi known:%s phi0quant: %s grouping:%s optimMthd:%s err=%s"%(phi0Apriori,phi0Quant,grouping,optimMthd,lErrMod[nv]), max=Nsims)
+            #bar.check_tty = False        
             t_start_point = time.time()
             for ns in range(Nsims):
                 if phi0Apriori:
@@ -231,8 +231,8 @@ else:
                     group_m= '3path' if grouping=='3P' else 'drop1'
                     phi0_m= 'fsolve' if (optimMthd=='mmse')or(grouping=='D1') else optimMthd
                     (phi0_est[nc,nv,ns],x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,:,ns],y_est[nc,nv,:,ns],_)= loc.computeAllLocationsFromPaths(theta_est[nv,:,ns],phi_est[nv,:,ns],tau_est[nv,:,ns],phi0_method=phi0_m,group_method=group_m,hint_phi0=phi0_hint)
-                bar.next()
-            bar.finish()
+                #bar.next()
+            #bar.finish()
             run_time[nc,nv] = time.time() - t_start_point
     if not args.nosave: 
         np.savez(outfoldername+'/locEstData.npz',

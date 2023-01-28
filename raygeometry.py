@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from progress.bar import Bar
+#from progress#bar import #bar
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt

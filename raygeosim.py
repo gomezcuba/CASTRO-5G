@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from progress.bar import Bar
+#from progress#bar import #bar
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
@@ -56,12 +56,12 @@ x0_b=np.zeros((1,Nsims))
 y0_b=np.zeros((1,Nsims))
 x_b=np.zeros((Npath,Nsims))
 y_b=np.zeros((Npath,Nsims))
-bar = Bar("bisec", max=Nsims)
-bar.check_tty = False
+#bar = #bar("bisec", max=Nsims)
+#bar.check_tty = False
 for nsim in range(Nsims):
     (phi0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],_,x_b[:,nsim],y_b[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='brute', group_method='3path')
-    bar.next()
-bar.finish()
+    #bar.next()
+#bar.finish()
 error_bisec=np.sqrt(np.abs(x0-x0_b)**2+np.abs(y0-y0_b))
 t_run_b = time.time() - t_start_b
 plt.figure(1)
@@ -73,12 +73,12 @@ x0_r=np.zeros((1,Nsims))
 y0_r=np.zeros((1,Nsims))
 x_r=np.zeros((Npath,Nsims))
 y_r=np.zeros((Npath,Nsims))
-bar = Bar("froot", max=Nsims)
-bar.check_tty = False
+#bar = #bar("froot", max=Nsims)
+#bar.check_tty = False
 for nsim in range(Nsims):
     (phi0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],_,x_r[:,nsim],y_r[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='3path')
-    bar.next()
-bar.finish()
+    #bar.next()
+#bar.finish()
 error_root=np.sqrt(np.abs(x0-x0_r)**2+np.abs(y0-y0_r))
 t_run_r = time.time() - t_start_r
 plt.semilogx(np.sort(error_root).T,np.linspace(0,1,error_root.size),'-.r')
@@ -91,12 +91,12 @@ x0_r2=np.zeros((1,Nsims))
 y0_r2=np.zeros((1,Nsims))
 x_r2=np.zeros((Npath,Nsims))
 y_r2=np.zeros((Npath,Nsims))
-bar = Bar("froot_linear", max=Nsims)
-bar.check_tty = False
+#bar = #bar("froot_linear", max=Nsims)
+#bar.check_tty = False
 for nsim in range(Nsims):
     (phi0_r2[:,nsim],x0_r2[:,nsim],y0_r2[:,nsim],_,x_r2[:,nsim],y_r2[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='drop1')
-    bar.next()
-bar.finish()
+    #bar.next()
+#bar.finish()
 error_root2=np.sqrt(np.abs(x0-x0_r2)**2+np.abs(y0-y0_r2))
 t_run_r2 = time.time() - t_start_r2
 plt.semilogx(np.sort(error_root2).T,np.linspace(0,1,error_root2.size),'-.g')
@@ -109,13 +109,13 @@ x0_h=np.zeros((1,Nsims))
 y0_h=np.zeros((1,Nsims))
 x_h=np.zeros((Npath,Nsims))
 y_h=np.zeros((Npath,Nsims))
-bar = Bar("froot_linear hint", max=Nsims)
-bar.check_tty = False
+#bar = #bar("froot_linear hint", max=Nsims)
+#bar.check_tty = False
 phi0_coarse=np.round(phi0*256/np.pi/2)*np.pi*2/256
 for nsim in range(Nsims):
     (phi0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],_,x_h[:,nsim],y_h[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='drop1',hint_phi0=phi0_coarse[:,nsim])
-    bar.next()
-bar.finish()
+    #bar.next()
+#bar.finish()
 error_rooth=np.sqrt(np.abs(x0-x0_h)**2+np.abs(y0-y0_h))
 t_run_h = time.time() - t_start_h
 plt.semilogx(np.sort(error_rooth).T,np.linspace(0,1,error_rooth.size),'xk')
@@ -126,8 +126,8 @@ x0_k=np.zeros((1,Nsims))
 y0_k=np.zeros((1,Nsims))
 x_k=np.zeros((Npath,Nsims))
 y_k=np.zeros((Npath,Nsims))
-bar = Bar("know phi 3-path method", max=Nsims)
-bar.check_tty = False
+#bar = #bar("know phi 3-path method", max=Nsims)
+#bar.check_tty = False
 x0all=np.zeros((Nsims,Npath-2))
 y0all=np.zeros((Nsims,Npath-2))
 tauEall=np.zeros((Nsims,Npath-2))
@@ -135,10 +135,10 @@ tauEall=np.zeros((Nsims,Npath-2))
 for nsim in range(Nsims):
     for gr in range(Npath-2):
         (x0all[nsim,gr],y0all[nsim,gr],tauEall[nsim,gr],_,_)= loc.computeAllPaths(AoD[gr:gr+3,nsim],AoA[gr:gr+3,nsim],dels[gr:gr+3,nsim],phi0[:,nsim])
-    bar.next()    
+    #bar.next()    
 x0_k=np.mean(x0all,axis=1)
 y0_k=np.mean(y0all,axis=1)
-bar.finish()
+#bar.finish()
 error_k=np.sqrt(np.abs(x0-x0_k)**2+np.abs(y0-y0_k))
 t_run_k = time.time() - t_start_k
 plt.semilogx(np.sort(error_k).T,np.linspace(0,1,error_k.size),':or')
@@ -149,12 +149,12 @@ x0_k2=np.zeros((1,Nsims))
 y0_k2=np.zeros((1,Nsims))
 x_k2=np.zeros((Npath,Nsims))
 y_k2=np.zeros((Npath,Nsims))
-bar = Bar("know phi linear method", max=Nsims)
-bar.check_tty = False
+#bar = #bar("know phi linear method", max=Nsims)
+#bar.check_tty = False
 for nsim in range(Nsims):
     (x0_k2[:,nsim],y0_k2[:,nsim],_,x_k2[:,nsim],y_k2[:,nsim])=loc.computeAllPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0[:,nsim])
-    bar.next()
-bar.finish()
+    #bar.next()
+#bar.finish()
 error_k2=np.sqrt(np.abs(x0-x0_k2)**2+np.abs(y0-y0_k2))
 t_run_k2 = time.time() - t_start_k2
 plt.semilogx(np.sort(error_k2).T,np.linspace(0,1,error_k2.size),':xg')

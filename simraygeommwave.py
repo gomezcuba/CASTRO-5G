@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from progress.bar import Bar
+#from progress#bar import #bar
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
@@ -113,8 +113,8 @@ if GEN_CHANS:
     tau0=l0/c
     
     t_start_g= time.time()
-    bar = Bar("genchans", max=Nsims)
-    bar.check_tty = False
+    #bar = #bar("genchans", max=Nsims)
+    #bar.check_tty = False
     AoDbak=np.zeros((Nmaxpaths,Nsims))
     AoD=np.zeros((Nmaxpaths,Nsims))
     AoA=np.zeros((Nmaxpaths,Nsims))
@@ -182,8 +182,8 @@ if GEN_CHANS:
             chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])].channelPaths[strongestInds[pi]].excessDelay=dels[pi,nsim]*1e9
             chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])].channelPaths[strongestInds[pi]].complexAmplitude=coefs[pi,nsim]
         
-        bar.next()
-    bar.finish() 
+        #bar.next()
+    #bar.finish() 
     t_run_g = time.time() - t_start_g
 
     np.savez('./mimochans-%d.npz'%(Nsims),
@@ -265,8 +265,8 @@ if EST_CHANS:
     hkall=np.zeros((Nsims,K,Na,Nd),dtype=complex)
     IsuppAll=[]
     MSEOMP=np.zeros(Nsims)
-    bar = Bar("estchans", max=Nsims)
-    bar.check_tty = False
+    #bar = #bar("estchans", max=Nsims)
+    #bar.check_tty = False
     for nsim in range(Nsims):    
         mpch=chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])]
         (w,v)=pilgen.generatePilots((K,Nxp,Nrfr,Na,Nd,Nrft),"UPhase")
@@ -301,8 +301,8 @@ if EST_CHANS:
         vall[nsim,:]=v
         hkall[nsim,:]=hk
         hestall[nsim,:]=hest
-        bar.next()
-    bar.finish()
+        #bar.next()
+    #bar.finish()
     
     AoA_est=np.mod(AoA_est,np.pi*2)
     AoD_est=np.mod(AoD_est,np.pi*2)
@@ -358,7 +358,7 @@ if EST_PLOT:
     fig_ctr+=1
     plt.figure(fig_ctr)
     Npathretcount=np.sum(np.arange(NpathsRetrievedMax+1)==NpathsRetrieved[:,np.newaxis],axis=0)
-    plt.bar(np.arange(NpathsRetrievedMax+1),Npathretcount)
+    plt.#bar(np.arange(NpathsRetrievedMax+1),Npathretcount)
     plt.xlabel("n paths")
     plt.ylabel("$F(n)$")
 
@@ -486,8 +486,8 @@ if EST_LOCS:
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
         t_start_all[ncfg]=time.time()
-        bar = Bar("%s %s %s %s"%(cfg[0],cfg[1],cfg[2],cfg[3]), max=Nsims)
-        bar.check_tty = False
+        #bar = #bar("%s %s %s %s"%(cfg[0],cfg[1],cfg[2],cfg[3]), max=Nsims)
+        #bar.check_tty = False
         for nsim in range(Nsims):
             for Nstimpaths in range(3, NpathsRetrieved[nsim]+1 ):
                 try:
@@ -566,8 +566,8 @@ if EST_LOCS:
                 y0_est[ncfg,NpathsRetrieved[nsim]-3:,nsim]=y0_est[ncfg,NpathsRetrieved[nsim]-4,nsim]
                 x_est[ncfg,NpathsRetrieved[nsim]-3:,0:Nstimpaths,nsim]=x_est[ncfg,NpathsRetrieved[nsim]-4,0:Nstimpaths,nsim]
                 x_est[ncfg,NpathsRetrieved[nsim]-3:,0:Nstimpaths,nsim]=y_est[ncfg,NpathsRetrieved[nsim]-4,0:Nstimpaths,nsim]
-            bar.next()
-        bar.finish()
+            #bar.next()
+        #bar.finish()
         t_end_all[ncfg]=time.time()
         np.savez('./mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Nt,Nxp,Nsims),
                 t_start_all=t_start_all,
@@ -798,22 +798,22 @@ if PLOT_LOCS:
        
     def getBestPathsFIMErr():#TODO add proper input arguments
         posMSE=np.inf*np.ones((Nsims,NpathsRetrievedMax-3))
-        bar = Bar("FIM finding best num. paths", max=Nsims)
-        bar.check_tty = False
+        #bar = #bar("FIM finding best num. paths", max=Nsims)
+        #bar.check_tty = False
         for nsim in range(Nsims):
             for npath in range(3,NpathsRetrieved[nsim]):
                 J2=getFIMYToLoc(p0[nsim,:], refPos[0:npath,nsim,:] , sigma2,coefs[0:npath,nsim],dels[0:npath,nsim],AoD[0:npath,nsim],AoA[0:npath,nsim],wall[nsim],vall[nsim])
                 posMSE[nsim,npath-3]=np.trace(np.linalg.inv(J2))
-            bar.next()
-        bar.finish()
+            #bar.next()
+        #bar.finish()
         return np.argmin(posMSE,axis=1)+3
     
     def getBestPathsEstFIMErr():#TODO add proper input arguments
         p0_est = np.stack((x0_est,y0_est),axis=-1) 
         pAll_est = np.stack((x_est,y_est),axis=-1)   
         posMSE_est=np.inf*np.ones((Nsims,NpathsRetrievedMax-3)) 
-        bar = Bar("Estimated FIM finding best num. paths", max=Nsims)
-        bar.check_tty = False 
+        #bar = #bar("Estimated FIM finding best num. paths", max=Nsims)
+        #bar.check_tty = False 
         for nsim in range(Nsims):
             for npath in range(3,NpathsRetrieved[nsim]):
                  J2_est=getFIMYToLoc(
@@ -827,8 +827,8 @@ if PLOT_LOCS:
                     wall[nsim],
                     vall[nsim])
                  posMSE_est[nsim,npath-3]=np.trace(np.linalg.inv(J2_est))
-            bar.next()
-        bar.finish()
+            #bar.next()
+        #bar.finish()
         return np.argmin(posMSE_est,axis=1)+3
    
     p0 = np.stack((x0,y0),axis=-1)  
@@ -878,7 +878,7 @@ if PLOT_LOCS:
         CovVsN_method=np.cov(npathbest,npaths_method)
         CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]        
         plt.figure(fig_num_bar)        
-        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[1])
+        plt.#bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[1])
         
         plt.figure(fig_num_cdf)
         for ncfg in range(Nconfigs):
@@ -978,7 +978,7 @@ if PLOT_LOCS:
     plt.figure(fig_ctr)
     for nmethod in range(Nmethods):
         method=lMethods[nmethod]
-        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,0],1/(Nmethods+2),color=method[1])
+        plt.#bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,0],1/(Nmethods+2),color=method[1])
     plt.xlabel('config')
     plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable],rotation=45)
     plt.ylabel('Mean error (m)')
@@ -989,7 +989,7 @@ if PLOT_LOCS:
         plt.figure(fig_ctr)
         for nmethod in range(Nmethods):
             method=lMethods[nmethod]
-            plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,1+npct],1/(Nmethods+2),color=method[1])
+            plt.#bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,1+npct],1/(Nmethods+2),color=method[1])
         plt.xlabel('config')
         plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable],rotation=45)
         plt.ylabel('%d pct error (m)'%lPercentilesPlot[npct])
@@ -1001,8 +1001,8 @@ if PLOT_LOCS:
     
     #NAnglenoises=11
     #t_start_ba= time.time()
-    #bar = Bar("angle error", max=Nsims*NAnglenoises)
-    #bar.check_tty = False
+    ##bar = #bar("angle error", max=Nsims*NAnglenoises)
+    ##bar.check_tty = False
     #error_root=np.zeros((NAnglenoises,Nsims))
     #angleNoiseMSE=np.logspace(0,-6,NAnglenoises)
     #for ian in range( NAnglenoises):
@@ -1017,9 +1017,9 @@ if PLOT_LOCS:
     #    y_r=np.zeros((Nstrongest,Nsims))
     #    for nsim in range(Nsims):
     #        (phi0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],x_r[:,nsim],y_r[:,nsim])= loc.computeAllLocationsFromPaths(AoD_err[:,nsim],AoA_err[:,nsim],dels_err[:,nsim],method='fsolve')
-    #        bar.next()
+    #        #bar.next()
     #    error_root[ian,:]=np.sqrt(np.abs(x0-x0_r)**2+np.abs(y0-y0_r))
-    #bar.finish()
+    ##bar.finish()
     #t_run_ba = time.time() - t_start_ba
     #fig=
 #    fig_ctr+=1

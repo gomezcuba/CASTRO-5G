@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import time
-from progress.bar import Bar
+#from progress#bar import #bar
 
 plt.close('all')
 
@@ -49,8 +49,8 @@ legStrAlgs=[
         'OMPBR',
         ]
 
-bar = Bar("CS sims", max=Nchan)
-bar.check_tty = False
+#bar = #bar("CS sims", max=Nchan)
+#bar.check_tty = False
 for ichan in range(0,Nchan):
     mpch = chgen.create_channel((0,0,10),(x0[ichan],y0[ichan],1.5))
     ht=mpch.getDEC(Na,Nd,Nt,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
@@ -90,8 +90,8 @@ for ichan in range(0,Nchan):
         MSE[-1][-1].append(np.mean(np.abs(hk-hest5)**2)/np.mean(np.abs(hk)**2))
         totTimes[-1][-1].append(time.time()-t0)
         Npaths[-1][-1].append(len(paths.delays))
-    bar.next()
-bar.finish()
+    #bar.next()
+#bar.finish()
 
 MSE=np.array(MSE)
 totTimes=np.array(totTimes)
@@ -102,11 +102,11 @@ plt.legend(legStrAlgs)
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
 plt.figure()
-plt.bar(range(np.size(totTimes)//Nchan),np.mean(totTimes,axis=0).reshape(np.size(totTimes)//Nchan,))
+plt.#bar(range(np.size(totTimes)//Nchan),np.mean(totTimes,axis=0).reshape(np.size(totTimes)//Nchan,))
 plt.xlabel('alg')
 plt.ylabel('runtime')
 plt.figure()
-plt.bar(range(np.size(totTimes)//Nchan),np.mean(Npaths,axis=0).reshape(np.size(Npaths)//Nchan,))
+plt.#bar(range(np.size(totTimes)//Nchan),np.mean(Npaths,axis=0).reshape(np.size(Npaths)//Nchan,))
 plt.xlabel('alg')
 plt.ylabel('N paths')
 plt.show()
