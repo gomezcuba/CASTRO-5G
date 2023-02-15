@@ -21,7 +21,7 @@ tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
 
 plt.close('all')
 fig_ctr=0
-print(nClusters)
+
 #2D polar plots of AoA
 AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
 Npath=np.size(AoAs)

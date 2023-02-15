@@ -67,7 +67,6 @@ BeamformingVectors =mc.fULA(angles_plot,Nant)
 
 arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
 
-
 Ncolors=10
 for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
     clr = cm.tab10(np.mod(pind,Ncolors)/(Ncolors-1))
