@@ -15,7 +15,7 @@ plt.close('all')
 fig_ctr=0
 
 model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=True
+model.bLargeBandwidthOption=False
 macro,small = model.create_channel((0,0,10),(40,0,1.5))
 clusters,subpaths = small
 nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
@@ -31,6 +31,8 @@ Npath=np.size(AoAs)
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 ax = Axes3D(fig)
+
+
 
 #since there is no plot.polar() in 3D, we need to draw the axis manually
 #polar "circle" levels axis
@@ -56,7 +58,7 @@ maxdel=np.max(delays)
 maxdelCentenas = np.ceil(maxdel/100)*100 # for example if max delay is 437ns, the axis goes to 500ns.
 ax.plot3D([0,0],[0,0],[0,maxdelCentenas],color='k')
 ax.text3D(0,0,maxdelCentenas,"delay [ns]",color='k')
-
+print(nClusters)
 # compute the response of the antenna array with Nant antennas
 Nant = 16
 AntennaResponses =mc.fULA(AoAs,Nant)
@@ -64,6 +66,7 @@ AntennaResponses =mc.fULA(AoAs,Nant)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
 
 arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
+
 
 Ncolors=10
 for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
