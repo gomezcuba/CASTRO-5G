@@ -18,16 +18,24 @@ parser = argparse.ArgumentParser(description='Multipath Location Estimation Simu
 #parameters that affect number of simulations
 parser.add_argument('-N', type=int,help='No. simulated channels')
 #parameters that affect error
+
+# case 1: no error
 parser.add_argument('--noerror', help='Add zero error case', action='store_true')
+
+# case 2: add a personalized number of error points
 parser.add_argument('-S', type=int,help='Add S normalized error Std. points')
 parser.add_argument('--minstd', help='Minimum error std in dB')
 parser.add_argument('--maxstd', help='Maximum error std in dB')
 parser.add_argument('-D', type=str,help='Add dictionary-based error models, comma separated')
+
 #parameters that affect multipath generator
 parser.add_argument('-G', type=int,help='Type of generator')
 parser.add_argument('--npathgeo', type=int,help='No. paths per channel (Geo only)')
+
 #parameters that affect location algorithms
 parser.add_argument('--algs', type=str,help='comma-separated list of algorithms')
+
+
 #parameters that affect workflow
 parser.add_argument('--label', type=str,help='text label for stored results')
 parser.add_argument('--nosave', help='Do not save simulation data to new results file', action='store_true')
@@ -36,15 +44,29 @@ parser.add_argument('--noloc',help='Do not perform location estimation, load pri
 parser.add_argument('--show', help='Open plot figures in window', action='store_true')
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
+## TO DO: (In progress) -- CLI arguments (line100)
+parser.add_argument('-xmax',type=int,help='Simulation model x-axis max. size coordinate (meters from the origin)')
+parser.add_argument('-xmin',type=int,help='Simulation model x-axis min. size coordinate (meters from the origin)')
+parser.add_argument('-ymax',type=int,help='Simulation model y-axis max. size coordinate (meters from the origin)')
+parser.add_argument('-ymin',type=int,help='Simulation model y-axis min. size coordinate (meters from the origin)')
+#refine to make it consistent before reestructuring all this code
+
 args = parser.parse_args("-N 100 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
+
+# numero de simulacions
 Nsims=args.N if args.N else 100
+
+# error vector modeling
 if args.noerror:
     lErrMod=[('no',0,0,0)]
 else:
     lSTD=[]
+
+#case with errors
+
 if args.S:
     minStd = args.minstd if args.minstd else -7
     maxStd = args.maxstd if args.maxstd else -1
@@ -55,9 +77,15 @@ if args.D:
     lDicSizes=[tuple(['dic']+[x for x in y.split(':')]) for y in args.D.split(',') ]
     lErrMod = lErrMod+lDicSizes    
 #TODO add ifs etc. to make this selectable with OMP
+#TOASK what is OMP???
 NerrMod=len(lErrMod)
-mpgen = args.G if args.G else 'Geo'
 
+
+# multipath generator
+mpgen = args.G if args.G else 'Geo'
+#TODO: Aquí parece que hai bastantes parametros que completar
+
+#location algorythms - evolución de location estimator
 if args.algs:
     lCases=[
             tuple(case.split(':'))
@@ -65,6 +93,9 @@ if args.algs:
             ]
     #TODO define more elegant syntax for cases and better parser that converts bool properly
 else:
+    #TOASK: this seems kinda uneficient. Should it really sweep through all the  possible combinations this way?
+    #maybe a selector is better...
+
     lCases=[#a opriori phi0, quantized phi0, grouping method, optimization method
        (True,False,'',''),
        (True,True,'',''),
@@ -96,6 +127,7 @@ Ymin=-50
 
 phi0GyrQuant=2*np.pi/64
 
+# if this parameter is present we get the mpg data from a known file (better for teset&debug)
 if args.nompg:
     data=np.load(outfoldername+'/chanGenData.npz') 
     x=data["x"]         
@@ -116,11 +148,15 @@ if args.nompg:
     (Npath,Nsims)=x.shape
 else:        
     t_start_gen=time.time()
+    # TO DO; this has to be modeled in a separate class
     if mpgen == 'Geo':
         if args.npathgeo:
             Npath=args.npathgeo
         else:
             Npath=20
+        # TO DO: check if the xmax, y max etc args have been introduced through CLI
+        # if not - use standarized values [- 50 50 ; -50 50]
+        
         #generate locations and compute multipath 
         x=np.random.rand(Npath,Nsims)*(Xmax-Xmin)+Xmin
         y=np.random.rand(Npath,Nsims)*(Ymax-Ymin)+Ymin
@@ -137,7 +173,8 @@ else:
         tau0=y0/np.sin(theta0)/c
         tauE=tau0+np.random.randn(1,Nsims)*40e-9
     elif mpgen == "3gpp":
-        #TBW
+        #TODO: This is my main job
+        #TODO: pull from Iago branch (dev/)
         print("MultiPath generation method %s to be written"%mpgen)
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
