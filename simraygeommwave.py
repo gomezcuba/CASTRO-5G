@@ -1,5 +1,6 @@
 #!/usr/bin/python
 #from progress#bar import #bar
+#%%
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
@@ -66,9 +67,9 @@ def fitMmWaveChanDelForLocation(x0,y0,phi0,AoD,AoA):
     c=3e8
     exdel=(l-l0)/c
     return (exdel,x,y)
-
-GEN_CHANS=False
-GEN_PLOT=False
+print("test")
+GEN_CHANS=True
+GEN_PLOT=True
 Nstrongest=40
 Nmaxpaths=400
 Nsims=100
@@ -94,7 +95,8 @@ PLOT_LOCS=True
 
 t_total_run_init=time.time()
 fig_ctr=0
-
+#%%%
+print ("generación canal")
 if GEN_CHANS:
     chgen = mp3g.ThreeGPPMultipathChannelModel()
     chgen.bLargeBandwidthOption=True
@@ -217,7 +219,7 @@ else:
             
         chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])]=ch.MultipathChannel((0,0,10),(x0[nsim],y0[nsim],1.5),lp)
     
-
+#%%
 if GEN_PLOT:
     
     fig_ctr+=1
@@ -358,7 +360,7 @@ if EST_PLOT:
     fig_ctr+=1
     plt.figure(fig_ctr)
     Npathretcount=np.sum(np.arange(NpathsRetrievedMax+1)==NpathsRetrieved[:,np.newaxis],axis=0)
-    plt.#bar(np.arange(NpathsRetrievedMax+1),Npathretcount)
+    plt.bar(np.arange(NpathsRetrievedMax+1),Npathretcount)
     plt.xlabel("n paths")
     plt.ylabel("$F(n)$")
 
@@ -878,7 +880,7 @@ if PLOT_LOCS:
         CovVsN_method=np.cov(npathbest,npaths_method)
         CorrN_method=CovVsN_method[-1,:-1] / CovVsN_method[range(Nconfigs),range(Nconfigs)] / CovVsN_method[-1,-1]        
         plt.figure(fig_num_bar)        
-        plt.#bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[1])
+        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),CorrN_method,1/(Nmethods+2),color=method[1])
         
         plt.figure(fig_num_cdf)
         for ncfg in range(Nconfigs):
@@ -978,7 +980,7 @@ if PLOT_LOCS:
     plt.figure(fig_ctr)
     for nmethod in range(Nmethods):
         method=lMethods[nmethod]
-        plt.#bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,0],1/(Nmethods+2),color=method[1])
+        plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,0],1/(Nmethods+2),color=method[1])
     plt.xlabel('config')
     plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable],rotation=45)
     plt.ylabel('Mean error (m)')
@@ -989,7 +991,7 @@ if PLOT_LOCS:
         plt.figure(fig_ctr)
         for nmethod in range(Nmethods):
             method=lMethods[nmethod]
-            plt.#bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,1+npct],1/(Nmethods+2),color=method[1])
+            plt.bar(np.arange(Nconfigs)+nmethod*1/(Nmethods+2),er_data_pctls[nmethod,:,1+npct],1/(Nmethods+2),color=method[1])
         plt.xlabel('config')
         plt.xticks(ticks=np.arange(Nconfigs),labels=["%s %s %s %s"%(x[0],x[1],x[2],x[3]) for x in configTable],rotation=45)
         plt.ylabel('%d pct error (m)'%lPercentilesPlot[npct])
@@ -1041,3 +1043,4 @@ if PLOT_LOCS:
 #(phi0_aux, x0_aux, y0_aux, x_aux, y_aux,phi0_var) = loc.computeAllLocationsFromPaths( AoD_est[0:10,0], AoA_est[0:10,0], dels_est[0:10,0],method='fsolve_linear',hint_phi0= phi0_coarse[0])
     
 print("Total run time %d seconds"%(time.time()-t_total_run_init))
+# %%

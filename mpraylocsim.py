@@ -178,6 +178,26 @@ else:
     elif mpgen == "3gpp":
         #TODO: This is my main job
         #TODO: pull from Iago branch (dev/)
+                #TBW
+        #TO DO: Que faga o mesmo que a primeira parte de simraygeommwave e devolva como resultado o canal adaptado 
+        #generar un canle acorde ao 3gpp PERO con ángulos consistentes para o raytracing
+        #angles from locations
+        theta0=np.mod( np.arctan(y0/x0)+np.pi*(x0<0) , 2*np.pi)
+        #EN LUGAR DE ESTO:
+        #theta=np.mod( np.arctan(y/x)+np.pi*(x<0) , 2*np.pi)
+        #theta = model.adaptForRaytracing()
+        #Facer unha librería
+
+        #DESFASADO --> Pullear código de iago
+
+        phi0=np.random.rand(1,Nsims)*2*np.pi #receiver angular measurement offset
+        phi=np.mod(np.pi - (np.arctan((y-y0)/(x0-x))+np.pi*((x0-x)<0)) , 2*np.pi)
+        #delays based on distance
+        c=3e8
+        tau=(np.abs(y/np.sin(theta))+np.abs((y-y0)/np.sin(phi)))/c
+        tau0=y0/np.sin(theta0)/c
+        tauE=tau0+np.random.randn(1,Nsims)*40e-9
+        print("MultiPath generation method %s to be written"%mpgen)
         print("MultiPath generation method %s to be written"%mpgen)
     else:
         print("MultiPath generation method %s not recognized"%mpgen)

@@ -1,14 +1,14 @@
 #!/usr/bin/python
 #from progress#bar import #bar
 import matplotlib
-matplotlib.rcParams['text.usetex'] = True
+#matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
 
 from mpl_toolkits import mplot3d
 
-import cairosvg
+#import cairosvg
 from PIL import Image
 from io import BytesIO
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
@@ -150,6 +150,7 @@ plt.plot(x_root,y_root,'oy')
 scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
 plt.plot([x0_root,x0_root+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_root)],[y0_root,y0_root+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_root)],'m')
+plt.show()
 for p in range(np.shape(theta_true)[0]):
     plt.plot([0,x_true[p],x0_true],[0,y_true[p],y0_true],':k')
     t=np.linspace(0,1,21)

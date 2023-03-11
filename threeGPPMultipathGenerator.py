@@ -674,7 +674,7 @@ class ThreeGPPMultipathChannelModel:
     #Revisar los parametros de entrada
     def create_subpaths_largeBW(self,macro,clusters,maxM=20,Dh=2,Dv=2,B=2e6):
         (nClusters,tau,powC,AOA,AOD,ZOA,ZOD) = clusters
-        
+        #TOASK: why is this part of the code raising exceptions?
         los = macro.los
         casd = macro.casd
         casa = macro.casa
@@ -729,14 +729,18 @@ class ThreeGPPMultipathChannelModel:
     def create_subpaths_basics(self,macro,clusters):
         los = macro.los
         ZSD = macro.zsd
-    
+        casa = param.casa
+        czsa = param.czsa
+            
         if los:
             param = self.scenarioParamsLOS
         else:
             param = self.scenarioParamsNLOS
         M = param.M
         cds = param.cds
-        
+
+
+
         (nClusters,tau,powC,AOA,AOD,ZOA,ZOD)=clusters
         
         #Generate subpaths delays and powers
@@ -767,7 +771,7 @@ class ThreeGPPMultipathChannelModel:
         tau2 = 1.28*cds
         tau3 = 2.56*cds
         """   
-        casa = param.casa
+
         AOA_sp = np.zeros((nClusters,M))
         AOD_sp = np.zeros((nClusters,M))
 
@@ -776,7 +780,7 @@ class ThreeGPPMultipathChannelModel:
                 AOA_sp[i,j] = AOA[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
                 AOD_sp[i,j] = AOD[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
         
-        czsa = param.czsa
+
         ZOA_sp = np.zeros((nClusters,M))
         ZOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
@@ -794,7 +798,7 @@ class ThreeGPPMultipathChannelModel:
         clusters = self.create_clusters(macro,angles)
         
         if self.bLargeBandwidthOption:
-            subpaths = self.create_subpaths_largebw(macro,clusters)
+            subpaths = self.create_subpaths_largeBW(macro,clusters)
             (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
         else:
             subpaths = self.create_subpaths_basics(macro,clusters)
