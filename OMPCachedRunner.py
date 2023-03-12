@@ -156,7 +156,7 @@ class OMPCachedRunner:
 #        outputDic=dicParams.outputs 
         observDicConj=observDic.transpose().conj()#cache this value for speed
     
-        Rsupp=np.zeros(shape=(Nt*Nxp*Nrfr,Nt*Nxp*Nrfr),dtype=np.complex)
+        Rsupp=np.zeros(shape=(Nt*Nxp*Nrfr,Nt*Nxp*Nrfr),dtype=np.complex_)  #changed np.complex  to ---> np.complex_
         delay_supp=np.zeros(Nt*Nxp*Nrfr)
         aod_supp=np.zeros(Nt*Nxp*Nrfr)
         aoa_supp=np.zeros(Nt*Nxp*Nrfr)
