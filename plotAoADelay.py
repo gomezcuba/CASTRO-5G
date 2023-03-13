@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 
-from matplotlib import animation, rc
-rc('animation', html='html5')
 from matplotlib import cm
 
 plt.close('all')
@@ -135,6 +133,8 @@ for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
     
 #the code below makes a "gif animation" that helps view the 3D but is not imprescindible
     
+# from matplotlib import animation, rc
+# rc('animation', html='html5')
 #plt.savefig('animation_frame0.png')
 #ax.view_init(azim=-61)
 #plt.savefig('animation_frame1.png')

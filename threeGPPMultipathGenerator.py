@@ -1,7 +1,5 @@
 import numpy as np
 import collections as col
-import multipathChannel as ch
-import pandas as pd
 
 class ThreeGPPMultipathChannelModel:
     ThreeGPPMacroParams = col.namedtuple( "ThreeGPPMacroParams",[
@@ -695,8 +693,8 @@ class ThreeGPPMultipathChannelModel:
         alpha_ZOD = np.random.uniform(-2,2,size=(nClusters,M))
         
         #The relative delay of m-th ray
-        tau_primaprima = np.random.uniform(0,2*cds,size=(nClusters,M))
-        tau_prima = tau_primaprima-np.amin(tau_primaprima)
+        tau_primaprima = np.random.uniform(0,2*cds*1e-9,size=(nClusters,M))#ns
+        tau_prima = tau_primaprima-np.amin(tau_primaprima) + tau.reshape((-1,1))
     
         #Ray powers
         czsd = (3/8)*10**(zsd_mu)
@@ -867,6 +865,6 @@ class ThreeGPPMultipathChannelModel:
         d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
         small = self.create_small_param(angles,macro,d2D)
         
-        keyChannel = (txPos,rxPos)
+        keyChannel = (tuple(txPos),tuple(rxPos))
         self.dChansGenerated[keyChannel] = (macro,small)
         return(macro,small)

@@ -10,8 +10,9 @@ import threeGPPMultipathGenerator as pg
 import matplotlib.pyplot as plt
 import numpy as np
 import math as mt
-
+plt.close('all')
 model = pg.ThreeGPPMultipathChannelModel(sce="UMi")
+model.bLargeBandwidthOption=True
 
 txPos = (0,0,25)
 lista = []
@@ -40,10 +41,10 @@ d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
 macro = model.create_macro(txPos,rxPos)
 
 listaTau = []
-for i in range(100):
+for i in range(1000):
     clusters, subpaths =model.create_small_param(angles,macro,d2D)
     nClusters,tau,powC,AOA,AOD,ZOA,ZOD =clusters
-    listaTau.append(tau[0:])
+    listaTau.append(tau[1:])
     
 
 tau_doubled = np.concatenate(listaTau)
