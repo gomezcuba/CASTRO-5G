@@ -1,7 +1,5 @@
 import numpy as np
 import collections as col
-import multipathChannel as ch
-import pandas as pd
 
 class ThreeGPPMultipathChannelModel:
     ThreeGPPMacroParams = col.namedtuple( "ThreeGPPMacroParams",[
@@ -496,12 +494,12 @@ class ThreeGPPMultipathChannelModel:
         zsd_mu = np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-10.0) +0.83)
         zsd_sg = 0.35
         zsd = min( np.power(10.0,zsd_mu + zsd_sg * np.random.randn(1)), 52.0)
-        return(zsd)
+        return(zsd,zsd_mu)
     def ZSDUMiNLOS(self,d2D,hut=1.5):     
         zsd_mu = np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(hut-10.0,0) +0.2)
         zsd_sg = 0.35
         zsd = min( np.power(10.0,zsd_mu + zsd_sg * np.random.randn(1)), 52.0)
-        return(zsd)
+        return(zsd,zsd_mu)
     def ZODUMiNLOS(self,d2D,hut=1.5):
         zod_offset_mu = -np.power(10.0,-1.5*np.log10(np.maximum(10,d2D)) + 3.3)
         return(zod_offset_mu)
@@ -511,12 +509,12 @@ class ThreeGPPMultipathChannelModel:
         zsd_sg = 0.40
         print(10.0**( zsd_mu + zsd_sg * np.random.randn(1)))
         zsd = min( np.power(10.0,zsd_mu + zsd_sg * np.random.randn(1)), 52.0)
-        return(zsd) 
+        return(zsd,zsd_mu) 
     def ZSDUMaNLOS(self,d2D,hut=1.5):     
         zsd_mu = np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.9)
         zsd_sg = 0.49
         zsd = min( np.power(10.0,zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-        return(zsd)
+        return(zsd,zsd_mu)
     def ZODUMaNLOS(self,d2D,hut=1.5):
         efc = 7.66*np.log10(self.frecRefGHz) - 5.96
         afc = 0.208*np.log10(self.frecRefGHz) - 0.782
@@ -529,12 +527,12 @@ class ThreeGPPMultipathChannelModel:
         zsd_mu = np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.22)
         zsd_sg = 0.34
         zsd = min( np.power(10.0, zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-        return(zsd)
+        return(zsd,zsd_mu)
     def ZSDRMaNLOS(self,d2D,hut=1.5):     
         zsd_mu = np.maximum(-1, -0.19*(d2D/1000) - 0.01*(hut - 1.5) + 0.28)
         zsd_sg = 0.30
         zsd = min( np.power(10.0, zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-        return(zsd)
+        return(zsd,zsd_mu)
     def ZODRMaNLOS(self,d2D,hut=1.5):
         zod_offset_mu=  np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D)
         return(zod_offset_mu)
@@ -543,12 +541,12 @@ class ThreeGPPMultipathChannelModel:
         zsd_mu = -1.43*np.log10(1 + self.frecRefGHz) + 2.228
         zsd_sg = 0.13*np.log10(1 + self.frecRefGHz) + 0.30
         zsd = min( np.power(10.0, zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-        return(zsd)
+        return(zsd,zsd_mu)
     def ZSDInNLOS(self,d2D,hut=1.5):     
         zsd_mu = 1.08
         zsd_sg = 0.36
         zsd = min( np.power(10.0,zsd_mu + zsd_sg * np.random.randn(1) ), 52.0)
-        return(zsd)
+        return(zsd,zsd_mu)
     
    
     #Large Scale Parametres
@@ -571,7 +569,7 @@ class ThreeGPPMultipathChannelModel:
         asa = min( np.power(10.0, param.asa_mu + param.asa_sg * vDep[4] ), 104.0)
         asd = min( np.power(10.0, param.asd_mu + param.asd_sg * vDep[3] ), 104.0)
         zsa = min( np.power(10.0, param.zsa_mu + param.zsa_sg * vDep[6] ), 52.0)
-        zsd = param.zsdFun(d2D,hut)
+        zsd,zsd_mu = param.zsdFun(d2D,hut)
         if los:
             zod_offset_mu = 0
         else: 
@@ -671,14 +669,10 @@ class ThreeGPPMultipathChannelModel:
         return(nClusters,tau,powC,AOA,AOD,ZOA,ZOD)
    
     
-    #Revisar los parametros de entrada
-    def create_subpaths_largeBW(self,macro,clusters,maxM=20,Dh=2,Dv=2,B=2e6):
+    def create_subpaths_largeBW(self,macro,clusters,d2D,maxM=20,Dh=2,Dv=2,B=2e6):
         (nClusters,tau,powC,AOA,AOD,ZOA,ZOD) = clusters
         
         los = macro.los
-        casd = macro.casd
-        casa = macro.casa
-        czsa = macro.czsa
         ZSD = macro.zsd
         
         if los:
@@ -687,18 +681,25 @@ class ThreeGPPMultipathChannelModel:
             param = self.scenarioParamsNLOS
         M = param.M
         cds = param.cds
+        casd = param.casd
+        casa = param.casa
+        czsa = param.czsa
+        zsd,zsd_mu=param.zsdFun(d2D)
         
         #The offset angles alpha_m
-        alpha = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_AOA = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_AOD = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_ZOA = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_ZOD = np.random.uniform(-2,2,size=(nClusters,M))
         
         #The relative delay of m-th ray
-        tau_primaprima = np.random.uniform(0,2*cds,size=(nClusters,M))
-        tau_prima = tau_primaprima-np.amin(tau_primaprima)
+        tau_primaprima = np.random.uniform(0,2*cds*1e-9,size=(nClusters,M))#ns
+        tau_prima = tau_primaprima-np.amin(tau_primaprima) + tau.reshape((-1,1))
     
         #Ray powers
-        czsd = (3/8)*10**(self.zsd_mu)
-        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha))/casa)*np.exp(-(np.sqrt(2)*abs(alpha))/casd)*np.exp(-(np.sqrt(2)*abs(alpha))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha))/czsd)
-        powC_sp = powC*(powPrima/np.sum(powPrima))
+        czsd = (3/8)*10**(zsd_mu)
+        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AOA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AOD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZOA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZOD))/czsd)
+        powC_sp = powC.reshape(-1,1)*(powPrima/np.sum(powPrima))
         
         #The number of rays per cluster
         k = 0.5
@@ -710,18 +711,17 @@ class ThreeGPPMultipathChannelModel:
         #Angles generation 
         AOA_sp = np.zeros((nClusters,M))
         AOD_sp = np.zeros((nClusters,M))
-
         for i in range(nClusters):
             for j in range(M):
-                AOA_sp[i,j] = AOA[i] + casa*alpha[i,j]
-                AOD_sp[i,j] = AOD[i] + casa*alpha[i,j]
+                AOA_sp[i,j] = AOA[i] + casa*alpha_AOA[i,j]
+                AOD_sp[i,j] = AOD[i] + casa*alpha_AOD[i,j]
         
         ZOA_sp = np.zeros((nClusters,M))
         ZOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
             for j in range(M):
-                ZOA_sp[i,j] = ZOA[i] + czsa*alpha[i,j]
-                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha[i,j]
+                ZOA_sp[i,j] = ZOA[i] + czsa*alpha_ZOA[i,j]
+                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha_ZOD[i,j]
         
         return(tau_prima,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
         
@@ -790,11 +790,11 @@ class ThreeGPPMultipathChannelModel:
         return(tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
     
     
-    def create_small_param(self,angles,macro):
+    def create_small_param(self,angles,macro,d2D):
         clusters = self.create_clusters(macro,angles)
         
         if self.bLargeBandwidthOption:
-            subpaths = self.create_subpaths_largebw(macro,clusters)
+            subpaths = self.create_subpaths_largeBW(macro,clusters,d2D)
             (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
         else:
             subpaths = self.create_subpaths_basics(macro,clusters)
@@ -862,8 +862,9 @@ class ThreeGPPMultipathChannelModel:
             self.create_macro(txPos,rxPos)
         macro = self.dMacrosGenerated[macrokey]
         
-        small = self.create_small_param(angles,macro)
+        d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
+        small = self.create_small_param(angles,macro,d2D)
         
-        keyChannel = (txPos,rxPos)
+        keyChannel = (tuple(txPos),tuple(rxPos))
         self.dChansGenerated[keyChannel] = (macro,small)
         return(macro,small)

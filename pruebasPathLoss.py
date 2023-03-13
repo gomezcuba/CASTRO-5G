@@ -43,7 +43,7 @@ pathlossRMaLOS = []
 
 for i in range(5000):
     d3D=np.sqrt(np.power(i,2) + np.power(hbs-hut,2))
-    print(d3D)
+    # print(d3D)
     pathlossRMaLOS.append(model.scenarioPlossRMaLOS(d3D,i))
     pathLossRMaNLOS.append(model.scenarioPlossRMaNLOS(d3D,i))
     distance.append(i)
