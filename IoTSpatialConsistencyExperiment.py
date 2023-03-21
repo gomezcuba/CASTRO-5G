@@ -304,79 +304,86 @@ for isim in range(Nsim):
     aoaFlipErrors[isim]=np.sum((bFlipAoA_true!=bFlipAoA))
 
 
-    #(First version) 16-QAM constellation table
-    qam_table = np.array([-3-3j, -3-1j, -3+3j, -3+1j,
-                        -1-3j, -1-1j, -1+3j, -1+1j,
-                        3-3j, 3-1j, 3+3j, 3+1j,
-                        1-3j, 1-1j, 1+3j, 1+1j])
+    p_tx = 500e-3        #(first version )transmitter power W [can be an input parameter].
+    delta_f = 15e3       #carrier spacing [Hz]
 
-    N_noise = 1000         # number of noise samples
+    Temp = 290                       # Define temperature T (in Kelvin), 17ºC
+    k_boltz = 1.380649e-23           # Boltzmann's constant k [J/K]
+    N0_noise = k_boltz * Temp        # Potencia de ruido W/Hz
 
-    qam_int = np.zeros((Nu,Nk), dtype=np.int32)                 #symbol positions
-    c_QAM  = np.zeros((Nu,Nk), dtype=np.complex_)               #selected symbols
-    noise =  np.zeros((Nu,N_noise,Nk), dtype=np.complex_)       #noise samples
+    v_beamf = np.ones((Nd, 1))       # initializes beamforming direction vector v
+    H_beamf = np.zeros((Nu, Nk))     # define gain matrix for the k subcarrier at time nu
 
-    for nu in range(Nu): 
-        qam_int[nu,:] = np.random.choice(16, size=Nk)     #choose randomly among possible symbols
-        c_QAM[nu,:] = qam_table[qam_int[nu,:]]            #QAM symbols to modulate each subcarrier k
-        noise[nu,:,:] = np.random.normal(0, 1, size=(N_noise, Nk)) + 1j * np.random.normal(0, 1, size=(N_noise, Nk)) 
-
-
-    c_QAM_f = np.fft.fft(c_QAM,Nk,axis=1)     #QAM symbols in frequency
-    noise_f = np.fft.fft(noise,Nk,axis=1)     #requency noise samples
-    N_k = np.var(noise_f, axis=1)             #noise variance for subcarrier k
+    #Beamforming calculation
+    for nu in range(Nu):
+        for k in range(Nk):
+            hkdisp = hkdispall[nu, k, :, :]
+            hv = hkdisp @ v_beamf
+            w = hv / np.linalg.norm(hv)                     #normalized beamforming vector
+            H_beamf[nu, k] = abs(w.conj().T @ hv)**2        
 
     # RX 
     #calculation of the SNR for each subcarrier k
-    SNR_k = np.zeros((Nu, Nk, Na, Nd), dtype=np.float32)    #subcarrier SNR array
+    SNR_k = np.zeros((Nu, Nk), dtype=np.float32)    #subcarrier SNR array
     for nu in range(Nu):
-        for k in range(Nk):     
-            SNR_k[nu, k, :, :] = np.abs(hkdispall[nu, k, :, :]) ** 2 * np.abs(c_QAM_f[nu,k]) ** 2 / N_k[nu,k]
-
-    #SNR_k_dB = 10*np.log10(SNR_k)                           #SNR of subcarriers in dB
+        for k in range(Nk):  
+            SNR_k[nu, k] = ( p_tx * (np.abs(H_beamf[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )   
 
     #Achievable Rate Calculation
     ach_rate = np.sum(np.log2(1 + SNR_k), axis = 1)  
-    ach_rate_dB = 10*np.log10(ach_rate)
-
+    
     #TX 
-    hkdispall_est = np.zeros((Nu,Nt,Na,Nd),dtype=np.complex64)            #estimated channel by the tx
-    SNR_k_est = np.zeros((Nu,Nt,Na,Nd))                                   #SNR estimated by tx
-    rate_tx = np.zeros((Nu,Na,Nd),dtype = np.float32)                     #tx rate 
+    hkdispall_est = np.zeros((Nu,Nk,Na,Nd),dtype=np.complex64)     #estimated channel by the tx
+    SNR_k_est = np.zeros((Nu,Nk))                                  #SNR estimated by tx
+    rate_tx = np.zeros((Nu),dtype = np.float32)                    #tx rate 
 
     #estimated channel matrix and estimated SNR
     hkdispall_est[:,:,:,:] = hkdispall[0,:,:,:]    #(first version) the estimated channel matrix in the TX will be that of the RX at instant 0
-    SNR_k_est[:,:,:,:] = SNR_k[0,:,:,:]            #(first version) the estimated SNR in the TX will be that of the RX at instant 0
+    SNR_k_est[:,:] = SNR_k[0,:]                    #(first version) the estimated SNR in the TX will be that of the RX at instant 0
 
     #FEEDBACK (RX) + LINK ADAPTATION (TX) 
-    mu = 0.2                          #(first version) coefficient of gradient descent. Is it possible to estimate it?
-    marg_ini = np.ones((Na,Nd))       #initial adaptation margin
-    E_dB = np.zeros((Nu,Na,Nd))       
-    marg_lin = np.zeros((Nu,Na,Nd))
-    marg_lin[0,:,:] = marg_ini
+    mu = 0.2                         #(first version) coefficient of gradient descent. Is it possible to estimate it?
+    marg_ini = 1                      #initial adaptation margin
+    epsy = 0.05                       #BLER
+    E_dB = np.zeros((Nu))       
+    marg_lin = np.zeros((Nu))
+    marg_lin[0] = marg_ini
     
     #first loop iteration with the initial values for calculating the tx rate
-    rate_tx[0,:,:] = np.sum(np.log2(1 + SNR_k_est[0,:,:,:] * marg_lin[0]), axis = 0)   #se usa axis = 0 porque SNR_k_est[0,:,:,:] elimina la primera dimensión
+    rate_tx[0] = np.sum(np.log2(1 + SNR_k_est[0,:] * marg_lin[0]), axis = 0)   #se usa axis = 0 porque SNR_k_est[0,:] elimina la primera dimensión
 
+    
     for nu in range(Nu-1): 
 
         #compare previous TX rate with previous achievable rate RX to generate ACK 
         #If ach_rate > rate_tx rate is considered a success (0), if it fails (1)
-        E_dB[nu,:,:] = np.where(ach_rate[nu,:,:] > rate_tx[nu,:,:], 0, 1) 
+        E_dB[nu] = int(ach_rate[nu] < rate_tx[nu])
 
         #update of the current margin using the previous one (calculated in dB and passed to u.n.) 
-        marg_lin[nu+1,:,:] = 10 ** (( 10*np.log10(marg_lin[nu,:,:]) - mu * E_dB[nu,:,:] ) /10 )
+        marg_lin[nu+1] = 10 ** (( 10*np.log10(marg_lin[nu]) - mu * (E_dB[nu] - epsy)) /10 )
     
         #calculate TX rate for the current instant 
-        rate_tx[nu+1,:,:] = np.sum(np.log2(1 + SNR_k_est[nu+1,:,:,:] * marg_lin[nu+1]), axis = 0)  
+        rate_tx[nu+1] = np.sum(np.log2(1 + SNR_k_est[nu+1,:] * marg_lin[nu+1]), axis = 0)  
     
-    print("----------------------------------------marg_lin[Nu-1,:,:]------------------------------------------------")   
-    print(marg_lin[Nu-1,:,:])
-    #print("----------------------------------------ach_rate[Nu-1,:,:]-------------------------------------------------")
-    #print(ach_rate[Nu-1,:,:])
-    #print("----------------------------------------rate_tx[Nu-1,:,:]--------------------------------------------------")
-    #print(rate_tx[Nu-1,:,:])
-    print("----------------------------     1 means ach_rate > rate_tx in (Nu-1)    ----------------------------------------")
-    print( np.where(ach_rate[:,:,:] > rate_tx[:,:,:], 1, 0) )
+
+    #print("------------------------------------------H_beamf-------------------------------------------------------")
+    #print(H_beamf)
+    #print(H_beamf[0,0])
+    #print("---------------------------------------np.abs(H_beamf[0, :]) **2)--------------------------------------")
+    #print((np.abs(H_beamf[:, :]) **2))
+    #print("------------------------------------------p_tx/Nk----------------------------------------------------")
+    #print(p_tx/Nk)
+    #print("-------------------------------------------SNR_k-----------------------------------------------------")
+    #print(SNR_k)
+    print("----------------------------------------marg_lin[:]------------------------------------------------")   
+    print(marg_lin[:])
+    print("----------------------------------------ach_rate[:]-------------------------------------------------")
+    print(ach_rate[:])
+    print("----------------------------------------rate_tx[:]--------------------------------------------------")
+    print(rate_tx[:])
+    print("----------------------     1 means ach_rate > rate_tx in (Nu-1)    ------------------------------")
+    print( np.where(ach_rate[:] > rate_tx[:], 1, 0) )
+    
+
 
 plt.plot(np.sort(NMSEdisp[:,1],axis=0),np.linspace(0,1,Nsim))
