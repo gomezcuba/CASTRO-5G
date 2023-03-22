@@ -306,12 +306,13 @@ for isim in range(Nsim):
 
     p_tx = 500e-3        #(first version )transmitter power W [can be an input parameter].
     delta_f = 15e3       #carrier spacing [Hz]
+    p_loss = 1e-12       #pathloss
 
     Temp = 290                       # Define temperature T (in Kelvin), 17ºC
     k_boltz = 1.380649e-23           # Boltzmann's constant k [J/K]
     N0_noise = k_boltz * Temp        # Potencia de ruido W/Hz
 
-    v_beamf = np.ones((Nd, 1)) / np.linalg.norm(np.ones((Nd, 1)))           # initializes beamforming direction vector v  
+    v_beamf = np.ones((Nd, 1)) / np.linalg.norm(np.ones((Nd, 1)))          # initializes beamforming direction vector v  
     H_beamf = np.zeros((Nu, Nk), np.complex64)                             # define gain matrix for the k subcarrier at time nu
 
     #Beamforming calculation
@@ -327,10 +328,13 @@ for isim in range(Nsim):
     SNR_k = np.zeros((Nu, Nk), dtype=np.float32)    #subcarrier SNR array
     for nu in range(Nu):
         for k in range(Nk):  
-            SNR_k[nu, k] = ( p_tx * (np.abs(H_beamf[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )   
+            SNR_k[nu, k] = ( p_tx * p_loss * (np.abs(H_beamf[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )   
+
+    SNR_k_dB = 10*np.log10(SNR_k)
 
     #Achievable Rate Calculation
-    ach_rate = np.sum(np.log2(1 + SNR_k), axis = 1)  
+    ach_rate = np.sum(np.log2(1 + SNR_k), axis = 1) * delta_f 
+    spect_eff_k = ach_rate / (Nk * delta_f) 
     
     #TX 
     hkdispall_est = np.zeros((Nu,Nk,Na,Nd),dtype=np.complex64)     #estimated channel by the tx
@@ -350,8 +354,7 @@ for isim in range(Nsim):
     marg_lin[0] = marg_ini
     
     #first loop iteration with the initial values for calculating the tx rate
-    rate_tx[0] = np.sum(np.log2(1 + SNR_k_est[0,:] * marg_lin[0]), axis = 0)   #se usa axis = 0 porque SNR_k_est[0,:] elimina la primera dimensión
-
+    rate_tx[0] = np.sum(np.log2(1 + SNR_k_est[0,:] * marg_lin[0]), axis = 0) * delta_f  #se usa axis = 0 porque SNR_k_est[0,:] elimina la primera dimensión
     
     for nu in range(Nu-1): 
 
@@ -363,7 +366,7 @@ for isim in range(Nsim):
         marg_lin[nu+1] = 10 ** (( 10*np.log10(marg_lin[nu]) - mu * (E_dB[nu] - epsy)) /10 )
     
         #calculate TX rate for the current instant 
-        rate_tx[nu+1] = np.sum(np.log2(1 + SNR_k_est[nu+1,:] * marg_lin[nu+1]), axis = 0)  
+        rate_tx[nu+1] = np.sum(np.log2(1 + SNR_k_est[nu+1,:] * marg_lin[nu+1]), axis = 0) * delta_f
     
 
     #print("------------------------------------------H_beamf-------------------------------------------------------")
@@ -373,10 +376,14 @@ for isim in range(Nsim):
     #print((np.abs(H_beamf[:, :]) **2))
     #print("------------------------------------------p_tx/Nk----------------------------------------------------")
     #print(p_tx/Nk)
-    print("-------------------------------------------SNR_k-----------------------------------------------------")
-    print(SNR_k)
+    #print("-------------------------------------------SNR_k-----------------------------------------------------")
+    #print(SNR_k)
+    print("-------------------------------------------SNR_k_dB-----------------------------------------------------")
+    print(SNR_k_dB)
     print("----------------------------------------marg_lin[:]------------------------------------------------")   
     print(marg_lin[:])
+    print("----------------------------------------spect_eff[:]-------------------------------------------------")
+    print(spect_eff_k[:])
     print("----------------------------------------ach_rate[:]-------------------------------------------------")
     print(ach_rate[:])
     print("----------------------------------------rate_tx[:]--------------------------------------------------")
