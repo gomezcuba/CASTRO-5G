@@ -311,8 +311,8 @@ for isim in range(Nsim):
     k_boltz = 1.380649e-23           # Boltzmann's constant k [J/K]
     N0_noise = k_boltz * Temp        # Potencia de ruido W/Hz
 
-    v_beamf = np.ones((Nd, 1))       # initializes beamforming direction vector v
-    H_beamf = np.zeros((Nu, Nk))     # define gain matrix for the k subcarrier at time nu
+    v_beamf = np.ones((Nd, 1)) / np.linalg.norm(np.ones((Nd, 1)))           # initializes beamforming direction vector v  
+    H_beamf = np.zeros((Nu, Nk), np.complex64)                             # define gain matrix for the k subcarrier at time nu
 
     #Beamforming calculation
     for nu in range(Nu):
@@ -320,7 +320,7 @@ for isim in range(Nsim):
             hkdisp = hkdispall[nu, k, :, :]
             hv = hkdisp @ v_beamf
             w = hv / np.linalg.norm(hv)                     #normalized beamforming vector
-            H_beamf[nu, k] = abs(w.conj().T @ hv)**2        
+            H_beamf[nu, k] = w.conj().T @ hv       
 
     # RX 
     #calculation of the SNR for each subcarrier k
@@ -357,7 +357,7 @@ for isim in range(Nsim):
 
         #compare previous TX rate with previous achievable rate RX to generate ACK 
         #If ach_rate > rate_tx rate is considered a success (0), if it fails (1)
-        E_dB[nu] = int(ach_rate[nu] < rate_tx[nu])
+        E_dB[nu] = int(ach_rate[nu] <= rate_tx[nu])
 
         #update of the current margin using the previous one (calculated in dB and passed to u.n.) 
         marg_lin[nu+1] = 10 ** (( 10*np.log10(marg_lin[nu]) - mu * (E_dB[nu] - epsy)) /10 )
@@ -373,8 +373,8 @@ for isim in range(Nsim):
     #print((np.abs(H_beamf[:, :]) **2))
     #print("------------------------------------------p_tx/Nk----------------------------------------------------")
     #print(p_tx/Nk)
-    #print("-------------------------------------------SNR_k-----------------------------------------------------")
-    #print(SNR_k)
+    print("-------------------------------------------SNR_k-----------------------------------------------------")
+    print(SNR_k)
     print("----------------------------------------marg_lin[:]------------------------------------------------")   
     print(marg_lin[:])
     print("----------------------------------------ach_rate[:]-------------------------------------------------")
