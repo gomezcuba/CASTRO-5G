@@ -77,7 +77,6 @@ if args.D:
     lDicSizes=[tuple(['dic']+[x for x in y.split(':')]) for y in args.D.split(',') ]
     lErrMod = lErrMod+lDicSizes    
 #TODO add ifs etc. to make this selectable with OMP
-#TOASK what is OMP???
 NerrMod=len(lErrMod)
 
 
@@ -886,6 +885,6 @@ if args.D:
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+'/taue_vs_ntau.eps')
-
+print(prueba)
 if args.show:
     plt.show()

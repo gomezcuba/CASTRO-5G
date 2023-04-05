@@ -95,7 +95,7 @@ PLOT_LOCS=True
 
 t_total_run_init=time.time()
 fig_ctr=0
-#%%%
+
 print ("generación canal")
 if GEN_CHANS:
     chgen = mp3g.ThreeGPPMultipathChannelModel()
@@ -242,6 +242,7 @@ if GEN_PLOT:
     
     plt.title('mmWave multipath environment')
     plt.legend()
+    plt.show()
     
 if EST_CHANS:
     #channel multipath estimation outputs with error
@@ -1043,4 +1044,4 @@ if PLOT_LOCS:
 #(phi0_aux, x0_aux, y0_aux, x_aux, y_aux,phi0_var) = loc.computeAllLocationsFromPaths( AoD_est[0:10,0], AoA_est[0:10,0], dels_est[0:10,0],method='fsolve_linear',hint_phi0= phi0_coarse[0])
     
 print("Total run time %d seconds"%(time.time()-t_total_run_init))
-# %%
+
