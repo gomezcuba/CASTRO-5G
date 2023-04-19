@@ -13,7 +13,7 @@ import threeGPPMultipathGenerator as pg
 import multipathChannel as mc
 
 model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=True
+model.bLargeBandwidthOption=False
 macro,small = model.create_channel((0,0,10),(40,0,1.5))
 clusters,subpaths = small
 nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters

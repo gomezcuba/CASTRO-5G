@@ -103,3 +103,7 @@ class MIMOPilotChannel:
 #                yp[k,p,:]=np.matmul(wp[k,p,:,:] , np.sum(np.matmul(hk[k,:,:],vp[k,p,:,:]),axis=1,keepdims=True)+zp[k,p,:,:] ).reshape((Nrfr,))                
         yp=np.matmul( wp,  np.sum( np.matmul( hk.reshape(Nt,1,Na,Nd) ,vp) ,axis=3,keepdims=True) + zp )        
         return(yp)
+      
+    (yp) r  = W^H * ( H * x +  * z )
+    dimensiones r = [ simbolo OFDM, k, N_RF, 1]
+    

@@ -36,9 +36,9 @@ parser.add_argument('--noloc',help='Do not perform location estimation, load pri
 parser.add_argument('--show', help='Open plot figures in window', action='store_true')
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
-args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
+# args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
-#args = parser.parse_args("--nompg --noloc -N 100 --noerror -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf --label test --show --print".split(' '))
+args = parser.parse_args("--nompg --noloc -N 100 --noerror -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf --label test --show --print".split(' '))
 
 #args = parser.parse_args("--nompg --noloc -N 10 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf --label test --show --print".split(' '))
 
@@ -206,6 +206,7 @@ if args.noloc:
     x_est=data["x_est"]
     y_est=data["y_est"]
     run_time=data["run_time"]    
+    loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=100,RootMethod='lm')
     
 else:        
     t_start_loc=time.time() 
@@ -516,6 +517,7 @@ if args.D:
                 color='b' if optimMthd=='brute' else 'g'
             plt.semilogx(np.percentile(location_error[nc,Kp2pos,~np.isnan(location_error[nc,Kp2pos,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
         plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
+
         Ts = loc.getTParamToLoc(x0,y0,tauE,phi0,x,y,['dAoA'],['dx0','dy0'])
         varPhiDist=np.var(np.minimum(np.mod(phi-phi0-phi_est[Kp2pos,:,:],np.pi*2),2*np.pi-np.mod(phi-phi0-phi_est[Kp2pos,:,:],np.pi*2)))
         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
@@ -526,6 +528,32 @@ if args.D:
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+'/cdflocerr_Kp256.eps')
+            
+        fig_ctr=fig_ctr+1
+        plt.figure(fig_ctr)
+        for nc in range(Ncases):
+            if nc in [1,2,6]:
+                (phi0Apriori,phi0Quant,grouping,optimMthd)=lCases[nc]
+                if phi0Apriori:
+                    caseStr="phi0 quantized sensor" if phi0Quant else "phi0 known"
+                    color='r'
+                    marker='*' if phi0Quant else 'o'
+                    line=':'
+                else:
+                    caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if phi0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
+                    line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
+                    marker='x' if phi0Quant else 's'
+                    color='b' if optimMthd=='brute' else 'g'
+                plt.plot(np.vstack((x0[0,:],x0_est[nc,Kp2pos,:])),np.vstack((y0[0,:],y0_est[nc,Kp2pos,:])),line+marker+color,label=caseStr)
+        plt.plot(x0.T,y0.T,'ok',label='locations')
+        handles, labels = plt.gca().get_legend_handles_labels()
+        # labels will be the keys of the dict, handles will be values
+        temp = {k:v for k,v in zip(labels, handles)}
+        plt.legend(temp.values(), temp.keys(), loc='best')
+        plt.xlabel('$d_{ox}$ (m)')
+        plt.ylabel('$d_{oy}$ (m)')
+        if args.print:
+            plt.savefig(outfoldername+'/errormap_kp256.eps')
     
     if np.any([x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]):
         fig_ctr=fig_ctr+1
