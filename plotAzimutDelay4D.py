@@ -59,8 +59,11 @@ manual_colors= (chanGainsdB-np.min(chanGainsdB)) / ( np.max(chanGainsdB)-np.min(
 
 for nfig in range(0,Nfigs):
     fig_ctr+=1
+    # fig = plt.figure(fig_ctr)
     fig = plt.figure(fig_ctr,figsize=(25, 4),dpi=80)#size is in in with dpi converting to pixels
-    ax = Axes3D(fig)
+    ax = fig.add_subplot(111, projection='3d')#Axes3D(fig)
+    # ax.set_box_aspect((4, 25, 4))
+    # ax.set_aspect("equal")
     ax.set_proj_type('ortho')
     ax.view_init(azim=-3,elev=25)
     X = np.linspace(0, 2*np.pi, Npointsplot)

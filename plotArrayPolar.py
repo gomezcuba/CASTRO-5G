@@ -13,7 +13,7 @@ import threeGPPMultipathGenerator as pg
 import multipathChannel as mc
 
 model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=True
+model.bLargeBandwidthOption=False
 macro,small = model.create_channel((0,0,10),(40,0,1.5))
 clusters,subpaths = small
 nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
@@ -32,8 +32,15 @@ fig_ctr+=1
 fig = plt.figure(fig_ctr)
 pathAmplitudesdBtrunc25 = np.maximum(10*np.log10(np.abs(pathAmplitudes)**2),-45)
 
-plt.polar(AoAs*np.ones((2,1)),np.vstack([-40*np.ones((1,Npath)),pathAmplitudesdBtrunc25]),':')
-plt.scatter(AoAs,pathAmplitudesdBtrunc25,color='k',marker='x')
+# plt.polar(AoAs*np.ones((2,1)),np.vstack([-40*np.ones((1,Npath)),pathAmplitudesdBtrunc25]),':')
+# plt.scatter(AoAs,pathAmplitudesdBtrunc25,color='k',marker='x')
+Nsp=AOA_sp.shape[1]
+
+for n in range(nClusters):   
+    pathAmplitudes_sp = np.sqrt( powC_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
+    pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10(np.abs(pathAmplitudes_sp)**2),-45)
+    plt.polar(AOA_sp[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)))
+    plt.scatter(AOA_sp[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color='k',marker='x')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
 
 # compute the response of the antenna array with Nant antennas
@@ -52,6 +59,8 @@ arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGain1Path)**2)
 
 plt.polar(angles_plot,arrayGain1PathdBtrunc25)
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+
+Nsp=AOA_sp.shape[1]
 
 
 #plot of receive array response of ALL paths in SEPARATE LINES, WITHOUT the effect of power
