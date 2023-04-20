@@ -58,8 +58,8 @@ def displaceMultipathChannel(de,ad,aa,deltax,deltay):
     return(newdelay,newaod,newaoa)
     
 
-Nt=32
-Nk=32
+Nt=128
+Nk=1024
 Nd=16
 Na=16
 
@@ -70,7 +70,7 @@ Nrfr=4
 Nsim=1
 
 c=3e8
-Ts=320e-9/Nt#2.5e-9
+Ts=320e-9/Nt #2.5e-9
 Nu=10
 Npath=3
 xmax=100
@@ -138,7 +138,8 @@ for isim in range(Nsim):
     ###########################################################################################
 
     p_tx = 500e-3        #(first version )transmitter power W [can be an input parameter].
-    delta_f = 15e3       #carrier spacing [Hz]
+    numerology_mu = 0
+    delta_f = 15e3 * (2**numerology_mu)      #carrier spacing [Hz]
     p_loss = 1e-12       #pathloss
 
     Temp = 290                       # Define temperature T (in Kelvin), 17ºC
@@ -146,28 +147,53 @@ for isim in range(Nsim):
     N0_noise = k_boltz * Temp        # Potencia de ruido W/Hz
 
     #Beamforming calculation
-    H_beamf_max = None
-    best_v_beamf = None
-    max_gain = -np.inf
-    beams_table = np.eye(Nd)         #table of beam vectors
-
-    for row in beams_table:
-        v_beamf = row.reshape(-1, 1) / np.linalg.norm(row)          # initializes beamforming direction vector v  
-        H_beamf = np.zeros((Nu, Nk), np.complex64)                   # define gain matrix for the k subcarrier at time nu
-        
-        for nu in range(Nu):
+    H_beamf_max = np.zeros((Nu, Nk), complex)
+    # beams_table = np.eye(Nd)         #table of beam vectors
+    # beams_table_rx = np.eye(Na)         #table of rx beam vectors
+    beams_table = np.fft.fft(np.eye(Nd))/np.sqrt(Nd)         #table of beam vectors
+    beams_table_rx = np.fft.fft(np.eye(Na))/np.sqrt(Na)         #table of rx beam vectors
+    
+    #we will introduce more advanced techniques for how the channel is estimated here
+    hkall_est = hkall
+    
+    for nu in range(Nu):        
+        best_v_beamf =  None
+        max_gain = -np.inf        
+        for row in beams_table:
+            v_beamf = row.reshape(-1, 1)                            # initializes beamforming direction vector v  
+            H_beamf = np.zeros( Nk, np.complex64)              # define gain matrix for the k subcarrier at time nu            
             for k in range(Nk):
-                hkall_2 = hkall[nu, k, :, :]
+                hkall_2 = hkall_est[nu, k, :, :]
                 hv = hkall_2 @ v_beamf
                 w = hv / np.linalg.norm(hv)                     #normalized beamforming vector
-                H_beamf[nu, k] = w.conj().T @ hv       
-
-        current_gain = np.sum(np.abs(H_beamf))                  #gain for all subcarriers combined
-        if current_gain > max_gain:
-            max_gain = current_gain
-            best_v_beamf = v_beamf
-            H_beamf_max = H_beamf
-
+                H_beamf[k] = w.conj().T @ hv       
+    
+            current_gain = np.sum(np.abs(H_beamf)**2)                  #gain for all subcarriers combined
+            if current_gain > max_gain:
+                max_gain = current_gain
+                best_v_beamf = v_beamf
+                H_beamf_max[nu,:] = H_beamf
+        #the next code shows how to do the same as above without for loops
+        V = beams_table.T
+        hv_all = hkall_est[nu,:,:,:] @ V # matrix product in numpy makes the for k automatically
+        H_beamf_all =  np.linalg.norm(hv_all,axis=1) # a*·a /|a| = |a|^2/|a| = |a|
+        gain_all = np.sum(np.abs(H_beamf_all)**2,axis=0)
+        best_ind = np.argmax(gain_all)
+        max_gain = gain_all[best_ind]
+        best_v_beamf = V[:,best_ind]
+        H_beamf_max[nu,:] = H_beamf_all[:,best_ind]
+        #the next code shows how to include also a dictionary receiver beamforming. Notice that with for loops this would be very big code
+        V = beams_table.T
+        W = beams_table_rx.T
+        H_beamf_all =  W.T.conj() @ hkall_est[nu,:,:,:] @ V # matrix product in numpy makes the for k automatically
+        gain_all = np.sum(np.abs(H_beamf_all)**2,axis=0)
+        best_ind = np.argmax(gain_all) #this index is scalar
+        best_ind_rx, best_ind_tx = np.unravel_index(best_ind ,gain_all.shape)
+        max_gain = gain_all[best_ind_rx,best_ind_tx]
+        best_v_beamf = V[:,best_ind_tx]
+        best_w_beamf = W[:,best_ind_rx]
+        H_beamf_max[nu,:] = H_beamf_all[:,best_ind_rx,best_ind_tx]
+        
     print("Max gain: " + str(max_gain))
 
     # RX 
@@ -238,5 +264,17 @@ for isim in range(Nsim):
     print("----------------------     1 means ach_rate > rate_tx in (Nu-1)    ------------------------------")
     print( np.where(ach_rate[:] > rate_tx[:], 1, 0) )
     
-
-plt.plot(np.sort(NMSEdisp[:,1],axis=0),np.linspace(0,1,Nsim))
+    plt.figure(1)
+    plt.plot(np.arange(Nu),10*np.log10(np.mean(SNR_k,axis=1)),'b')
+    plt.plot(np.arange(Nu),10*np.log10(np.mean(SNR_k_est,axis=1)),'r')
+    plt.xlabel('Trajectory point')
+    plt.ylabel('Mean SNR (dB)')
+    plt.legend(['True','Estimated'])
+        
+    plt.figure(2)
+    plt.plot(np.arange(Nu),ach_rate * 1e-6,'b')
+    plt.plot(np.arange(Nu),rate_tx * 1e-6,'r')
+    plt.plot(np.arange(Nu),(1-E_dB) * rate_tx * 1e-6,'g')
+    plt.xlabel('Trajectory point')
+    plt.ylabel('Rate (Mbps)')
+    plt.legend(['Achievable','Transmitted','Received (tx and no err.)'])
