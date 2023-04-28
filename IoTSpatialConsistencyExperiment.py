@@ -147,76 +147,78 @@ for isim in range(Nsim):
     N0_noise = k_boltz * Temp        # Potencia de ruido W/Hz
 
     #Beamforming calculation
-    H_beamf_max = np.zeros((Nu, Nk), complex)
+    H_beamf_max_est = np.zeros((Nu, Nk), complex)
+    H_beamf_max_real = np.zeros((Nu, Nk), complex)
     # beams_table = np.eye(Nd)         #table of beam vectors
     # beams_table_rx = np.eye(Na)         #table of rx beam vectors
     beams_table = np.fft.fft(np.eye(Nd))/np.sqrt(Nd)         #table of beam vectors
     beams_table_rx = np.fft.fft(np.eye(Na))/np.sqrt(Na)         #table of rx beam vectors
     
     #we will introduce more advanced techniques for how the channel is estimated here
-    hkall_est = hkall
-    
+    # canal perfectamente conocido
+    hkall_est = hkall 
+    # solo 1er canal perfectamente conocido
+    hkall_est = np.tile(hkall[0,:,:,:],[Nu,1,1,1]) 
+    # solo 1er canal conocido con error TODO: determinar que es err
+    # hkall_est = np.tile(hkall[0,:,:,:] + err ,[Nu,1,1,1]) 
+    # solo 1er canal perfectamente conocido, pero sabemos los desplazamientos
+    # hkall_est = np.zeros_like(hkall)
+    # 
+    #  for nu in range(Nu-1):    
+    #      #TODO: determinar que es displaceMultipathChannelApprox
+    #     hkall_est[nu+1,:,:,:] = displaceMultipathChannelApprox( hkall_est[nu,:,:,:] )
+     # por ultimo, combinar los dos anteriores (error en el 1ro y prediccion de los demas)
+     # hkall_est[0,:,:,:] = hkall[0,:,:,:] + err
+     
     for nu in range(Nu):        
-        best_v_beamf =  None
-        max_gain = -np.inf        
-        for row in beams_table:
-            v_beamf = row.reshape(-1, 1)                            # initializes beamforming direction vector v  
-            H_beamf = np.zeros( Nk, np.complex64)              # define gain matrix for the k subcarrier at time nu            
-            for k in range(Nk):
-                hkall_2 = hkall_est[nu, k, :, :]
-                hv = hkall_2 @ v_beamf
-                w = hv / np.linalg.norm(hv)                     #normalized beamforming vector
-                H_beamf[k] = w.conj().T @ hv       
-    
-            current_gain = np.sum(np.abs(H_beamf)**2)                  #gain for all subcarriers combined
-            if current_gain > max_gain:
-                max_gain = current_gain
-                best_v_beamf = v_beamf
-                H_beamf_max[nu,:] = H_beamf
+        # best_v_beamf =  None
+        # max_gain = -np.inf        
+        # for row in beams_table:
+        #     v_beamf = row.reshape(-1, 1)                            # initializes beamforming direction vector v  
+        #     H_beamf = np.zeros( Nk, np.complex64)              # define gain matrix for the k subcarrier at time nu            
+        #     for k in range(Nk):
+        #         hkall_2 = hkall_est[nu, k, :, :]
+        #         hv = hkall_2 @ v_beamf
+        #         w = hv / np.linalg.norm(hv)                     #normalized beamforming vector
+        #         H_beamf[k] = w.conj().T @ hv       
+            
+        #     current_gain = np.sum(np.abs(H_beamf)**2)                  #gain for all subcarriers combined
+        #     if current_gain > max_gain:
+        #         max_gain = current_gain
+        #         best_v_beamf = v_beamf
+        #         H_beamf_max[nu,:] = H_beamf
         #the next code shows how to do the same as above without for loops
         V = beams_table.T
         hv_all = hkall_est[nu,:,:,:] @ V # matrix product in numpy makes the for k automatically
-        H_beamf_all =  np.linalg.norm(hv_all,axis=1) # a*·a /|a| = |a|^2/|a| = |a|
-        gain_all = np.sum(np.abs(H_beamf_all)**2,axis=0)
+        H_beamf_all =  np.linalg.norm(hv_all,axis=1) # MRC a*·a /|a| = |a|^2/|a| = |a|
+        gain_all = np.mean(np.abs(H_beamf_all)**2,axis=0)
         best_ind = np.argmax(gain_all)
         max_gain = gain_all[best_ind]
         best_v_beamf = V[:,best_ind]
-        H_beamf_max[nu,:] = H_beamf_all[:,best_ind]
+        H_beamf_max_est[nu,:] = H_beamf_all[:,best_ind]
         #the next code shows how to include also a dictionary receiver beamforming. Notice that with for loops this would be very big code
         V = beams_table.T
         W = beams_table_rx.T
         H_beamf_all =  W.T.conj() @ hkall_est[nu,:,:,:] @ V # matrix product in numpy makes the for k automatically
-        gain_all = np.sum(np.abs(H_beamf_all)**2,axis=0)
+        gain_all = np.mean(np.abs(H_beamf_all)**2,axis=0)
         best_ind = np.argmax(gain_all) #this index is scalar
         best_ind_rx, best_ind_tx = np.unravel_index(best_ind ,gain_all.shape)
         max_gain = gain_all[best_ind_rx,best_ind_tx]
         best_v_beamf = V[:,best_ind_tx]
         best_w_beamf = W[:,best_ind_rx]
-        H_beamf_max[nu,:] = H_beamf_all[:,best_ind_rx,best_ind_tx]
+        H_beamf_max_est[nu,:] = H_beamf_all[:,best_ind_rx,best_ind_tx]
+        H_beamf_max_real[nu,:] = W[:,best_ind_rx].T.conj() @ hkall[nu,:,:,:] @ V[:,best_ind_tx]
         
     print("Max gain: " + str(max_gain))
 
     # RX 
-    #calculation of the SNR for each subcarrier k
-    SNR_k = np.zeros((Nu, Nk), dtype=np.float32)    #subcarrier SNR array
-    for nu in range(Nu):
-        for k in range(Nk):  
-            SNR_k[nu, k] = ( p_tx * p_loss * (np.abs(H_beamf_max[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )   
-
-    SNR_k_dB = 10*np.log10(SNR_k)
-
-    #Achievable Rate Calculation
-    ach_rate = np.sum(np.log2(1 + SNR_k), axis = 1) * delta_f 
-    spect_eff_k = ach_rate / (Nk * delta_f) 
     
     #TX 
-    hkall_est = np.zeros((Nu,Nk,Na,Nd),dtype=np.complex64)     #estimated channel by the tx
-    SNR_k_est = np.zeros((Nu,Nk))                                  #SNR estimated by tx
+    SNR_k_est = np.zeros((Nu,Nk))                                  #SNR estimated by txy
     rate_tx = np.zeros((Nu),dtype = np.float32)                    #tx rate 
-
-    #estimated channel matrix and estimated SNR
-    hkall_est[:,:,:,:] = hkall[0,:,:,:]    #(first version) the estimated channel matrix in the TX will be that of the RX at instant 0
-    SNR_k_est[:,:] = SNR_k[0,:]                    #(first version) the estimated SNR in the TX will be that of the RX at instant 0
+    for nu in range(Nu):#hacer todo en un solo for Nu
+        for k in range(Nk):  #aprovechar numpyarray-broadcast para el for k
+            SNR_k_est[nu, k] = ( p_tx * p_loss * (np.abs(H_beamf_max_est[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )
 
     #FEEDBACK (RX) + LINK ADAPTATION (TX) 
     mu = 0.2                         #(first version) coefficient of gradient descent. Is it possible to estimate it?
@@ -228,6 +230,18 @@ for isim in range(Nsim):
     
     #first loop iteration with the initial values for calculating the tx rate
     rate_tx[0] = np.sum(np.log2(1 + SNR_k_est[0,:] * marg_lin[0]), axis = 0) * delta_f  #se usa axis = 0 porque SNR_k_est[0,:] elimina la primera dimensión
+    
+    #calculation of the SNR for each subcarrier k
+    SNR_k = np.zeros((Nu, Nk), dtype=np.float32)    #subcarrier SNR array
+    for nu in range(Nu):
+        for k in range(Nk):  
+            SNR_k[nu, k] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )   
+
+    SNR_k_dB = 10*np.log10(SNR_k)
+
+    #Achievable Rate Calculation
+    ach_rate = np.sum(np.log2(1 + SNR_k), axis = 1) * delta_f 
+    spect_eff_k = ach_rate / (Nk * delta_f) 
     
     for nu in range(Nu-1): 
 
