@@ -14,7 +14,7 @@ plt.close('all')
 fig_ctr=0
 
 model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=False
+model.bLargeBandwidthOption=True
 macro,small = model.create_channel((0,00,1),(40,0,1.5))
 clusters,subpaths = small
 nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters

@@ -699,7 +699,7 @@ class ThreeGPPMultipathChannelModel:
         #Ray powers
         czsd = (3/8)*10**(zsd_mu)
         powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AOA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AOD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZOA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZOD))/czsd)
-        powC_sp = powC.reshape(-1,1)*(powPrima/np.sum(powPrima))
+        powC_sp = powC.reshape(-1,1)*(powPrima/np.sum(powPrima,axis=1).reshape(-1,1))
         
         #The number of rays per cluster
         k = 0.5
