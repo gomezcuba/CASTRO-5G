@@ -72,7 +72,7 @@ Nsim=3         #se cambió el numero de simulaciones
 c=3e8
 Ts=320e-9/Nt #2.5e-9
 Nu=10
-Npath=3
+Npath=20
 xmax=100
 ymax=100
 dmax=10
@@ -139,6 +139,7 @@ for isim in range(Nsim):
     aoa=np.zeros((Nu,Npath))
     aoa[0,:]=aoa1
     hall=np.zeros((Nu,Nt,Na,Nd),dtype=np.complex64)
+    hall_est=np.zeros((Nu,Nt,Na,Nd),dtype=np.complex64)
 #    hall[0,:,:,:]=ht        
     for nu in range(Nu-1):    
         tdelay[nu+1,:],aod[nu+1,:],aoa[nu+1,:]=displaceMultipathChannel(tdelay[nu,:],aod[nu,:],aoa[nu,:],xstep[nu],ystep[nu])
@@ -146,7 +147,10 @@ for isim in range(Nsim):
     clock_offset=np.minimum(np.min((tdelay-d1/c)/Ts),0)
     for nu in range(Nu):    #note ht was generated without clock offset and must be modified
         hall[nu,:,:,:]=chgen.computeDEC((tdelay[nu,:]-d1/c)/Ts-clock_offset,aod[nu,:],aoa[nu,:],coefs)
+        NpathFeedback=10
+        hall_est[nu,:,:,:]=chgen.computeDEC((tdelay[nu,0:NpathFeedback]-d1/c)/Ts-clock_offset,aod[nu,0:NpathFeedback],aoa[nu,0:NpathFeedback],coefs[0:NpathFeedback])
         
+    print("NMSE: %s"%(  np.sum(np.abs(hall-hall_est)**2,axis=(1,2,3))/np.sum(np.abs(hall)**2,axis=(1,2,3)) ))
     hkall=np.fft.fft(hall,Nk,axis=1)        
     
     ###########################################################################################
