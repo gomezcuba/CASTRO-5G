@@ -67,7 +67,7 @@ Nxp=4
 Nrft=1
 Nrfr=4
 
-Nsim=1
+Nsim=3         #se cambió el numero de simulaciones
 
 c=3e8
 Ts=320e-9/Nt #2.5e-9
@@ -93,6 +93,20 @@ omprunner = oc.OMPCachedRunner()
 
 if bGenRand:
     (w,v)=pilgen.generatePilots((Nk,Nxp,Nrfr,Na,Nd,Nrft),"IDUV")
+
+
+################## Matrices globales para los plots #########################
+SNR_k_cont = np.empty((0,))
+SNR_k_est_cont = np.empty((0,))
+ach_rate_cont = np.empty((0,))
+rate_tx_cont = np.empty((0,))
+success_cont = np.empty((0,))
+
+#####################      Margen de adaptación     ##########################
+marg_ini = 1                      #initial adaptation margin    
+marg_lin = np.zeros((Nu))
+##############################################################################
+
 
 for isim in range(Nsim):
     if bGenRand:
@@ -136,6 +150,7 @@ for isim in range(Nsim):
     hkall=np.fft.fft(hall,Nk,axis=1)        
     
     ###########################################################################################
+    marg_lin[0] = marg_ini   #se inicializa el margen de adaptación en cada simulación
 
     p_tx = 500e-3        #(first version )transmitter power W [can be an input parameter].
     numerology_mu = 0
@@ -149,8 +164,6 @@ for isim in range(Nsim):
     #Beamforming calculation
     H_beamf_max_est = np.zeros((Nu, Nk), complex)
     H_beamf_max_real = np.zeros((Nu, Nk), complex)
-    # beams_table = np.eye(Nd)         #table of beam vectors
-    # beams_table_rx = np.eye(Na)         #table of rx beam vectors
     beams_table = np.fft.fft(np.eye(Nd))/np.sqrt(Nd)         #table of beam vectors
     beams_table_rx = np.fft.fft(np.eye(Na))/np.sqrt(Na)         #table of rx beam vectors
     
@@ -158,7 +171,7 @@ for isim in range(Nsim):
     # canal perfectamente conocido
     hkall_est = hkall 
     # solo 1er canal perfectamente conocido
-    hkall_est = np.tile(hkall[0,:,:,:],[Nu,1,1,1]) 
+    hkall_est = np.tile(hkall[0,:,:,:],[Nu,1,1,1])                          #DETERMINAR EL CANAL ESTIMADO EN TX
     # solo 1er canal conocido con error TODO: determinar que es err
     # hkall_est = np.tile(hkall[0,:,:,:] + err ,[Nu,1,1,1]) 
     # solo 1er canal perfectamente conocido, pero sabemos los desplazamientos
@@ -171,22 +184,7 @@ for isim in range(Nsim):
      # hkall_est[0,:,:,:] = hkall[0,:,:,:] + err
      
     for nu in range(Nu):        
-        # best_v_beamf =  None
-        # max_gain = -np.inf        
-        # for row in beams_table:
-        #     v_beamf = row.reshape(-1, 1)                            # initializes beamforming direction vector v  
-        #     H_beamf = np.zeros( Nk, np.complex64)              # define gain matrix for the k subcarrier at time nu            
-        #     for k in range(Nk):
-        #         hkall_2 = hkall_est[nu, k, :, :]
-        #         hv = hkall_2 @ v_beamf
-        #         w = hv / np.linalg.norm(hv)                     #normalized beamforming vector
-        #         H_beamf[k] = w.conj().T @ hv       
-            
-        #     current_gain = np.sum(np.abs(H_beamf)**2)                  #gain for all subcarriers combined
-        #     if current_gain > max_gain:
-        #         max_gain = current_gain
-        #         best_v_beamf = v_beamf
-        #         H_beamf_max[nu,:] = H_beamf
+
         #the next code shows how to do the same as above without for loops
         V = beams_table.T
         hv_all = hkall_est[nu,:,:,:] @ V # matrix product in numpy makes the for k automatically
@@ -196,6 +194,7 @@ for isim in range(Nsim):
         max_gain = gain_all[best_ind]
         best_v_beamf = V[:,best_ind]
         H_beamf_max_est[nu,:] = H_beamf_all[:,best_ind]
+
         #the next code shows how to include also a dictionary receiver beamforming. Notice that with for loops this would be very big code
         V = beams_table.T
         W = beams_table_rx.T
@@ -210,59 +209,60 @@ for isim in range(Nsim):
         H_beamf_max_real[nu,:] = W[:,best_ind_rx].T.conj() @ hkall[nu,:,:,:] @ V[:,best_ind_tx]
         
     print("Max gain: " + str(max_gain))
-
-    # RX 
     
-    #TX 
-    SNR_k_est = np.zeros((Nu,Nk))                                  #SNR estimated by txy
-    rate_tx = np.zeros((Nu),dtype = np.float32)                    #tx rate 
-    for nu in range(Nu):#hacer todo en un solo for Nu
-        for k in range(Nk):  #aprovechar numpyarray-broadcast para el for k
-            SNR_k_est[nu, k] = ( p_tx * p_loss * (np.abs(H_beamf_max_est[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )
+    #parameter declaration
+    SNR_k = np.zeros((Nu, Nk), dtype=np.float32)    #subcarrier SNR array
+    SNR_k_est = np.zeros((Nu,Nk))                   #SNR estimated by tx
+    rate_tx = np.zeros((Nu),dtype = np.float32)     #tx rate 
+    ach_rate = np.zeros((Nu),dtype = np.float32)    #achievable rate
 
-    #FEEDBACK (RX) + LINK ADAPTATION (TX) 
-    mu = 0.2                         #(first version) coefficient of gradient descent. Is it possible to estimate it?
-    marg_ini = 1                      #initial adaptation margin
+    #LINK ADAPTATION parameters
+    mu = 0.2                          #(first version) coefficient of gradient descent. Is it possible to estimate it?
+    #marg_ini = 1                      #initial adaptation margin
     epsy = 0.05                       #BLER
     E_dB = np.zeros((Nu))       
-    marg_lin = np.zeros((Nu))
-    marg_lin[0] = marg_ini
-    
-    #first loop iteration with the initial values for calculating the tx rate
-    rate_tx[0] = np.sum(np.log2(1 + SNR_k_est[0,:] * marg_lin[0]), axis = 0) * delta_f  #se usa axis = 0 porque SNR_k_est[0,:] elimina la primera dimensión
-    
-    #calculation of the SNR for each subcarrier k
-    SNR_k = np.zeros((Nu, Nk), dtype=np.float32)    #subcarrier SNR array
-    for nu in range(Nu):
-        for k in range(Nk):  
-            SNR_k[nu, k] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[nu, k]) **2) ) / ( N0_noise * Nk * delta_f )   
+    #marg_lin = np.zeros((Nu))
+    #marg_lin[0] = marg_ini
 
-    SNR_k_dB = 10*np.log10(SNR_k)
-
-    #Achievable Rate Calculation
-    ach_rate = np.sum(np.log2(1 + SNR_k), axis = 1) * delta_f 
-    spect_eff_k = ach_rate / (Nk * delta_f) 
+    #calculation of parameters at instant 0
+    #TX
+    SNR_k_est[0, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_est[0, :]) **2) ) / ( N0_noise * Nk * delta_f ) #calculation of the estimated SNR
+    rate_tx[0] = np.sum(np.log2(1 + SNR_k_est[0,:] * marg_lin[0]), axis = 0) * delta_f                      ##calculation of the TX rate
     
-    for nu in range(Nu-1): 
-
+    #RX
+    SNR_k[0, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[0, :]) **2) ) / ( N0_noise * Nk * delta_f )  #calculation of the SNR
+    ach_rate[0] = np.sum(np.log2(1 + SNR_k[0]), axis = 0) * delta_f                                       #calculation of the achievable rate
+    
+    #loop for parameter computation in the remaining instants and link adaptation algorithm
+    for nu in range(Nu-1):                                   
+         
         #compare previous TX rate with previous achievable rate RX to generate ACK 
         #If ach_rate > rate_tx rate is considered a success (0), if it fails (1)
         E_dB[nu] = int(ach_rate[nu] <= rate_tx[nu])
 
-        #update of the current margin using the previous one (calculated in dB and passed to u.n.) 
-        marg_lin[nu+1] = 10 ** (( 10*np.log10(marg_lin[nu]) - mu * (E_dB[nu] - epsy)) /10 )
-    
-        #calculate TX rate for the current instant 
-        rate_tx[nu+1] = np.sum(np.log2(1 + SNR_k_est[nu+1,:] * marg_lin[nu+1]), axis = 0) * delta_f
-    
+        #update of the current margin using the previous one (calculated in dB and passed to u.n.)
+        marg_lin[nu + 1] = 10 ** (( 10*np.log10(marg_lin[nu]) - mu * (E_dB[nu] - epsy)) /10 ) 
 
-    #print("------------------------------------------H_beamf-------------------------------------------------------")
-    #print(H_beamf)
-    #print(H_beamf[0,0])
-    #print("---------------------------------------np.abs(H_beamf[0, :]) **2)--------------------------------------")
-    #print((np.abs(H_beamf[:, :]) **2))
-    #print("------------------------------------------p_tx/Nk----------------------------------------------------")
-    #print(p_tx/Nk)
+        #TX
+        SNR_k_est[nu+1, :] = (p_tx * p_loss * (np.abs(H_beamf_max_est[nu + 1, :]) ** 2)) / (N0_noise * Nk * delta_f) #calculation of the estimated SNR
+        rate_tx[nu+1] = np.sum(np.log2(1 + SNR_k_est[nu+1,:] * marg_lin[nu+1]), axis = 0) * delta_f         #calculate TX rate for the current instant 
+        
+        #RX
+        SNR_k[nu+1, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[nu + 1, :]) **2) ) / ( N0_noise * Nk * delta_f ) #calculation of the SNR
+        ach_rate[nu + 1] = np.sum(np.log2(1 + SNR_k[nu+1]), axis = 0) * delta_f                                      #Achievable Rate Calculation       
+        spect_eff_k = ach_rate[[nu + 1]] / (Nk * delta_f)
+    SNR_k_dB = 10*np.log10(SNR_k)
+
+    marg_ini = marg_lin[Nu-1] #se actualiza el margen inicial para la siguiente simulación
+
+    #almacenar resultados para la representación
+    SNR_k_cont = np.concatenate((SNR_k_cont, 10*np.log10(np.mean(SNR_k,axis=1))))
+    SNR_k_est_cont = np.concatenate((SNR_k_est_cont, 10*np.log10(np.mean(SNR_k_est,axis=1))))
+    ach_rate_cont = np.concatenate((ach_rate_cont, ach_rate * 1e-6))
+    rate_tx_cont = np.concatenate((rate_tx_cont, rate_tx * 1e-6))
+    success_cont = np.concatenate((success_cont, (1-E_dB) * rate_tx * 1e-6))
+
+
     #print("-------------------------------------------SNR_k-----------------------------------------------------")
     #print(SNR_k)
     print("-------------------------------------------SNR_k_dB-----------------------------------------------------")
@@ -278,13 +278,14 @@ for isim in range(Nsim):
     print("----------------------     1 means ach_rate > rate_tx in (Nu-1)    ------------------------------")
     print( np.where(ach_rate[:] > rate_tx[:], 1, 0) )
     
+    '''
     plt.figure(1)
     plt.plot(np.arange(Nu),10*np.log10(np.mean(SNR_k,axis=1)),'b')
     plt.plot(np.arange(Nu),10*np.log10(np.mean(SNR_k_est,axis=1)),'r')
     plt.xlabel('Trajectory point')
     plt.ylabel('Mean SNR (dB)')
     plt.legend(['True','Estimated'])
-        
+  
     plt.figure(2)
     plt.plot(np.arange(Nu),ach_rate * 1e-6,'b')
     plt.plot(np.arange(Nu),rate_tx * 1e-6,'r')
@@ -292,3 +293,21 @@ for isim in range(Nsim):
     plt.xlabel('Trajectory point')
     plt.ylabel('Rate (Mbps)')
     plt.legend(['Achievable','Transmitted','Received (tx and no err.)'])
+    plt.show()
+    '''
+    
+plt.figure(1)
+plt.plot(np.arange(Nu* Nsim),SNR_k_cont,'b')
+plt.plot(np.arange(Nu* Nsim),SNR_k_est_cont,'r')
+plt.xlabel('Trajectory point')
+plt.ylabel('Mean SNR (dB)')
+plt.legend(['True','Estimated'])
+
+plt.figure(2)
+plt.plot(np.arange(Nu* Nsim),ach_rate_cont,'b')
+plt.plot(np.arange(Nu* Nsim),rate_tx_cont,'r')
+plt.plot(np.arange(Nu* Nsim),success_cont,'g')
+plt.xlabel('Trajectory point')
+plt.ylabel('Rate (Mbps)')
+plt.legend(['Achievable','Transmitted','Received (tx and no err.)'])
+plt.show()
