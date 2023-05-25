@@ -18,11 +18,11 @@ plt.close('all')
 Nchan=10
 Nd=4
 Na=4
-Nt=16
-Nxp=4
+Nt=128
+Nxp=2
 Nrft=1
-Nrfr=4
-K=16
+Nrfr=2
+K=128
 #Ts=2.5
 Ts=320/Nt
 Ds=Ts*Nt
@@ -53,7 +53,7 @@ bar = Bar("CS sims", max=Nchan)
 bar.check_tty = False
 for ichan in range(0,Nchan):
     
-    macro,small = chgen.create_channel((0,0,10),(40,0,1.5))
+    plinfo,macro,small = chgen.create_channel((0,0,10),(40,0,1.5))
     clusters,subpaths = small
     tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
     mpch = ch.MultipathChannel((0,0,10),(40,0,1.5),[])
@@ -83,7 +83,7 @@ for ichan in range(0,Nchan):
         
         yp=pilgen.applyPilotChannel(hk,wp,vp,zp*np.sqrt(sigma2))
         t0 = time.time()
-        hest3,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,1.0)
+        hest3,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,1.0, accelDel = True)
         MSE[-1].append([])
         MSE[-1][-1].append(np.mean(np.abs(hk-hest3)**2)/np.mean(np.abs(hk)**2))
         totTimes[-1].append([])
@@ -92,13 +92,13 @@ for ichan in range(0,Nchan):
         Npaths[-1][-1].append(len(paths.delays))
 
         t0 = time.time()
-        hest4,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,2.0,2.0,2.0,1.0)
+        hest4,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,4.0,4.0,4.0,1.0, accelDel = True)
         MSE[-1][-1].append(np.mean(np.abs(hk-hest4)**2)/np.mean(np.abs(hk)**2))
         totTimes[-1][-1].append(time.time()-t0)
         Npaths[-1][-1].append(len(paths.delays))
 
         t0 = time.time()
-        hest5,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0)
+        hest5,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0, accelDel = True)
         MSE[-1][-1].append(np.mean(np.abs(hk-hest5)**2)/np.mean(np.abs(hk)**2))
         totTimes[-1][-1].append(time.time()-t0)
         Npaths[-1][-1].append(len(paths.delays))

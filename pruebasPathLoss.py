@@ -11,10 +11,10 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import pandas as pd
 
-model = pg.ThreeGPPMultipathChannelModel(sce="RMa")
-model1 = pg.ThreeGPPMultipathChannelModel(sce="UMi")
-model2 = pg.ThreeGPPMultipathChannelModel(sce="UMa")
-model3 = pg.ThreeGPPMultipathChannelModel(sce="InH-Office-Mixed")
+model = pg.ThreeGPPMultipathChannelModel(scenario="RMa")
+model1 = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
+model2 = pg.ThreeGPPMultipathChannelModel(scenario="UMa")
+model3 = pg.ThreeGPPMultipathChannelModel(scenario="InH-Office-Mixed")
 #model.bLargeBandwidthOption=True
 
 txPos = (0,0,20)

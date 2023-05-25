@@ -120,7 +120,7 @@ if GEN_CHANS:
     coefs=np.zeros((Nmaxpaths,Nsims),dtype=complex)
     for nsim in range(Nsims):
         #chamar ao xenerador de canle do 3GPP
-        macro,small = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
+        plinfo,macro,small = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
         clusters,subpaths = small
         Npath = clusters[0]*20
         tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths

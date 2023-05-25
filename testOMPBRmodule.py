@@ -13,19 +13,19 @@ from progress.bar import Bar
 
 plt.close('all')
 
-Nchan=100
+Nchan=5
 Nd=4
 Na=4
-Nt=16
-Nxp=4
+Nt=64
+Nxp=3
 Nrft=1
 Nrfr=2
-K=16
+K=64
 Ts=2.5
 Ds=Ts*Nt
-#SNRs=10**(np.arange(-1,2.01,1.0))
+SNRs=10**(np.arange(-1,2.01,1.0))
 #SNRs=10**(np.arange(1,1.01,1.0))
-SNRs=np.array([100])
+# SNRs=np.array([100])
 MSE=[]
 Npaths=[]
 totTimes=[]
@@ -71,7 +71,7 @@ def pseudoFISTA(v,xi,Niter,horig):
     old_et=et
     beta=.5
     for n in range(Niter):
-        c=et+beta*r+(et-old_et)*(n-2.0)/(n+1.0)
+        c=et+beta*r+(et-old16_et)*(n-2.0)/(n+1.0)
         old_et=et
         et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-xi,0)
         r=v-et
@@ -165,14 +165,14 @@ for ichan in range(0,Nchan):
 #        Npaths[-1][-1].append(len(paths.delays))
 
         t0 = time.time()
-        hest5,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0)
+        hest5,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0)
         MSE[-1][-1].append(np.mean(np.abs(hk-hest5)**2)/np.mean(np.abs(hk)**2))
         totTimes[-1][-1].append(time.time()-t0)
         Npaths[-1][-1].append(len(paths.delays))
         
         
         t0 = time.time()
-        hest6,paths2=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0, accelDel = True)
+        hest6,paths2=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0, accelDel = True)
         MSE[-1][-1].append(np.mean(np.abs(hk-hest6)**2)/np.mean(np.abs(hk)**2))
         totTimes[-1][-1].append(time.time()-t0)
         Npaths[-1][-1].append(len(paths.delays))

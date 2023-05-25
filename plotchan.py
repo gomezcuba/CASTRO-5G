@@ -11,9 +11,8 @@ from IPython.display import HTML, Image
 # equivalent to rcParams['animation.html'] = 'html5'
 rc('animation', html='html5')
 
-model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=True
-macro,small = model.create_channel((0,0,10),(40,0,1.5))
+model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
+plinfo,macro,small = model.create_channel((0,0,10),(40,0,1.5))
 clusters,subpaths = small
 nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
 tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths

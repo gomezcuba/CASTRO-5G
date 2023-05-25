@@ -25,14 +25,17 @@ pilgen = pil.MIMOPilotChannel("UPhase")
 chgen = mp3g.ThreeGPPMultipathChannelModel()
 chgen.bLargeBandwidthOption=True
 
-mpch = chgen.create_channel((0,0,10),(30,0,1.5))
-Npath = len(mpch.channelPaths)
+plinfo,macro,small = chgen.create_channel((0,0,10),(30,0,1.5))
+clusters,subpaths = small
+nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
+tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
+Npath = powC_sp.size
 
 paths=pd.DataFrame({
-        'coef': [x.complexAmplitude[0] for x in mpch.channelPaths],
-        'AoD': [x.azimutOfDeparture[0] for x in mpch.channelPaths],
-        'AoA': [x.azimutOfArrival[0] for x in mpch.channelPaths],
-        'delay': [x.excessDelay[0] for x in mpch.channelPaths],
+        'coef': np.sqrt(powC_sp.reshape(-1))*np.exp(-2j*np.pi*np.random.rand((Npath))),
+        'AoD': AOD_sp.reshape(-1),
+        'AoA': AOA_sp.reshape(-1),
+        'delay': tau_sp.reshape(-1),
         })
 
 p2=paths[0:2]
