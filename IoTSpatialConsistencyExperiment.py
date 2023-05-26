@@ -67,7 +67,7 @@ Nxp=4
 Nrft=1
 Nrfr=4
 
-Nsim=3         
+Nsim=10         
 
 c=3e8
 Ts=320e-9/Nt #2.5e-9
@@ -77,6 +77,8 @@ xmax=100
 ymax=100
 dmax=10
 NpathFeedback=10
+
+method = 'NpathDisplaced'
 
 NMSE=np.zeros((Nsim,Nu))
 NMSEdisp=np.zeros((Nsim,Nu))
@@ -95,12 +97,10 @@ if bGenRand:
     (w,v)=pilgen.generatePilots((Nk,Nxp,Nrfr,Na,Nd,Nrft),"IDUV")
 
 
-################## Matrices globales para los plots #########################
-SNR_k_cont = np.empty((0,))
-SNR_k_est_cont = np.empty((0,))
-
 ################## Main parameters #########################
 E_dB = np.zeros((Nsim, Nu))
+SNR_k = np.zeros((Nsim, Nu, Nk), dtype=np.float32)    #subcarrier SNR array
+SNR_k_est = np.zeros((Nsim, Nu,Nk), dtype=np.float32) #SNR estimated by tx
 rate_tx = np.zeros((Nsim, Nu),dtype = np.float32)     #tx rate 
 ach_rate = np.zeros((Nsim, Nu),dtype = np.float32)    #achievable rate
 
@@ -108,6 +108,23 @@ marg_ini = 1                      #initial adaptation margin
 marg_lin = np.zeros((Nsim, Nu))
 ##############################################################################
 
+#otro for por caso donde en cada iteración se cambia el método o el NpathFeedback
+#al final for se guarda en variables para la representación de cada caso
+#se hace una sola figura con los plots de cda variable
+
+#un primer bucle for para elegir el método ------> 3 iteraciones
+#un segundo for Nmeth in NpathFeedback: -------> 1 iteracion en los primeros dos casos, 3 iteraiones en el 3er caso
+
+
+#--- (NpathFeedback tiene un solo elemento) 
+#caso 1: CSIT perfecta
+#caso 2: perfect1User
+
+#---(NpathFeedback tiene tres elementos (20, 10, 5))
+#--- hay que añadir la dimensión Nmethod para estas gráficas
+#caso 3: NpathDisplaced ,  NpathFeedback = 20  
+#caso 4: NpathDisplaced ,  NpathFeedback = 10
+#caso 5: NpathDisplaced ,  NpathFeedback = 5
 
 for isim in range(Nsim):
     if bGenRand:
@@ -155,28 +172,14 @@ for isim in range(Nsim):
     hkall=np.fft.fft(hall,Nk,axis=1) 
     hkall_est=np.fft.fft(hall_est,Nk,axis=1)    
 
-    #we will introduce more advanced techniques for how the channel is estimated here
-    # canal perfectamente conocido
-    hkall_est = hkall 
-    # solo 1er canal perfectamente conocido
-    hkall_est = np.tile(hkall[0,:,:,:],[Nu,1,1,1])                          
-    # solo 1er canal conocido con error TODO: determinar que es err
-    hkall_est = np.tile(hkall_est[0,:,:,:],[Nu,1,1,1]) 
-    # hkall_est = np.tile(hkall[0,:,:,:] + err ,[Nu,1,1,1]) 
-    # solo 1er canal perfectamente conocido, pero sabemos los desplazamientos
-    # hkall_est = np.zeros_like(hkall)
-    # 
-    #  for nu in range(Nu-1):    
-    #      #TODO: determinar que es displaceMultipathChannelApprox
-    
-    '''
-    for nu in range(Nu):
-        hkall_est[nu+1,:,:,:] = displaceMultipathChannelApprox( hkall_est[nu,:,:,:] )
-    '''
-        
-    #     hkall_est[nu+1,:,:,:] = displaceMultipathChannelApprox( hkall_est[nu,:,:,:] )
-     # por ultimo, combinar los dos anteriores (error en el 1ro y prediccion de los demas)
-     # hkall_est[0,:,:,:] = hkall[0,:,:,:] + err           
+    if method =='perfectCSIT':
+        hkall_est=hkall
+    elif method=='perfect1User':
+        hkall_est = np.tile(hkall[0,:,:,:] ,[Nu,1,1,1])
+    elif method=='NpathDisplaced':
+        hkall_est=np.fft.fft(hall_est,Nk,axis=1)
+    else:
+        print("Method not supported")   
     
     ###########################################################################################
     marg_lin[isim, 0] = marg_ini   #the adaptation margin is initialized with that of the previous simulation
@@ -210,9 +213,6 @@ for isim in range(Nsim):
         H_beamf_max_est[nu,:] = H_beamf_all[:,best_ind_rx,best_ind_tx]
         H_beamf_max_real[nu,:] = W[:,best_ind_rx].T.conj() @ hkall[nu,:,:,:] @ V[:,best_ind_tx]
            
-    #parameter declaration
-    SNR_k = np.zeros((Nu, Nk), dtype=np.float32)    #subcarrier SNR array
-    SNR_k_est = np.zeros((Nu,Nk), dtype=np.float32) #SNR estimated by tx
 
     #LINK ADAPTATION parameters
     mu = 0.2                          #(first version) coefficient of gradient descent. Is it possible to estimate it?
@@ -220,12 +220,12 @@ for isim in range(Nsim):
 
     #calculation of parameters at instant 0
     #TX
-    SNR_k_est[0, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_est[0, :]) **2) ) / ( N0_noise * Nk * delta_f ) #calculation of the estimated SNR
-    rate_tx[isim, 0] = np.sum(np.log2(1 + SNR_k_est[0,:] * marg_lin[isim, 0]), axis = 0) * delta_f                      ##calculation of the TX rate
+    SNR_k_est[isim, 0, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_est[0, :]) **2) ) / ( N0_noise * Nk * delta_f ) #calculation of the estimated SNR
+    rate_tx[isim, 0] = np.sum(np.log2(1 + SNR_k_est[isim,0,:] * marg_lin[isim, 0]), axis = 0) * delta_f                      ##calculation of the TX rate
     
     #RX
-    SNR_k[0, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[0, :]) **2) ) / ( N0_noise * Nk * delta_f )  #calculation of the SNR
-    ach_rate[isim, 0] = np.sum(np.log2(1 + SNR_k[0]), axis = 0) * delta_f                                       #calculation of the achievable rate
+    SNR_k[isim, 0, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[0, :]) **2) ) / ( N0_noise * Nk * delta_f )  #calculation of the SNR
+    ach_rate[isim, 0] = np.sum(np.log2(1 + SNR_k[isim,0,:]), axis = 0) * delta_f                                       #calculation of the achievable rate
     
     #loop for parameter computation in the remaining instants and link adaptation algorithm
     for nu in range(Nu-1):                                   
@@ -238,44 +238,25 @@ for isim in range(Nsim):
         marg_lin[isim, nu + 1] = 10 ** (( 10*np.log10(marg_lin[isim, nu]) - mu * (E_dB[isim, nu] - epsy)) /10 ) 
 
         #TX
-        SNR_k_est[nu+1, :] = (p_tx * p_loss * (np.abs(H_beamf_max_est[nu + 1, :]) ** 2)) / (N0_noise * Nk * delta_f) #calculation of the estimated SNR
-        rate_tx[isim, nu+1] = np.sum(np.log2(1 + SNR_k_est[nu+1,:] * marg_lin[isim, nu+1]), axis = 0) * delta_f         #calculate TX rate for the current instant 
+        SNR_k_est[isim, nu+1, :] = (p_tx * p_loss * (np.abs(H_beamf_max_est[nu + 1, :]) ** 2)) / (N0_noise * Nk * delta_f) #calculation of the estimated SNR
+        rate_tx[isim, nu+1] = np.sum(np.log2(1 + SNR_k_est[isim, nu+1,:] * marg_lin[isim, nu+1]), axis = 0) * delta_f         #calculate TX rate for the current instant 
         
         #RX
-        SNR_k[nu+1, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[nu + 1, :]) **2) ) / ( N0_noise * Nk * delta_f ) #calculation of the SNR
-        ach_rate[isim, nu + 1] = np.sum(np.log2(1 + SNR_k[nu+1]), axis = 0) * delta_f                                      #Achievable Rate Calculation       
+        SNR_k[isim, nu+1, :] = ( p_tx * p_loss * (np.abs(H_beamf_max_real[nu + 1, :]) **2) ) / ( N0_noise * Nk * delta_f ) #calculation of the SNR
+        ach_rate[isim, nu + 1] = np.sum(np.log2(1 + SNR_k[isim, nu+1, :]), axis = 0) * delta_f                                      #Achievable Rate Calculation       
         spect_eff_k = ach_rate[isim, nu + 1] / (Nk * delta_f)
     E_dB[isim, Nu-1] = int(ach_rate[isim, Nu-1] <= rate_tx[isim, Nu-1])
     
     marg_ini = marg_lin[isim, Nu-1] #the initial margin is updated for the following simulation
     
-    SNR_k_dB = 10*np.log10(SNR_k)
+    SNR_k_dB = 10*np.log10(SNR_k[isim])
 
-
-    #store results for representation
-    SNR_k_cont = np.concatenate((SNR_k_cont, 10*np.log10(np.mean(SNR_k,axis=1))))
-    SNR_k_est_cont = np.concatenate((SNR_k_est_cont, 10*np.log10(np.mean(SNR_k_est,axis=1))))
-    
-    '''
-    #print("-------------------------------------------SNR_k-----------------------------------------------------")
-    #print(SNR_k)
-    print("-------------------------------------------SNR_k_dB-----------------------------------------------------")
-    print(SNR_k_dB)
-    print("----------------------------------------marg_lin[:]------------------------------------------------")   
-    print(marg_lin)
-    print("----------------------------------------spect_eff[:]-------------------------------------------------")
-    print(spect_eff_k)
-    print("----------------------------------------ach_rate[:]-------------------------------------------------")
-    print(ach_rate)
-    print("----------------------------------------rate_tx[:]--------------------------------------------------")
-    print(rate_tx)
-    print("----------------------     1 means ach_rate > rate_tx in (Nu-1)    ------------------------------")
-    print( np.where(ach_rate > rate_tx, 1, 0) )
-    '''
+    #luego introducir la dimension nMetodo y hacer las gráficas 
+    #E_dB[nMetodo,isim, Nu-1]
 
 plt.figure(1)
-plt.plot(np.arange(Nu* Nsim),SNR_k_cont,'b')
-plt.plot(np.arange(Nu* Nsim),SNR_k_est_cont,'r')
+plt.plot(np.arange(Nu* Nsim),(10 * np.log10(np.mean(SNR_k, axis=2))).flatten(),'b')
+plt.plot(np.arange(Nu* Nsim),(10 * np.log10(np.mean(SNR_k_est, axis=2))).flatten(),'r')
 plt.xlabel('Trajectory point')
 plt.ylabel('Mean SNR (dB)')
 plt.legend(['True','Estimated'])
