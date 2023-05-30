@@ -418,6 +418,7 @@ class ThreeGPPMultipathChannelModel:
             'sfdB','ds','asa','asd','zsa','zsd_lslog','K'
          ]).set_index(['TGridx','TGridy','RGridx','RGridy','LOS'])
         self.dChansGenerated = {}
+        self.dLOSGenerated = {}
 
     # TODO introduce code for multi-floor hut in UMi & UMa
     #         if not indoor:
@@ -477,11 +478,24 @@ class ThreeGPPMultipathChannelModel:
         return(ploss)  
        
     #macro => Large Scale Correlated parameters
+    def calculateGridCoeffs(self,txPos, rxPos,Dcorr):
+        TgridXIndex= txPos[0] // Dcorr
+        TgridYIndex= txPos[1] // Dcorr
+        RgridXIndex= (rxPos[0]-txPos[0]) // Dcorr
+        RgridYIndex= (rxPos[1]-txPos[1]) // Dcorr
+        return(TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
+        
+    #hidden uniform variable to compare with pLOS(distabce)
+    def get_LOSUnif_from_location(self,txPos, rxPos):
+        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
+        key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
+        if not key in self.dLOSGenerated:
+           self.dLOSGenerated[key] = np.random.rand(1)           
+        return(self.dLOSGenerated[key])
+        
+    #macro => Large Scale Correlated parameters
     def get_macro_from_location(self,txPos, rxPos,los):
-        TgridXIndex= txPos[0] // self.corrDistance
-        TgridYIndex= txPos[1] // self.corrDistance 
-        RgridXIndex= (rxPos[0]-txPos[0]) // self.corrDistance 
-        RgridYIndex= (rxPos[1]-txPos[1]) //self.corrDistance 
+        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
         macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
         if not macrokey in self.dMacrosGenerated.index:
             return(self.create_macro(macrokey))#saves result to memory
@@ -754,7 +768,7 @@ class ThreeGPPMultipathChannelModel:
         LOSangles = (losAoD,losAoA,losZoD,losZoA)
                 
         pLos=self.scenarioLosProb(d2D,hut)
-        los = (np.random.rand(1) <= pLos)[0]#TODO: make this memorized
+        los = ( self.get_LOSUnif_from_location(txPos, rxPos) <= pLos)[0]#TODO: make this memorized
         
         if los:
             param = self.scenarioParams.LOS            
