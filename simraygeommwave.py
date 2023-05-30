@@ -120,15 +120,16 @@ if GEN_CHANS:
     coefs=np.zeros((Nmaxpaths,Nsims),dtype=complex)
     for nsim in range(Nsims):
         #chamar ao xenerador de canle do 3GPP
-        plinfo,macro,small = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
-        clusters,subpaths = small
-        Npath = clusters[0]*20
-        tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
+        plinfo,macro,clusters,subpaths = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
+        tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
+        los, PLfree, SF = plinfo
+        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+        Npath=tau_sp.size
         #mpch é unha canle estrictamente acorde ao modelo, gardada en listas python normais.
         # convertimolo en arrays de numpy
-        amps = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
-        allaoa_shifted_old = np.mod( AOA_sp.reshape(-1)-phi0[nsim] ,np.pi*2)
-        allaod = np.mod( AOD_sp.reshape(-1) ,np.pi*2)
+        amps = np.sqrt( pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
+        allaoa_shifted_old = np.mod( AOA_sp*np.pi/180-phi0[nsim] ,np.pi*2)
+        allaod = np.mod( AOD_sp*np.pi/180 ,np.pi*2)
         alldelay = tau_sp.reshape(-1)  
        
         #temos todolos camiños en numpy pero non son reflexions fisicamente consistentes

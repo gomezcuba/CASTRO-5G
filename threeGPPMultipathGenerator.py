@@ -167,7 +167,7 @@ class ThreeGPPMultipathChannelModel:
                        [0,0,-0.5,0.5,0,1,0],
                        [-0.4,0,0,-0.1,0,0,1]]),
                     self.scenarioPlossUMaNLOS,
-                    self.ZODUMaNLOS,
+                    lambda d2D,hut: 7.66*np.log10(self.frecRefGHz) - 5.96 - np.power(10, (0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(hut - 1.5)  ),
                     7,
                     3
                 ],
@@ -378,25 +378,34 @@ class ThreeGPPMultipathChannelModel:
            })
         return(df)
     
-    #Crear diccionarios
-    CphiNLOS = {4 : 0.779, 5 : 0.860 , 8 : 1.018, 10 : 1.090, 
+    #Crear tablas
+    CphiNLOStable = {4 : 0.779, 5 : 0.860 , 8 : 1.018, 10 : 1.090, 
                 11 : 1.123, 12 : 1.146, 14 : 1.190, 15 : 1.211, 16 : 1.226, 
                 19 : 1.273, 20 : 1.289, 25 : 1.358}
-    CtetaNLOS = {8 : 0.889, 10 : 0.957, 11 : 1.031, 12 : 1.104, 
+    CtetaNLOStable = {8 : 0.889, 10 : 0.957, 11 : 1.031, 12 : 1.104, 
                  15 : 1.1088, 19 : 1.184, 20 : 1.178, 25 : 1.282}
-    alpham = {0 : 0.0447, 1 : 0.0447, 2 : 0.1413, 3 : 0.1413, 4 : 0.2492,
-              5 : 0.2492, 6 :  0.3715, 7 :  0.3715, 8 : 0.5129, 9 : 0.5129,
-              10 : 0.6797, 11 : 0.6797, 12 :  0.8844, 13 :  0.8844, 14 : 1.1481,
-              15 : 1.1481, 16 : 1.5195, 17 : 1.5195, 18 : 2.1551, 19 : 2.1551}
+    alphamTable = [0.0447, -0.0447, 0.1413, -0.1413, 0.2492, -0.2492,
+                   0.3715, -0.3715, 0.5129, -0.5129, 0.6797, -0.6797, 
+                   0.8844, -0.8844, 1.1481, -1.1481, 1.5195, -1.5195, 
+                   2.1551, -2.1551]
+    tableSubclusterIndices = [
+            [0,1,2,3,4,5,6,7,18,19],
+            [8,9,10,11,16,17],
+            [12,13,14,15],
+        ]
     
     #RMa hasta 7GHz y el resto hasta 100GHz
-    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, ):
+    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40):
         self.frecRefGHz = fc
         self.scenario = scenario
         self.corrDistance = corrDistance
         self.W=avgStreetWidth
         self.h=avgBuildingHeight
         self.bLargeBandwidthOption = bLargeBandwidthOption
+        self.B=bandwidth
+        self.Dh=arrayWidth
+        self.Dv=arrayHeight
+        self.maxM=maxM
         self.clight=3e8
         self.wavelength = 3e8/(fc*1e9)
         self.allParamTable = self.dfTS38900Table756(fc)
@@ -404,15 +413,10 @@ class ThreeGPPMultipathChannelModel:
         self.scenarioLosProb= self.tableFunLOSprob[self.scenario]
         self.scenarioParams = self.allParamTable[self.scenario]
         
-        self.dMacrosGenerated = pd.DataFrame(index=[
-            'sfdB',
-            'ds',
-            'asa',
-            'asd',
-            'zsa',
-            'zsd_lslog',
-            'K'
-         ])
+        self.dMacrosGenerated = pd.DataFrame(columns=[
+            'TGridx','TGridy','RGridx','RGridy','LOS',
+            'sfdB','ds','asa','asd','zsa','zsd_lslog','K'
+         ]).set_index(['TGridx','TGridy','RGridx','RGridy','LOS'])
         self.dChansGenerated = {}
 
     # TODO introduce code for multi-floor hut in UMi & UMa
@@ -471,10 +475,6 @@ class ThreeGPPMultipathChannelModel:
         PL2= self.scenarioPlossInLOS(d3D,d2D,hbs,hut)
         ploss= np.maximum(PL1,PL2)
         return(ploss)  
-    
-    def ZODUMaNLOS(self,d2D,hut=1.5):
-        zod_offset_mu = 7.66*np.log10(self.frecRefGHz) - 5.96 - np.power(10, (0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) ) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(hut - 1.5)
-        return(zod_offset_mu)
        
     #macro => Large Scale Correlated parameters
     def get_macro_from_location(self,txPos, rxPos,los):
@@ -483,10 +483,10 @@ class ThreeGPPMultipathChannelModel:
         RgridXIndex= (rxPos[0]-txPos[0]) // self.corrDistance 
         RgridYIndex= (rxPos[1]-txPos[1]) //self.corrDistance 
         macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
-        if not macrokey in self.dMacrosGenerated:
+        if not macrokey in self.dMacrosGenerated.index:
             return(self.create_macro(macrokey))#saves result to memory
         else:
-            return(self.dMacrosGenerated[macrokey])
+            return(self.dMacrosGenerated.loc[macrokey,:])
         
     def create_macro(self, macrokey):
         los=macrokey[4]
@@ -496,7 +496,7 @@ class ThreeGPPMultipathChannelModel:
         else:
             param = self.scenarioParams.NLOS
         L=np.linalg.cholesky(param.Cc)
-        vDep=L@vIndep
+        vDep=(L@vIndep).reshape(-1)
         sfdB = param.sf_sg*vDep[0] #due to cholesky decomp this is independent
         K= np.power(10.0,  (param.K_mu + param.K_sg * vDep[1])/10)
         ds = np.power(10.0, param.ds_mu + param.ds_sg * vDep[2])
@@ -504,14 +504,13 @@ class ThreeGPPMultipathChannelModel:
         asa = min( np.power(10.0, param.asa_mu + param.asa_sg * vDep[4] ), 104.0)
         zsd_lslog = param.zsa_sg * vDep[6]
         zsa = min( np.power(10.0, param.zsa_mu + param.zsa_sg * vDep[6] ), 52.0)
-        
-        self.dMacrosGenerated[macrokey]=(sfdB,ds,asa,asd,zsa,zsd_lslog,K)
-        return(self.dMacrosGenerated[macrokey])
+        self.dMacrosGenerated.loc[macrokey,:]=(sfdB,ds,asa,asd,zsa,zsd_lslog,K)
+        return(self.dMacrosGenerated.loc[macrokey,:])
     
     #clusters => small scale groups of pahts
-    def create_clusters(self,smallStatistics,angles):
-        los,DS,ASA,ASD,ZSA,ZSD,K,muZOD = smallStatistics
-    
+    def create_clusters(self,smallStatistics,LOSangles):
+        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
+        
         if los:
             param = self.scenarioParams.LOS
         else:
@@ -519,79 +518,152 @@ class ThreeGPPMultipathChannelModel:
         N = param.N
         rt = param.rt
         
-        (losphiAoD,losphiAoA,losthetaAoD,losthetaAoA) = angles
+        (losAoD,losAoA,losZoD,losZoA) = LOSangles
         
         #Generate cluster delays
-        tau_prima = -rt*DS*np.log(np.random.uniform(0,1,size=N))
-        tau_prima = tau_prima-np.amin(tau_prima)
-        tau = np.array(sorted(tau_prima))
+        tau_prima = -rt*DS*np.log(np.random.rand(N))
+        tau = np.sort( tau_prima-np.min(tau_prima) )
+        
+        #Generate cluster powers
+        powPrima = np.exp( -tau * (rt-1) / (rt*DS) ) * np.power( 10, -np.random.normal(0,param.xi,size=N)/10 )
+        #The scaled delays are NOT to be used in cluster power generation.
         Ctau = 0.7705 - 0.0433*K + 0.0002*K**2 + 0.000017*K**3
         if los:
             tau = tau / Ctau 
-        
-        #Generate cluster powers
-        xi = param.xi
-        powPrima = np.exp(-tau*((rt-1)/(rt*DS)))*10**(-(xi*np.random.normal(0,1,size=N)/10))
         if los:
-            p1LOS = K/(K+1)
-            powC = (1/K+1)*(powPrima/np.sum(powPrima))
-            powC[0] = powC[0] + p1LOS
+            powC = ( 1/(K+1) ) * ( powPrima/np.sum(powPrima) )
+            powC[0] = powC[0] + K / (K+1)
         else:
             powC = powPrima/np.sum(powPrima)
         #Remove clusters with less than -25 dB power compared to the maximum cluster power. The scaling factors need not be 
-        #changed after cluster elimination 
-        maxP = np.amax(powC)
-        #------------------------------------------------
-        tau = tau[powC > (maxP*10**(-2.5))] #natural units
-        powC = powC[powC > (maxP*10**(-2.5))]
-        nClusters = np.size(powC)
-        
+        #changed after cluster elimination
+        #TODO confirm whether htis should go before or after LOS conversion
+        maxP=np.max(powC)
+        tau = tau[powC>(maxP*(10**(-2.5)))]
+        powC = powC[powC>(maxP*(10**(-2.5)))]        
+        nClusters=powC.size
         #Generate arrival angles and departure angles for both azimuth and elevation   
         #Azimut
         if los:
-            Cphi = self.CphiNLOS.get(N)*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3))
+            Cphi = self.CphiNLOStable[N]*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3))
         else:
-            Cphi = self.CphiNLOS.get(N)
+            Cphi = self.CphiNLOStable[N]
         phiAOAprima = 2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
         phiAODprima = 2*(ASD/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
         
-        X = np.random.uniform(-1,1,size=powC.shape)
-        Y = np.random.normal(0,(ASA/7)**2,size=powC.shape)
-        AOA = X*phiAOAprima + Y + losphiAoA - (X[0]*phiAOAprima[0] + Y[0] if los==1 else 0)
-        AOD = X*phiAODprima + Y + losphiAoD - (X[0]*phiAODprima[0] + Y[0] if los==1 else 0)
+        Xaoa = np.random.choice((-1,1),size=powC.shape)
+        Xaod = np.random.choice((-1,1),size=powC.shape)
+        Yaoa = np.random.normal(0,ASA/7,size=powC.shape)
+        Yaod = np.random.normal(0,ASA/7,size=powC.shape)
+        AOA = Xaoa*phiAOAprima + Yaoa + losAoA - (Xaoa[0]*phiAOAprima[0] + Yaoa[0] if los==1 else 0)
+        AOD = Xaod*phiAODprima + Yaod + losAoD - (Xaod[0]*phiAODprima[0] + Yaod[0] if los==1 else 0)
         
         #Zenith 
         if los:
-            Cteta = self.CtetaNLOS.get(N)*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
+            Cteta = self.CtetaNLOStable.get(N)*(1.3086 + 0.0339*K -0.0077*(K**2) + 0.0002*(K**3))
         else:
-            Cteta = Cteta = self.CtetaNLOS.get(N)
+            Cteta = Cteta = self.CtetaNLOStable.get(N)
         
         tetaZOAprima = -((ZSA*np.log(powC/maxP))/Cteta)
         tetaZODprima = -((ZSD*np.log(powC/maxP))/Cteta)
         
-        Y1 = np.random.normal(0,(ZSA/7)**2,size=powC.shape)
-        Y2 = np.random.normal(0,(ZSD/7)**2,size=powC.shape)   
-        ZOA = X*tetaZOAprima + Y1 + losthetaAoA - (X[0]*tetaZOAprima[0] + Y1[0] if (los==1) else 0)
-        ZOD = X*tetaZODprima + Y2 + losthetaAoD - (X[0]*tetaZODprima[0] + Y2[0]- muZOD if (los==0) else 0)
-        
-        return(nClusters,tau,powC,AOA,AOD,ZOA,ZOD)
-   
-    
-    def create_subpaths_largeBW(self,smallStatistics,clusters,d2D,hut,maxM=20,Dh=2,Dv=2,B=2e6):
-        los,DS,ASA,ASD,ZSA,ZSD,K,muZOD = smallStatistics
-        (nClusters,tau,powC,AOA,AOD,ZOA,ZOD) = clusters
-                
+        Xzoa = np.random.choice((-1,1),size=powC.shape)
+        Xzod = np.random.choice((-1,1),size=powC.shape)
+        Yzoa = np.random.normal(0, ZSA/7 ,size=powC.shape)
+        Yzod = np.random.normal(0, ZSD/7 ,size=powC.shape)   
+        ZOA = Xzoa*tetaZOAprima + Yzoa + losZoA - (Xzoa[0]*tetaZOAprima[0] + Yzoa[0] if (los==1) else 0)
+        ZOD = Xzod*tetaZODprima + Yzod + losZoD + muZOD - (Xzod[0]*tetaZODprima[0] + Yzod[0] if (los==0) else 0)
+          
+        return( pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau,powC,AOA,AOD,ZOA,ZOD]).T) )
+       
+    def create_subpaths_basics(self,smallStatistics,clusters,LOSangles):
+        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
+        (losAoD,losAoA,losZoD,losZoA) = LOSangles
+        (tau,powC,AOA,AOD,ZOA,ZOD)=clusters.T.to_numpy()
+        nClusters=tau.size        
         if los:
             param = self.scenarioParams.LOS
+            powC_nlos= powC*(1+K)
+            powC_nlos[0]=powC_nlos[0]-K
         else:
             param = self.scenarioParams.NLOS
-        M = param.M
+            powC_nlos= powC 
+        M=param.M
+        
+        indStrongestClusters = np.argsort(-powC)[0:2]
+        
+        #Generate subpaths delays and powers
+        pow_sp=np.tile(powC_nlos[:,None],(1,M))/M
+        tau_sp=np.tile(tau[:,None],(1,M))
+        #the two first clusters are divided in 3 subclusters
+        for n in indStrongestClusters:
+            tau_sp[n,self.tableSubclusterIndices[1]] += 1.28*param.cds*1e-9
+            tau_sp[n,self.tableSubclusterIndices[2]] += 2.56*param.cds*1e-9
+        
+        AOA_sp = np.tile(AOA[:,None],(1,M)) + param.casa*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+        AOD_sp = np.tile(AOD[:,None],(1,M)) + param.casd*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+       
+        ZOA_sp = np.tile(ZOA[:,None],(1,M)) + param.czsa*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+    
+        for n in range(nClusters):
+            if n not in indStrongestClusters:
+                #couple randomly AOD/ZOD/ZOA angles to AOA angles within cluster n
+                AOD_sp[n,:]=np.random.permutation(AOD_sp[n,:])
+                ZOA_sp[n,:]=np.random.permutation(ZOA_sp[n,:])
+                ZOD_sp[n,:]=np.random.permutation(ZOD_sp[n,:])
+            else:#clusters 1 and 2
+                for scl in range(3):#c
+                    AOD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(AOD_sp[n,self.tableSubclusterIndices[scl]])
+                    ZOA_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZOA_sp[n,self.tableSubclusterIndices[scl]])
+                    ZOD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZOD_sp[n,self.tableSubclusterIndices[scl]])
+            
+        #mask = (ZOA_sp>=180) & (ZOA_sp<=360)
+        #ZOA_sp[mask] = 360 - ZOA_sp
+        
+        subpaths = pd.DataFrame(
+            columns=['tau','P','AOA','AOD','ZOA','ZOD'],
+            data=np.vstack([
+                tau_sp.reshape(-1),
+                pow_sp.reshape(-1),
+                AOA_sp.reshape(-1),
+                AOD_sp.reshape(-1),
+                ZOA_sp.reshape(-1),
+                ZOD_sp.reshape(-1)
+                ]).T,
+            index=pd.MultiIndex.from_product([np.arange(nClusters),np.arange(M)],names=['n','m'])
+            )
+        if los:
+            subpaths.P[:]=subpaths.P[:]/(K+1)
+            #the LOS ray is the M+1-th subpath of the first cluster
+            subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD)
+        
+        return(subpaths)
+   
+    
+    def create_subpaths_largeBW(self,smallStatistics,clusters,LOSangles,d2D,hut):
+        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
+        (losAoD,losAoA,losZoD,losZoA) = LOSangles
+        (tau,powC,AOA,AOD,ZOA,ZOD)=clusters.T.to_numpy()
+        nClusters=tau.size      
+        if los:
+            param = self.scenarioParams.LOS
+            powC_nlos= powC*(1+K)
+            powC_nlos[0]=powC_nlos[0]-K
+        else:
+            param = self.scenarioParams.NLOS
+            powC_nlos= powC 
+            
         cds = param.cds
         casd = param.casd
         casa = param.casa
         czsa = param.czsa
-        zsd_mu=param.funZSD_mu(d2D,hut)
-        
+        #The number of rays per cluster, replacing param.M
+        k = 0.5#sparsity coefficient
+        M_t = np.ceil(4*k*cds*self.B)
+        M_AOD = np.ceil(4*k*casd*((np.pi*self.Dh)/(180*self.wavelength)))
+        M_ZOD = np.ceil(4*k*czsd*((np.pi*self.Dv)/(180*self.wavelength)))
+        M = int(np.minimum( np.maximum(M_t*M_AOD*M_ZOD, param.M ) ,self.maxM))
         #The offset angles alpha_m
         alpha_AOA = np.random.uniform(-2,2,size=(nClusters,M))
         alpha_AOD = np.random.uniform(-2,2,size=(nClusters,M))
@@ -600,132 +672,52 @@ class ThreeGPPMultipathChannelModel:
         
         #The relative delay of m-th ray
         tau_primaprima = np.random.uniform(0,2*cds*1e-9,size=(nClusters,M))#ns
-        tau_prima = tau_primaprima-np.amin(tau_primaprima) + tau.reshape((-1,1))
-    
+        tau_prima = np.sort(tau_primaprima-np.min(tau_primaprima,axis=1,keepdims=True))
+        tau_sp = tau_prima + tau.reshape((-1,1))
+        
         #Ray powers
-        czsd = (3/8)*10**(zsd_mu)
-        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AOA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AOD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZOA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZOD))/czsd)
-        powC_sp = powC.reshape(-1,1)*(powPrima/np.sum(powPrima))
-        
-        #The number of rays per cluster
-        k = 0.5
-        m_t = np.ceil(4*k*cds*B)
-        m_AOD = np.ceil(4*k*casd*((np.pi*Dh)/(180*self.wavelength)))
-        m_ZOD = np.ceil(4*k*czsd*((np.pi*Dv)/(180*self.wavelength)))
-        M = min(np.maximum(m_t*m_AOD*m_ZOD,20),maxM)
-
-        #Angles generation 
-        AOA_sp = np.zeros((nClusters,M))
-        AOD_sp = np.zeros((nClusters,M))
-        for i in range(nClusters):
-            for j in range(M):
-                AOA_sp[i,j] = AOA[i] + casa*alpha_AOA[i,j]
-                AOD_sp[i,j] = AOD[i] + casa*alpha_AOD[i,j]
-        
-        ZOA_sp = np.zeros((nClusters,M))
-        ZOD_sp = np.zeros((nClusters,M))
-        for i in range(nClusters):
-            for j in range(M):
-                ZOA_sp[i,j] = ZOA[i] + czsa*alpha_ZOA[i,j]
-                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha_ZOD[i,j]
-        
-        return(tau_prima,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
-        
-   
-    def create_subpaths_basics(self,smallStatistics,clusters):
-        los,DS,ASA,ASD,ZSA,ZSD,K,muZOD = smallStatistics
-    
-        if los:
-            param = self.scenarioParams.LOS
-        else:
-            param = self.scenarioParams.NLOS
-        M = param.M
-        cds = param.cds
-        
-        (nClusters,tau,powC,AOA,AOD,ZOA,ZOD)=clusters
-        
-        #Generate subpaths delays and powers
-        powC_cluster = powC/M #Power of each cluster
-        
-        powC_sp = np.zeros((nClusters,M)) 
-        tau_sp = np.zeros((nClusters,M)) 
-        for i in range(nClusters):
-            for j in range(M):
-                powC_sp[i,j] = powC_cluster[i]
-                tau_sp[i,j] = tau[i]
+        pow_prima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AOA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AOD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZOA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZOD))/czsd)
+        pow_sp = powC_nlos.reshape(-1,1)*(pow_prima/np.sum(pow_prima,axis=1,keepdims=True))
                 
-        row1 = np.array([0,0,0,0,0,0,0,0,1.28*cds,1.28*cds,1.28*cds,1.28*cds,2.56*cds,2.56*cds,2.56*cds,2.56*cds,1.28*cds,1.28*cds,0,0])
-        tau_sp[0,:] = tau_sp[0,:] + row1*1e-9#ns
-        tau_sp[1,:] = tau_sp[1,:] + row1*1e-9#ns
+        AOA_sp = np.tile(AOA[:,None],(1,M)) + casa*alpha_AOA
+        AOD_sp = np.tile(AOD[:,None],(1,M)) + casd*alpha_AOD
+       
+        ZOA_sp = np.tile(ZOA[:,None],(1,M)) + czsa*alpha_ZOA
+        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*alpha_ZOD
         
-        """
-        #Subclusters
-        R1 = (1,2,3,4,5,6,7,8,19,20)
-        R2 = (9,10,11,12,17,18)
-        R3 = (13,14,15,16)
         
-        P1 = len(R1)/M
-        P2 = len(R2)/M
-        P3 = len(R3)/M
+        subpaths = pd.DataFrame(
+            columns=['tau','P','AOA','AOD','ZOA','ZOD'],
+            data=np.vstack([
+                tau_sp.reshape(-1),
+                pow_sp.reshape(-1),
+                AOA_sp.reshape(-1),
+                AOD_sp.reshape(-1),
+                ZOA_sp.reshape(-1),
+                ZOD_sp.reshape(-1)
+                ]).T,
+            index=pd.MultiIndex.from_product([np.arange(nClusters),np.arange(M)],names=['n','m'])
+            )
+        if los:
+            subpaths.P[:]=subpaths.P[:]/(K+1)
+            #the LOS ray is the M+1-th subpath of the first cluster
+            subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD)
         
-        tau1 = 0
-        tau2 = 1.28*cds
-        tau3 = 2.56*cds
-        """   
-        casa = param.casa
-        AOA_sp = np.zeros((nClusters,M))
-        AOD_sp = np.zeros((nClusters,M))
-
-        for i in range(nClusters):
-            for j in range(M):
-                AOA_sp[i,j] = AOA[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
-                AOD_sp[i,j] = AOD[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
-        
-        czsa = param.czsa
-        ZOA_sp = np.zeros((nClusters,M))
-        ZOD_sp = np.zeros((nClusters,M))
-        for i in range(nClusters):
-            for j in range(M):
-                ZOA_sp[i,j] = ZOA[i] + czsa*self.alpham.get(j)*np.random.choice([1, -1])
-                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*self.alpham.get(j)*np.random.choice([1, -1])
-        
-        #mask = (ZOA_sp>=180) & (ZOA_sp<=360)
-        #ZOA_sp[mask] = 360 - ZOA_sp
-        
-        return(tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
+        return(subpaths)
     
     
-    def create_small_param(self,angles,smallStatistics,d2D,hut):
-        los,DS,ASA,ASD,ZSA,ZSD,K,muZOD = smallStatistics
+    def create_small_param(self,LOSangles,smallStatistics,d2D,hut):
+        los,DS,ASA,ASD,ZSA,ZSD,K,cZSD,muZOD = smallStatistics
         
-        clusters = self.create_clusters(smallStatistics,angles)
+        clusters = self.create_clusters(smallStatistics,LOSangles)
         
         if self.bLargeBandwidthOption:
-            subpaths = self.create_subpaths_largeBW(smallStatistics,clusters,d2D,hut)
+            subpaths = self.create_subpaths_largeBW(smallStatistics,clusters,LOSangles,d2D,hut)
         else:
-            subpaths = self.create_subpaths_basics(smallStatistics,clusters)
+            subpaths = self.create_subpaths_basics(smallStatistics,clusters,LOSangles)
         
-        tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
-       
-        for row in AOD_sp:
-            np.random.shuffle(row)
-        
-        for row in ZOD_sp:
-            np.random.shuffle(row)
-        
-        indicesSubcluster1 = [0,1,2,3,4,5,6,7,18,19]
-        indicesSubcluster2 = [8,9,10,11,16,17]
-        indicesSubcluster3 = [12,13,14,15]
-        
-        for i in range(2):
-            AOD_sp[i][indicesSubcluster1] = AOD_sp[i][np.random.permutation(indicesSubcluster1)]
-            AOD_sp[i][indicesSubcluster2] = AOD_sp[i][np.random.permutation(indicesSubcluster2)]
-            AOD_sp[i][indicesSubcluster3] = AOD_sp[i][np.random.permutation(indicesSubcluster3)]
-            
-            ZOD_sp[i][indicesSubcluster1] = ZOD_sp[i][np.random.permutation(indicesSubcluster1)]
-            ZOD_sp[i][indicesSubcluster2] = ZOD_sp[i][np.random.permutation(indicesSubcluster2)]
-            ZOD_sp[i][indicesSubcluster3] = ZOD_sp[i][np.random.permutation(indicesSubcluster3)]
-        
+        tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()       
+    
         # Generate the cross polarization power ratios
         if los:
             param = param = self.scenarioParams.LOS
@@ -748,18 +740,18 @@ class ThreeGPPMultipathChannelModel:
         hbs = aPos[2]
         hut = bPos[2]
         
-        losphiAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
-        losphiAoA=np.mod(np.pi+losphiAoD, 2*np.pi ) # revise
+        losAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
+        losAoA=np.mod(np.pi+losAoD, 2*np.pi ) # revise
         vaux = (np.linalg.norm(vLOS[0:2]), vLOS[2] )
-        losthetaAoD=np.pi/2-np.arctan( vaux[1] / vaux[0] )
-        losthetaAoA=np.pi-losthetaAoD # revise
+        losZoD=np.pi/2-np.arctan( vaux[1] / vaux[0] ) + np.pi*(vaux[1]<0)
+        losZoA=np.pi-losZoD # revise
         
         #3GPP model is in degrees but numpy uses radians
-        losphiAoD=(180.0/np.pi)*losphiAoD #angle of departure 
-        losthetaAoD=(180.0/np.pi)*losthetaAoD 
-        losphiAoA=(180.0/np.pi)*losphiAoA #angle of aperture
-        losthetaAoA=(180.0/np.pi)*losthetaAoA
-        angles = [losphiAoD,losphiAoA,losthetaAoD,losthetaAoA]
+        losAoD=(180.0/np.pi)*losAoD #angle of departure 
+        losZoD=(180.0/np.pi)*losZoD 
+        losAoA=(180.0/np.pi)*losAoA #angle of aperture
+        losZoA=(180.0/np.pi)*losZoA
+        LOSangles = (losAoD,losAoA,losZoD,losZoA)
                 
         pLos=self.scenarioLosProb(d2D,hut)
         los = (np.random.rand(1) <= pLos)[0]#TODO: make this memorized
@@ -777,11 +769,12 @@ class ThreeGPPMultipathChannelModel:
         zsd_mu = param.funZSD_mu(d2D,hut)#unlike other statistics, ZSD changes with hut and d2D             
         zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
         zod_offset_mu = param.funZODoffset(d2D,hut)        
-        smallStatistics = (los,ds,asa,asd,zsa,zsd,K,zod_offset_mu)        
-        small = self.create_small_param(angles,smallStatistics,d2D,hut)
+        czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
+        smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
+        clusters,subpaths = self.create_small_param(LOSangles,smallStatistics,d2D,hut)
         
         keyChannel = (tuple(txPos),tuple(rxPos))
         plinfo = (los,PLconst,sfdB)
-        self.dChansGenerated[keyChannel] = (plinfo,small)
-        return(plinfo,macro,small)
+        self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
+        return(plinfo,macro,clusters,subpaths)
     

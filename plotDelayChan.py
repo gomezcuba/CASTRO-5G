@@ -13,19 +13,18 @@ rc('animation', html='html5')
 plt.close('all')
 fig_ctr=0
 
-model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=False
-plinfo,macro,small = model.create_channel((0,0,10),(40,0,1.5))
-clusters,subpaths = small
-nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
-tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
+model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
+plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
+tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
+los, PLfree, SF = plinfo
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
 
 #2D plots of power vs delay
 
 #plots of continuous time channels (deltas)
-delays = tau_sp.reshape(-1)*1e9#nanoseconds
+delays = tau_sp*1e9#nanoseconds
 Npath=np.size(delays)
-pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
+pathAmplitudes = np.sqrt(pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
 
 #real and imaginary complex channel
 fig_ctr+=1

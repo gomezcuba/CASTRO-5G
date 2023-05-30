@@ -12,18 +12,18 @@ from matplotlib import cm
 plt.close('all')
 fig_ctr=0
 
-model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=False
-plinfo,macro,small = model.create_channel((0,0,10),(40,0,1.5))
-clusters,subpaths = small
-nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
-tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
+model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
+plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
+tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
+nClusters=tau.size
+los, PLfree, SF = plinfo
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
 
 #3D delay-and-polar plots of delay vs AoA
-AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
-delays = tau_sp.reshape(-1)*1e9#nanoseconds
+AoAs = AOA_sp*np.pi/180#radians
+delays = tau_sp*1e9#nanoseconds
 Npath=np.size(delays)
-pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
+pathAmplitudes = np.sqrt( pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
 Npath=np.size(AoAs)
 
 fig_ctr+=1
@@ -65,9 +65,9 @@ BeamformingVectors =mc.fULA(angles_plot,Nant)
 
 arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
 
-Ncolors=10
+clusterInd = subpaths.reset_index(inplace=False).loc[:,'n']
 for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
-    clr = cm.tab10(np.mod(pind,Ncolors)/(Ncolors-1))
+    clr = cm.jet(clusterInd[pind]/(nClusters-1))
     coefdB=10*np.log10(np.abs(pathAmplitudes[pind])**2)
     radius = coefdB - dBat0polar
     x=np.maximum(radius,0)*np.cos(AoAs[pind])
@@ -114,9 +114,8 @@ BeamformingVectors =mc.fULA(angles_plot,Nant)
 
 arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
 
-Ncolors=10
 for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
-    clr = cm.tab10(np.mod(pind,Ncolors)/(Ncolors-1))
+    clr = cm.jet(clusterInd[pind]/(nClusters-1))
     coefdB=10*np.log10(np.abs(pathAmplitudes[pind])**2)
     radius = coefdB - dBat0polar
     x=np.maximum(radius,0)*np.cos(AoAs[pind])

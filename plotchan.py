@@ -11,11 +11,12 @@ from IPython.display import HTML, Image
 # equivalent to rcParams['animation.html'] = 'html5'
 rc('animation', html='html5')
 
-model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
-plinfo,macro,small = model.create_channel((0,0,10),(40,0,1.5))
-clusters,subpaths = small
-nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
-tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
+model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
+plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
+tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
+nClusters=tau.size
+los, PLfree, SF = plinfo
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
 
 fig = plt.figure(1)
 ax = Axes3D(fig)
@@ -36,7 +37,7 @@ ax.text3D(0,0,np.ceil(maxdel/100)*100,"delay [ns]",color='k')
 
 allAoA=AOA_sp.reshape(-1)
 allDel=tau_sp.reshape(-1)
-allGain=powC_sp.reshape(-1)
+allGain=pow_sp.reshape(-1)
 
 inds=np.argpartition(-allGain,4,axis=0)[0:50]
 selectedAoA=allAoA[inds]

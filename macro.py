@@ -43,7 +43,7 @@ macroASA = np.zeros(Nusers)
 macroZSD_lslog = np.zeros(Nusers)
 macroZSA = np.zeros(Nusers)
 for i in range(Nusers):
-    plinfo,macro,small = model.create_channel(txPos,users[i])
+    plinfo,macro,clusters,subpaths = model.create_channel(txPos,users[i])
     macroDS[i]= macro.ds
     macroASD[i]= macro.asd
     macroASA[i]= macro.asa
@@ -99,7 +99,7 @@ plt.yticks(np.arange(0, distance+1, corrDist))
 plt.xticks(np.arange(0, distance+1, corrDist))
 plt.grid(axis='both',color='red')
 sc = plt.scatter(posX,posY,s=15,c=macroZSD_lslog, cmap='RdYlBu_r')
-plt.colorbar(label="ZSD (º)", orientation="vertical")
+plt.colorbar(label="$\sigma_{logZSD}$ (º)", orientation="vertical")
 plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
