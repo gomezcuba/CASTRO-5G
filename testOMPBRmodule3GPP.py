@@ -8,6 +8,7 @@ import csProblemGenerator as prb
 #import testRLmp as rl
 
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 
 import time
@@ -15,7 +16,7 @@ from progress.bar import Bar
 
 plt.close('all')
 
-Nchan=10
+Nchan=100
 Nd=4
 Na=4
 Nt=128
@@ -28,9 +29,6 @@ Ts=320/Nt
 Ds=Ts*Nt
 SNRs=10**(np.arange(-1,2.01,1.0))
 #SNRs=10**(np.arange(1,1.01,1.0))
-MSE=[]
-Npaths=[]
-totTimes=[]
 
 omprunner = oc.OMPCachedRunner()
 pilgen = pil.MIMOPilotChannel("IDUV")
@@ -45,10 +43,26 @@ y0=np.random.rand(Nchan)*100-50
 
 legStrAlgs=[
         'OMPx1',
-        'OMPx2',
-        'OMPBR',
+        'OMPx1acc',
+        'OMPx4',
+        'OMPx4acc',
+        'OMPBRx10',
+        'OMPBRx10acc',
         ]
+confAlgs=[#Xt Xd Xa Xmu accel
+    # (1.0,1.0,1.0,1.0,False),
+    (1.0,1.0,1.0,1.0,True),
+    # (4.0,4.0,4.0,1.0,False),
+    (8.0,8.0,8.0,1.0,True),
+    (1.0,1.0,1.0,10.0,False),
+    # (1.0,1.0,1.0,10.0,True),
+    ]
 
+Nalgs=len(confAlgs)
+Nsnr=len(SNRs)
+MSE=np.zeros((Nchan,Nsnr,Nalgs))
+Npaths=np.zeros((Nchan,Nsnr,Nalgs))
+totTimes=np.zeros((Nchan,Nsnr,Nalgs))
 bar = Bar("CS sims", max=Nchan)
 bar.check_tty = False
 for ichan in range(0,Nchan):
@@ -72,39 +86,27 @@ for ichan in range(0,Nchan):
 #    hsparse=np.fft.ifft(h,axis=1)*np.sqrt(Nd)
 #    hsparse=np.fft.ifft(hsparse,axis=2)*np.sqrt(Na)
     # print(hk)
-    MSE.append([])
-    totTimes.append([])
-    Npaths.append([])
-    
-    for isnr in range(0,len(SNRs)):
+    for isnr in range(0,Nsnr):
         sigma2=1.0/SNRs[isnr]
         
         yp=pilgen.applyPilotChannel(hk,wp,vp,zp*np.sqrt(sigma2))
-        t0 = time.time()
-        hest3,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,1.0, accelDel = True)
-        MSE[-1].append([])
-        MSE[-1][-1].append(np.mean(np.abs(hk-hest3)**2)/np.mean(np.abs(hk)**2))
-        totTimes[-1].append([])
-        totTimes[-1][-1].append(time.time()-t0)
-        Npaths[-1].append([])        
-        Npaths[-1][-1].append(len(paths.delays))
-
-        t0 = time.time()
-        hest4,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,4.0,4.0,4.0,1.0, accelDel = True)
-        MSE[-1][-1].append(np.mean(np.abs(hk-hest4)**2)/np.mean(np.abs(hk)**2))
-        totTimes[-1][-1].append(time.time()-t0)
-        Npaths[-1][-1].append(len(paths.delays))
-
-        t0 = time.time()
-        hest5,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0, accelDel = True)
-        MSE[-1][-1].append(np.mean(np.abs(hk-hest5)**2)/np.mean(np.abs(hk)**2))
-        totTimes[-1][-1].append(time.time()-t0)
-        Npaths[-1][-1].append(len(paths.delays))
+        for nalg in range(0,Nalgs):
+            Xt,Xd,Xa,Xmu,confAccel = confAlgs[nalg]
+            t0 = time.time()
+            hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp, Xt,Xd,Xa,Xmu, accelDel = confAccel)
+            MSE[ichan,isnr,nalg] = np.mean(np.abs(hk-hest)**2)/np.mean(np.abs(hk)**2)
+            totTimes[ichan,isnr,nalg] = time.time()-t0
+            Npaths[ichan,isnr,nalg] = len(paths.delays)
+    #for large Nsims the pilot cache grows too much so we free the memory when not needed
+    for nalg in range(0,Nalgs):
+        Xt,Xd,Xa,Xmu,confAccel = confAlgs[nalg]
+        if confAccel:
+            omprunner.freeCacheOfPilot(ichan,1,Nd,Na,Xt,Xd,Xa)
+        else:
+            omprunner.freeCacheOfPilot(ichan,Nt,Nd,Na,Xt,Xd,Xa)
     bar.next()
 bar.finish()
 
-MSE=np.array(MSE)
-totTimes=np.array(totTimes)
 print(np.mean(MSE,axis=0))
 print(np.mean(totTimes,axis=0))
 plt.semilogy(10*np.log10(SNRs),np.mean(MSE,axis=0))
@@ -112,11 +114,16 @@ plt.legend(legStrAlgs)
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
 plt.figure()
-plt.bar(range(np.size(totTimes)//Nchan),np.mean(totTimes,axis=0).reshape(np.size(totTimes)//Nchan,))
+NBarGroups=len(legStrAlgs)
+barwidth=0.9/Nalgs
+for nbar in range(Nalgs):
+    plt.bar(np.arange(len(SNRs))+(nbar-(NBarGroups-1)/2)*barwidth,np.mean(totTimes[:,:,nbar],axis=0),width=barwidth,color=cm.jet(nbar/(NBarGroups-1)))
 plt.xlabel('alg')
 plt.ylabel('runtime')
 plt.figure()
-plt.bar(range(np.size(totTimes)//Nchan),np.mean(Npaths,axis=0).reshape(np.size(Npaths)//Nchan,))
+barwidth=0.9/Nalgs
+for nbar in range(Nalgs):
+    plt.bar(np.arange(len(SNRs))+(nbar-(NBarGroups-1)/2)*barwidth,np.mean(np.array(Npaths)[:,:,nbar],axis=0),width=barwidth,color=cm.jet(nbar/(NBarGroups-1)))
 plt.xlabel('alg')
 plt.ylabel('N paths')
-plt.show()
+# plt.show()
