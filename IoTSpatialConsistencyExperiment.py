@@ -59,10 +59,10 @@ def displaceMultipathChannel(de,ad,aa,deltax,deltay):
     return(newdelay,newaod,newaoa)
     
 
-Nt=128
-Nk=1024
-Nd=16
-Na=16
+Nt=32
+Nk=32
+Nd=4
+Na=4
 
 Nxp=4
 Nrft=1
