@@ -276,13 +276,6 @@ for case in cases:
         plt.xlabel('Simulations')
         plt.ylabel('Mean TX rate (Mbps)')
         '''
-
-        plt.figure(3)
-        plt.bar(np.arange(Nsim), np.mean(ach_rate[0], axis=1) * 1e-6, color='magenta', label='Mean Achievable rate (Mbps)')
-        plt.bar(np.arange(Nsim), np.mean((1 - E_dB[0]) * rate_tx[0] * 1e-6, axis=1), color='blue', label='Mean TX rate (Mbps)')
-        plt.xlabel('Simulations')
-        plt.legend(['Mean Achievable rate (Mbps)', 'Mean TX rate (Mbps)'], loc='lower right')
-        plt.ylabel('Mean rate (Mbps)')
         
         '''
         plt.figure(1)
@@ -314,7 +307,13 @@ for case in cases:
         marg_5_pathDisplaced = marg_lin[1, :, :].flatten()
         marg_2_pathDisplaced = marg_lin[2, :, :].flatten()
 
-        
+        plt.figure(3)
+        plt.bar(np.arange(Nsim), np.mean(ach_rate[0], axis=1) * 1e-6, color='magenta', label='Mean Achievable rate (Mbps)')
+        plt.bar(np.arange(Nsim), np.mean((1 - E_dB[0]) * rate_tx[0] * 1e-6, axis=1), color='blue', label='Mean TX rate (Mbps)')
+        plt.xlabel('Simulations')
+        plt.legend(['Mean Achievable rate (Mbps)', 'Mean TX rate (Mbps)'], loc='lower right')
+        plt.ylabel('Mean rate (Mbps)')
+
         plt.figure(4)
         plt.plot(np.arange(Nu * Nsim), ach_rate[0].flatten() * 1e-6, 'b')
         plt.plot(np.arange(Nu * Nsim), rate_tx[0].flatten() * 1e-6, 'r')
