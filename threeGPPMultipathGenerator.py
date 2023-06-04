@@ -794,7 +794,7 @@ class ThreeGPPMultipathChannelModel:
         clusters = self.create_clusters(macro,angles)
         
         if self.bLargeBandwidthOption:
-            subpaths = self.create_subpaths_largebw(macro,clusters)
+            subpaths = self.create_subpaths_largeBW(macro,clusters)
             (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
         else:
             subpaths = self.create_subpaths_basics(macro,clusters)
