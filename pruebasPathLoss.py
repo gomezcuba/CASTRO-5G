@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Sep 26 14:51:53 2022
+
 @author: user
 """
 
@@ -10,10 +11,10 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import pandas as pd
 
-model = pg.ThreeGPPMultipathChannelModel(sce="RMa")
-model1 = pg.ThreeGPPMultipathChannelModel(sce="UMi")
-model2 = pg.ThreeGPPMultipathChannelModel(sce="UMa")
-model3 = pg.ThreeGPPMultipathChannelModel(sce="InH-Office-Mixed")
+model = pg.ThreeGPPMultipathChannelModel(scenario="RMa")
+model1 = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
+model2 = pg.ThreeGPPMultipathChannelModel(scenario="UMa")
+model3 = pg.ThreeGPPMultipathChannelModel(scenario="InH-Office-Mixed")
 #model.bLargeBandwidthOption=True
 
 txPos = (0,0,20)
@@ -53,7 +54,7 @@ plt.legend()
 plt.xlabel("Distance")
 plt.ylabel("Path Loss (dB)")
 plt.grid(axis='both', color='gray')
-plt.show()
+
 
 
 
@@ -63,15 +64,18 @@ plt.show()
 
 
 """
+
 #Pedimos la casilla y la mostramos
 print('These are the grids with users: \n')
 print(keyResult)
 print('Enter the desire grid: ')
 entrada = input()
 macroUser = dictMacro.get(entrada)
+
 lista = []
 for i in range(len(macroUser)):
     lista.append(macroUser[i])
+
 for i in range(len(lista)):
     if isinstance(lista[i], int):
         lista[i] = str(lista[i])
@@ -79,6 +83,8 @@ for i in range(len(lista)):
 print("Macro for BS: (" + str(txPos[0]) +"," + str(txPos[1]) + ")m and UT: " + entrada + " Grid.")
 df = pd.Series({'LOS' : str(lista[0]), 'Path Loss' : lista[1], 'DS' : lista[2], 'ASA' : lista[3],'ASD' : lista[4],'ZSA' : lista[5],'ZSD' : lista[6],'K' : lista[7],'SF' : lista[8],'ZOD' : str(lista[9])})
 print(df)
+
+
 #-----------------------------------
    
     

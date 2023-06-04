@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Nov 30 16:28:39 2022
+
 @author: user
 """
 import threeGPPMultipathGenerator as pg
@@ -35,18 +36,18 @@ plt.pcolor(mm, cmap='RdYlBu_r')
 plt.colorbar(label="Number of users", orientation="vertical")
 plt.show()
 
-model = pg.ThreeGPPMultipathChannelModel(sce="UMi")
+model = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
 macroDS = np.zeros(Nusers) 
 macroASD = np.zeros(Nusers)
 macroASA = np.zeros(Nusers)
-macroZSD = np.zeros(Nusers)
+macroZSD_lslog = np.zeros(Nusers)
 macroZSA = np.zeros(Nusers)
 for i in range(Nusers):
-    macro,small = model.create_channel(txPos,users[i])
+    plinfo,macro,clusters,subpaths = model.create_channel(txPos,users[i])
     macroDS[i]= macro.ds
     macroASD[i]= macro.asd
     macroASA[i]= macro.asa
-    macroZSD[i]= macro.zsd
+    macroZSD_lslog[i]= macro.zsd_lslog
     macroZSA[i]= macro.zsa
     
 fig = plt.figure(2)
@@ -97,8 +98,8 @@ plt.ylim([0, distance])
 plt.yticks(np.arange(0, distance+1, corrDist))
 plt.xticks(np.arange(0, distance+1, corrDist))
 plt.grid(axis='both',color='red')
-sc = plt.scatter(posX,posY,s=15,c=macroZSD, cmap='RdYlBu_r')
-plt.colorbar(label="ZSD (º)", orientation="vertical")
+sc = plt.scatter(posX,posY,s=15,c=macroZSD_lslog, cmap='RdYlBu_r')
+plt.colorbar(label="$\sigma_{logZSD}$ (º)", orientation="vertical")
 plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
