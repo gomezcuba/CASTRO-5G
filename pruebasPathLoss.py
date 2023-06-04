@@ -53,7 +53,7 @@ plt.legend()
 plt.xlabel("Distance")
 plt.ylabel("Path Loss (dB)")
 plt.grid(axis='both', color='gray')
-
+plt.show()
 
 
 

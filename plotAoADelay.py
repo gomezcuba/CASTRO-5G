@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+#%%
 import threeGPPMultipathGenerator as pg
 import multipathChannel as mc
 
@@ -15,7 +15,7 @@ plt.close('all')
 fig_ctr=0
 
 model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=True
+model.bLargeBandwidthOption=False
 macro,small = model.create_channel((0,0,10),(40,0,1.5))
 clusters,subpaths = small
 nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
@@ -151,3 +151,5 @@ for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
 #anim = animation.FuncAnimation(fig, animate, frames=2, interval=100)
 #
 #anim.save('./testanim.gif', writer='imagemagick', fps=10, progress_callback =  lambda i, n: print(f'Saving frame {i} of {n}'))
+
+# %%

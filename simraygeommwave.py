@@ -96,7 +96,7 @@ PLOT_LOCS=True
 t_total_run_init=time.time()
 fig_ctr=0
 
-print ("generación canal")
+
 if GEN_CHANS:
     chgen = mp3g.ThreeGPPMultipathChannelModel()
     chgen.bLargeBandwidthOption=True
@@ -279,6 +279,7 @@ if EST_CHANS:
         yp=pilgen.applyPilotChannel(hk,w,v,zp*np.sqrt(sigma2))
         Pfa=1e-5
         factor_Pfa=np.log(1/(1-(Pfa)**(1/(Nd*Na*Nt))))
+        """Algoritmo OMPBR - dado phi, theta e tau estimar x0 e y0"""
         ( hest, Isupp )=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr*factor_Pfa,nsim,v,w, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=5.0,  accelDel = True)
         #    a_est = np.linalg.lstsq(Isupp.observations,yp.reshape(-1,1),rcond=None)[0]
         a_est = Isupp.coefs

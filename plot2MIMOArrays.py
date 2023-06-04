@@ -57,6 +57,7 @@ plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$',
 plt.yticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
 plt.xlabel('AoD')
 plt.ylabel('AoA')
+plt.show()
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)

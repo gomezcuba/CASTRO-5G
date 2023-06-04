@@ -3,7 +3,9 @@ import raytracingLocation as rtx
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import threeGPPMultipathGenerator as mpg
 
+""" Test class - will be used for probing that AoD, AoA and tau are consistent with 3gpp at the same time"""
 
 """ de momento ploteando cousas para ver como funciona"""
 mu, sigma = 100, 15

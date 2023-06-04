@@ -5,8 +5,28 @@ import scipy.optimize as opt
 import numpy as np
 import pandas as pd
 import collections as col
+import threeGPPMultipathGenerator as mpg
 
-""" Clase relacionada con funcións de canle """
+""" Nesta API listaranse as funcións de consistencia necesarias para a correción de cada un dos escenarios nos que traballamos:
+
+    1. Datos AoD e delay correctos -> Xeramos novos AoA consistentes a partir destos - genAoAConsistency
+     
+    2. Consistencia total escenario anterior -> desbotamos os AoD que entran polo backlobe - removeBacklobeAoD
+
+        2.1. Implementar as dúas funcións anteriores nunha soa
+
+    3. Datos AoD incorrectos -> Xeramos novos AoD a partir de AoA e delay - genAoDConsistency
+
+    4. Datos delay incorrectos -> Xeramos novos tau (delay) a partir de AoA e AoD - genDelayConsistency
+
+    ------- Funcións extra --------
+
+    5. Adaptar según 1,3 ou 4 aleatoriamente para cada path - genRandomConsistency
+
+    6. Usar array invertido l.142-155 simraygeommwave.py 
+
+    
+"""
 
 class raytracingLocation:
 
@@ -15,8 +35,7 @@ class raytracingLocation:
 
 
             
-    #Genera canal con resultados consistentes para raytracing
-    #non sei si xa existe, o mrayloc e btt caotico
+    #Genera canal random a partir de datos arbitrarios
     def genGeoChannel(self, Npath,Nsims,Xmax,Xmin,Ymax,Ymin):
 
         #generate locations and compute multipath 
@@ -37,12 +56,22 @@ class raytracingLocation:
         geochannel = np.array([x,y,theta,phi,tau])
 
         return geochannel
+    def channelConsistencyRetAOA(Nsims,xmax,ymax,xmin,ymin):
 
-    def genChanRayTracing(self, Npath,Nsims,xmax,xmin,ymax,ymin):
+        chan = mpg.ThreeGPPMultipathChannelModel()
+        small, macro = mpg.create_channel()
 
-        x = np.random.rand(Npath,Nsims)*(xmax-xmin)+xmin
-        y = np.random.rand(Npath,Nsims)*(ymax-ymin)+ymin
 
+        return adaptedChannel
+
+    def genChanRayTracing(x0,y0,x,y):
+
+        model = mpg.ThreeGPPMultipathChannelModel()
+        model.bLargeBandwidthOption=False
+        macro,small = model.create_channel((x0,y0),(40,0,1.5))
+        clusters,subpaths = small
+        nClusters,tau,powC,AOA,AOD,ZOA,ZOD = clusters
+        tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths
         """ Comprobar consistencia de los retardos del canal
         
         1. Data extraction - Conocemos os AoA e os retardos 
