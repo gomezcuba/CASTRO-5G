@@ -60,6 +60,7 @@ class raytracingLocation:
 
         chan = mpg.ThreeGPPMultipathChannelModel()
         small, macro = mpg.create_channel()
+        adaptedChannel = True
 
 
         return adaptedChannel
