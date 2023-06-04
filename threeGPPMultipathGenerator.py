@@ -2,7 +2,7 @@ import numpy as np
 import collections as col
 import multipathChannel as ch
 import pandas as pd
-#TODO: convertir canais de modo normal a modo compatible
+
 class ThreeGPPMultipathChannelModel:
     ThreeGPPMacroParams = col.namedtuple( "ThreeGPPMacroParams",[
         'los',
@@ -672,11 +672,13 @@ class ThreeGPPMultipathChannelModel:
    
     
     #Revisar los parametros de entrada
-    def create_subpaths_largeBW(self,macro,clusters,d2D,maxM=20,Dh=2,Dv=2,B=2e6):
+    def create_subpaths_largeBW(self,macro,clusters,maxM=20,Dh=2,Dv=2,B=2e6):
         (nClusters,tau,powC,AOA,AOD,ZOA,ZOD) = clusters
-        #TOASK: why is this part of the code raising exceptions?
         
         los = macro.los
+        casd = macro.casd
+        casa = macro.casa
+        czsa = macro.czsa
         ZSD = macro.zsd
         
         if los:
@@ -685,17 +687,9 @@ class ThreeGPPMultipathChannelModel:
             param = self.scenarioParamsNLOS
         M = param.M
         cds = param.cds
-        cds = param.cds
-        casd = param.casd
-        casa = param.casa
-        czsa = param.czsa
-        zsd,zsd_mu=param.zsdFun(d2D)
-
+        
         #The offset angles alpha_m
-        alpha_AOA = np.random.uniform(-2,2,size=(nClusters,M))
-        alpha_AOD = np.random.uniform(-2,2,size=(nClusters,M))
-        alpha_ZOA = np.random.uniform(-2,2,size=(nClusters,M))
-        alpha_ZOD = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha = np.random.uniform(-2,2,size=(nClusters,M))
         
         #The relative delay of m-th ray
         tau_primaprima = np.random.uniform(0,2*cds,size=(nClusters,M))
@@ -703,7 +697,7 @@ class ThreeGPPMultipathChannelModel:
     
         #Ray powers
         czsd = (3/8)*10**(self.zsd_mu)
-        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AOA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AOD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZOA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZOD))/czsd)
+        powPrima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha))/casa)*np.exp(-(np.sqrt(2)*abs(alpha))/casd)*np.exp(-(np.sqrt(2)*abs(alpha))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha))/czsd)
         powC_sp = powC*(powPrima/np.sum(powPrima))
         
         #The number of rays per cluster
@@ -719,15 +713,15 @@ class ThreeGPPMultipathChannelModel:
 
         for i in range(nClusters):
             for j in range(M):
-                AOA_sp[i,j] = AOA[i] + casa*alpha_AOA[i,j]
-                AOD_sp[i,j] = AOD[i] + casa*alpha_AOD[i,j]
+                AOA_sp[i,j] = AOA[i] + casa*alpha[i,j]
+                AOD_sp[i,j] = AOD[i] + casa*alpha[i,j]
         
         ZOA_sp = np.zeros((nClusters,M))
         ZOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
             for j in range(M):
-                ZOA_sp[i,j] = ZOA[i] + czsa*alpha_ZOA[i,j]
-                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha_ZOD[i,j]
+                ZOA_sp[i,j] = ZOA[i] + czsa*alpha[i,j]
+                ZOD_sp[i,j] = ZOD[i] + (3/8)*(10**ZSD)*alpha[i,j]
         
         return(tau_prima,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp)
         
@@ -735,18 +729,14 @@ class ThreeGPPMultipathChannelModel:
     def create_subpaths_basics(self,macro,clusters):
         los = macro.los
         ZSD = macro.zsd
-        casa = param.casa
-        czsa = param.czsa
-            
+    
         if los:
             param = self.scenarioParamsLOS
         else:
             param = self.scenarioParamsNLOS
         M = param.M
         cds = param.cds
-
-
-
+        
         (nClusters,tau,powC,AOA,AOD,ZOA,ZOD)=clusters
         
         #Generate subpaths delays and powers
@@ -777,7 +767,7 @@ class ThreeGPPMultipathChannelModel:
         tau2 = 1.28*cds
         tau3 = 2.56*cds
         """   
-
+        casa = param.casa
         AOA_sp = np.zeros((nClusters,M))
         AOD_sp = np.zeros((nClusters,M))
 
@@ -786,7 +776,7 @@ class ThreeGPPMultipathChannelModel:
                 AOA_sp[i,j] = AOA[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
                 AOD_sp[i,j] = AOD[i] + casa*self.alpham.get(j)*np.random.choice([1, -1])
         
-
+        czsa = param.czsa
         ZOA_sp = np.zeros((nClusters,M))
         ZOD_sp = np.zeros((nClusters,M))
         for i in range(nClusters):
@@ -804,7 +794,7 @@ class ThreeGPPMultipathChannelModel:
         clusters = self.create_clusters(macro,angles)
         
         if self.bLargeBandwidthOption:
-            subpaths = self.create_subpaths_largeBW(macro,clusters)
+            subpaths = self.create_subpaths_largebw(macro,clusters)
             (tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp) = subpaths
         else:
             subpaths = self.create_subpaths_basics(macro,clusters)
