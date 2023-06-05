@@ -12,11 +12,11 @@ import pandas as pd
 
 
 #-----------------PLOTEO PROBABILIDAD LOS-------------------------------
-model = pg.ThreeGPPMultipathChannelModel(sce="UMi")
-model1 = pg.ThreeGPPMultipathChannelModel(sce="UMa")
-model2 = pg.ThreeGPPMultipathChannelModel(sce="RMa")
-model3 = pg.ThreeGPPMultipathChannelModel(sce="InH-Office-Open")
-model4 = pg.ThreeGPPMultipathChannelModel(sce="InH-Office-Mixed")
+model = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
+model1 = pg.ThreeGPPMultipathChannelModel(scenario="UMa")
+model2 = pg.ThreeGPPMultipathChannelModel(scenario="RMa")
+model3 = pg.ThreeGPPMultipathChannelModel(scenario="InH-Office-Open")
+model4 = pg.ThreeGPPMultipathChannelModel(scenario="InH-Office-Mixed")
 
 distance = []
 LOSprobabilityUMi = []
@@ -25,12 +25,12 @@ LOSprobabilityRMa = []
 LOSprobabilityOpen = []
 LOSprobabilityMixed = []
 
-for i in range(100):
-    LOSprobabilityUMi.append(model.scenarioLosProb(i))
+for i in range(300):
+    LOSprobabilityUMi.append(model.scenarioLosProb(i,1.5))
     LOSprobabilityUMa.append(model1.scenarioLosProb(i,1.5))
-    LOSprobabilityRMa.append(model2.scenarioLosProb(i))
-    LOSprobabilityOpen.append(model3.scenarioLosProb(i))
-    LOSprobabilityMixed.append(model4.scenarioLosProb(i))
+    LOSprobabilityRMa.append(model2.scenarioLosProb(i,1.5))
+    LOSprobabilityOpen.append(model3.scenarioLosProb(i,1.5))
+    LOSprobabilityMixed.append(model4.scenarioLosProb(i,1.5))
     distance.append(i)
 
 plt.plot(distance, LOSprobabilityUMi, color = 'tab:red', linestyle = 'dashed' , label = 'UMi')

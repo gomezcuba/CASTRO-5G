@@ -11,10 +11,10 @@ import matplotlib.pyplot as plt
 from collections import Counter
 import pandas as pd
 
-model = pg.ThreeGPPMultipathChannelModel(sce="RMa")
-model1 = pg.ThreeGPPMultipathChannelModel(sce="UMi")
-model2 = pg.ThreeGPPMultipathChannelModel(sce="UMa")
-model3 = pg.ThreeGPPMultipathChannelModel(sce="InH-Office-Mixed")
+model = pg.ThreeGPPMultipathChannelModel(scenario="RMa")
+model1 = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
+model2 = pg.ThreeGPPMultipathChannelModel(scenario="UMa")
+model3 = pg.ThreeGPPMultipathChannelModel(scenario="InH-Office-Mixed")
 #model.bLargeBandwidthOption=True
 
 txPos = (0,0,20)
@@ -43,7 +43,7 @@ pathlossRMaLOS = []
 
 for i in range(5000):
     d3D=np.sqrt(np.power(i,2) + np.power(hbs-hut,2))
-    print(d3D)
+    # print(d3D)
     pathlossRMaLOS.append(model.scenarioPlossRMaLOS(d3D,i))
     pathLossRMaNLOS.append(model.scenarioPlossRMaNLOS(d3D,i))
     distance.append(i)
@@ -54,6 +54,7 @@ plt.legend()
 plt.xlabel("Distance")
 plt.ylabel("Path Loss (dB)")
 plt.grid(axis='both', color='gray')
+plt.show()
 
 
 
