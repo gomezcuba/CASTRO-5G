@@ -1,4 +1,5 @@
 #!/usr/bin/python
+#%%
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -17,6 +18,8 @@ plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
 tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+
+#TODO - insert adapted AOA and compare response
 
 #4D  color intensity plots vs delay, AoA and AoD grid
 AoAs = AOA_sp*np.pi/180#radians
@@ -146,3 +149,5 @@ ax.set_zlabel('cos(ZoA)')
 cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),shrink=0.8,label = 'Directive Array Channel Gain dB')
 cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
 cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
+
+# %%

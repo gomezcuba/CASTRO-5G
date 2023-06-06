@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+#%%
 import threeGPPMultipathGenerator as pg
 import multipathChannel as mc
 
@@ -77,6 +77,7 @@ for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
     ax.scatter3D(x,y,delays[pind],marker='o',color=clr)
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
+plt.show()
 ax = Axes3D(fig)
 
 #since there is no plot.polar() in 3D, we need to draw the axis manually
@@ -152,3 +153,5 @@ for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
 #anim = animation.FuncAnimation(fig, animate, frames=2, interval=100)
 #
 #anim.save('./testanim.gif', writer='imagemagick', fps=10, progress_callback =  lambda i, n: print(f'Saving frame {i} of {n}'))
+
+# %%

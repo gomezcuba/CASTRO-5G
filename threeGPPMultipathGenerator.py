@@ -1,3 +1,4 @@
+#%%
 import numpy as np
 import pandas as pd
 
@@ -395,7 +396,7 @@ class ThreeGPPMultipathChannelModel:
         ]
     
     #RMa hasta 7GHz y el resto hasta 100GHz
-    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40):
+    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, adaptRaytx = False):
         self.frecRefGHz = fc
         self.scenario = scenario
         self.corrDistance = corrDistance
@@ -409,6 +410,8 @@ class ThreeGPPMultipathChannelModel:
         self.clight=3e8
         self.wavelength = 3e8/(fc*1e9)
         self.allParamTable = self.dfTS38900Table756(fc)
+
+        self.adaptRaytx = adaptRaytx
         
         self.scenarioLosProb= self.tableFunLOSprob[self.scenario]
         self.scenarioParams = self.allParamTable[self.scenario]
@@ -791,4 +794,60 @@ class ThreeGPPMultipathChannelModel:
         plinfo = (los,PLconst,sfdB)
         self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
         return(plinfo,macro,clusters,subpaths)
+
+    def fitAOA(self, txPos, rxPos, clusters, subpaths):
+
+        aoa = 0
+        # datos canle que nos interesan
+        aod = clusters['AOD']
+        tau = clusters['tau']
+
+        li = self.clight * tau 
+
+        # obtemos tau0 e los - poden sacarse do obxecto ou hai que introducilos ainda por cli?
+        aPos = np.array(txPos)
+        bPos = np.array(rxPos)        
+        vLOS = bPos-aPos
+        # asumindo que temos un vector 3d de entrada igual que en create_channel
+        d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
+
+        losAOD=(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
+        dAOD = aod - losAOD
+
+        # acercamento diferente - creamos un punto b < vLos
+        # esto tamen resolve que o ángulo de chegada entre por atrás?
+
+        b = np.random.uniform(0,vLOS, size = len(aod))
+        li = tau*self.clight - b*np.cos(dAOD)
+        auxPhi = np.arccos((vLOS-b)/li)*(180.0/np.pi)# graos
+        clusters['AOA'] = (180.0+aod-auxPhi)
+
+        # solo referencio clusters - entender mellor iso
+        
+        return(clusters, subpaths) # sería corrected clusters e subpaths, deixo asi ata que acabe
+
+    def fitAOD(self, txPos, rxPos, clusters, subpaths):
+        aod = 0
+
+
+        return aod
+    def fitDelay(self, txPos, rxPos, clusters, subpaths):
+        tau = 0
+
+        return tau 
+    def randomFitParameters(self, txPos, rxPos, clusters, subpaths):
+
+        index = np.random.randint(0,3)
+
+        if index == 0:
+            clusters, subpaths = self.fitAOA(txPos,rxPos,clusters,subpaths)
+        elif index == 1:
+            clusters, subpaths = self.fitAOD(txPos,rxPos,clusters,subpaths)
+        elif index == 2:
+            clusters, subpaths = self.fitDelay(txPos,rxPos,clusters,subpaths)
+        
+
+        return clusters,subpaths
     
+    
+# %%
