@@ -18,7 +18,8 @@ import OMPCachedRunner as oc
 import MIMOPilotChannel as pil
 
 plt.close('all')
-bar = Bar('Procesando', max=30)
+bar = Bar('Procesando', max=3000)
+bar.check_tty = False
 
 class UIMultipathChannelModel:
     def __init__(self,Nt=1,Na=1,Nd=1):
@@ -68,7 +69,7 @@ Nxp=4
 Nrft=1
 Nrfr=4
 
-Nsim= 10         
+Nsim= 1000         
 NpathMethod = 3 #dimension para el número de Displaced paths que se harán las simulaciones
 
 c=3e8
@@ -265,41 +266,41 @@ for case in cases:
         #solo quedarse con la dimensión 0 de Nmethod
         marg_perfectCSIT = marg_lin[0, :, :].flatten()
 
-        '''
-        plt.figure(1)
-        plt.bar(np.arange(Nsim), np.mean(ach_rate[0], axis=1) * 1e-6 )  # Crear el gráfico de barras
-        plt.xlabel('Simulations')
-        plt.ylabel('Mean Achievable rate (Mbps)')
-
-        plt.figure(2)
-        plt.bar(np.arange(Nsim), np.mean((1 - E_dB[0]) * rate_tx[0] * 1e-6, axis=1))  # Crear el gráfico de barras
-        plt.xlabel('Simulations')
-        plt.ylabel('Mean TX rate (Mbps)')
-        '''
         
-        '''
-        plt.figure(1)
-        plt.plot(np.arange(Nu * Nsim), ach_rate[0].flatten() * 1e-6, 'b')
-        plt.plot(np.arange(Nu * Nsim), rate_tx[0].flatten() * 1e-6, 'r')
-        plt.plot(np.arange(Nu * Nsim), (1 - E_dB[0].flatten()) * rate_tx[0].flatten() * 1e-6, 'g')
-        plt.xlabel('Trajectory point')
-        plt.ylabel('Rate (Mbps)')
-        plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
-        '''
+        # plt.figure(1)
+        # plt.bar(np.arange(Nsim), np.mean(ach_rate[0], axis=1) * 1e-6 )  # Crear el gráfico de barras
+        # plt.xlabel('Simulations')
+        # plt.ylabel('Mean Achievable rate (Mbps)')
+
+        # plt.figure(2)
+        # plt.bar(np.arange(Nsim), np.mean((1 - E_dB[0]) * rate_tx[0] * 1e-6, axis=1))  # Crear el gráfico de barras
+        # plt.xlabel('Simulations')
+        # plt.ylabel('Mean TX rate (Mbps)')
+        
+        
+        
+        # plt.figure(1)
+        # plt.plot(np.arange(Nu * Nsim), ach_rate[0].flatten() * 1e-6, 'b')
+        # plt.plot(np.arange(Nu * Nsim), rate_tx[0].flatten() * 1e-6, 'r')
+        # plt.plot(np.arange(Nu * Nsim), (1 - E_dB[0].flatten()) * rate_tx[0].flatten() * 1e-6, 'g')
+        # plt.xlabel('Trajectory point')
+        # plt.ylabel('Rate (Mbps)')
+        # plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
+        
 
     elif case == 2:
         #solo quedarse con la dimensión 0 de Nmethod
         marg_perfect1User = marg_lin[0, :, :].flatten()
 
-        '''
-        plt.figure(2)
-        plt.plot(np.arange(Nu * Nsim), ach_rate[0].flatten() * 1e-6, 'b')
-        plt.plot(np.arange(Nu * Nsim), rate_tx[0].flatten() * 1e-6, 'r')
-        plt.plot(np.arange(Nu * Nsim), (1 - E_dB[0].flatten()) * rate_tx[0].flatten() * 1e-6, 'g')
-        plt.xlabel('Trajectory point')
-        plt.ylabel('Rate (Mbps)')
-        plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
-        '''
+        
+        # plt.figure(2)
+        # plt.plot(np.arange(Nu * Nsim), ach_rate[0].flatten() * 1e-6, 'b')
+        # plt.plot(np.arange(Nu * Nsim), rate_tx[0].flatten() * 1e-6, 'r')
+        # plt.plot(np.arange(Nu * Nsim), (1 - E_dB[0].flatten()) * rate_tx[0].flatten() * 1e-6, 'g')
+        # plt.xlabel('Trajectory point')
+        # plt.ylabel('Rate (Mbps)')
+        # plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
+    
 
     elif case == 3:
         #guardar cada una de las dimensiones de Nmethod
@@ -307,28 +308,28 @@ for case in cases:
         marg_5_pathDisplaced = marg_lin[1, :, :].flatten()
         marg_2_pathDisplaced = marg_lin[2, :, :].flatten()
 
-        plt.figure(3)
-        plt.bar(np.arange(Nsim), np.mean(ach_rate[0], axis=1) * 1e-6, color='magenta', label='Mean Achievable rate (Mbps)')
-        plt.bar(np.arange(Nsim), np.mean((1 - E_dB[0]) * rate_tx[0] * 1e-6, axis=1), color='blue', label='Mean TX rate (Mbps)')
-        plt.xlabel('Simulations')
-        plt.legend(['Mean Achievable rate (Mbps)', 'Mean TX rate (Mbps)'], loc='lower right')
-        plt.ylabel('Mean rate (Mbps)')
+        # plt.figure(3)
+        # plt.bar(np.arange(Nsim), np.mean(ach_rate[0], axis=1) * 1e-6, color='magenta', label='Mean Achievable rate (Mbps)')
+        # plt.bar(np.arange(Nsim), np.mean((1 - E_dB[0]) * rate_tx[0] * 1e-6, axis=1), color='blue', label='Mean TX rate (Mbps)')
+        # plt.xlabel('Simulations')
+        # plt.legend(['Mean Achievable rate (Mbps)', 'Mean TX rate (Mbps)'], loc='lower right')
+        # plt.ylabel('Mean rate (Mbps)')
 
-        plt.figure(4)
-        plt.plot(np.arange(Nu * Nsim), ach_rate[0].flatten() * 1e-6, 'b')
-        plt.plot(np.arange(Nu * Nsim), rate_tx[0].flatten() * 1e-6, 'r')
-        plt.plot(np.arange(Nu * Nsim), (1 - E_dB[0].flatten()) * rate_tx[0].flatten() * 1e-6, 'g')
-        plt.xlabel('Trajectory point')
-        plt.ylabel('Rate (Mbps)')
-        plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
+        # plt.figure(4)
+        # plt.plot(np.arange(Nu * Nsim), ach_rate[0].flatten() * 1e-6, 'b')
+        # plt.plot(np.arange(Nu * Nsim), rate_tx[0].flatten() * 1e-6, 'r')
+        # plt.plot(np.arange(Nu * Nsim), (1 - E_dB[0].flatten()) * rate_tx[0].flatten() * 1e-6, 'g')
+        # plt.xlabel('Trajectory point')
+        # plt.ylabel('Rate (Mbps)')
+        # plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
 
-        plt.figure(5)
-        plt.plot(np.arange(Nu * Nsim), ach_rate[2].flatten() * 1e-6, 'b')
-        plt.plot(np.arange(Nu * Nsim), rate_tx[2].flatten() * 1e-6, 'r')
-        plt.plot(np.arange(Nu * Nsim), (1 - E_dB[2].flatten()) * rate_tx[2].flatten() * 1e-6, 'g')
-        plt.xlabel('Trajectory point')
-        plt.ylabel('Rate (Mbps)')
-        plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
+        # plt.figure(5)
+        # plt.plot(np.arange(Nu * Nsim), ach_rate[2].flatten() * 1e-6, 'b')
+        # plt.plot(np.arange(Nu * Nsim), rate_tx[2].flatten() * 1e-6, 'r')
+        # plt.plot(np.arange(Nu * Nsim), (1 - E_dB[2].flatten()) * rate_tx[2].flatten() * 1e-6, 'g')
+        # plt.xlabel('Trajectory point')
+        # plt.ylabel('Rate (Mbps)')
+        # plt.legend(['Achievable', 'Transmitted', 'Received (tx and no err.)'])
         
 
 bar.finish()
