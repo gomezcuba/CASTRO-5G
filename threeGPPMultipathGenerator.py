@@ -36,26 +36,17 @@ class ThreeGPPMultipathChannelModel:
                 ],
             data={
                 ('UMi','LOS'): [
-                    -0.24*np.log10(1+fc)-7.14,
-                    0.38,
-                    -0.05*np.log10(1+fc)+1.21,
-                    0.41,
-                    -0.08*np.log10(1+fc)+1.73,
-                    0.014*np.log10(1+fc)+0.28,
-                    -0.1*np.log10(1+fc)+0.73,
-                    -0.04*np.log10(1+fc)+0.34,
+                    -0.24*np.log10(1+fc)-7.14, 0.38, #logDS mu sigma
+                    -0.05*np.log10(1+fc)+1.21, 0.41, #logASD mu sigma
+                    -0.08*np.log10(1+fc)+1.73, 0.014*np.log10(1+fc)+0.28,#logASA mu sigma
+                    -0.1*np.log10(1+fc)+0.73, -0.04*np.log10(1+fc)+0.34,#logZSA mu sigma
                     lambda d2D,hut: np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-10.0) +0.83),
                     0.35,
                     4,
-                    9,
-                    5,
+                    9, 5,
                     3,
-                    12,
-                    20,
-                    5,
-                    3,
-                    17,
-                    7,
+                    12, 20,
+                    5, 3, 17, 7, # cds casd casa czsa
                     3,
                     np.array([[1,0.5,-0.4,-0.5,-0.4,0,0],
                        [0.5,1,-0.7,-0.2,-0.3,0,0],
@@ -66,8 +57,7 @@ class ThreeGPPMultipathChannelModel:
                        [0,0,0.2,0.3,0,0,1]]),
                     self.scenarioPlossUMiLOS,
                     lambda d2D,hut: 0,
-                    9,
-                    3
+                    9, 3 # cross polarization mu sigma
                 ],
                 ('UMi','NLOS'): [
                     -0.24*np.log10(1+fc)-6.83,

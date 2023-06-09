@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 import numpy as np
 import time
 import os
@@ -225,7 +226,7 @@ for case in cases:
 
             #LINK ADAPTATION parameters
             mu = 0.01                         #(first version) coefficient of gradient descent. Is it possible to estimate it?
-            epsy = 0.05                       #BLER       
+            epsy = 0.01                       #BLER       
 
             #calculation of parameters at instant 0
             #TX
@@ -333,6 +334,56 @@ for case in cases:
         
 
 bar.finish()
+def moving_mean(mat,N,axis=0):
+    return( np.apply_along_axis(lambda c: np.convolve(c,np.ones(N)/N,mode='same') ,axis=axis,arr=mat) )
+
+#in these plots we focus on the time-evolution of the simulation
+#for the sum-rate of all users
+plt.figure(1)
+
+mm_sum_arate = np.sum( moving_mean(ach_rate ,10,axis=1),axis=2) * 1e-6
+mm_sum_tput = np.sum( moving_mean((1 - E_dB) * rate_tx , 10,axis=1),axis=2) * 1e-6
+Ncases=3
+caseParam=[#name, npath if applicable
+           # ('PerfectCSIT',0),
+           # ('Perf. 1st User',0),
+           ('Npath=',10),
+           ('Npath=',5),
+           ('Npath=',2),
+    ]
+for case in range(Ncases):
+    name,npath=caseParam[case]
+    plt.plot(np.arange(Nsim), mm_sum_arate[case,:], ':',color=cm.jet(case/(Ncases-1)), label='sun AR %s %d'%(name,npath))
+    plt.plot(np.arange(Nsim), mm_sum_tput[case,:] , '',color=cm.jet(case/(Ncases-1)), label='sum TP %s %d'%(name,npath))
+plt.legend()
+
+#for the average error prob of all users
+plt.figure(2)
+mm_BLER = np.mean( moving_mean(E_dB , 10,axis=1 ),axis=2)
+for case in range(Ncases):
+    name,npath=caseParam[case]
+    plt.plot(np.arange(Nsim), mm_BLER[case,:], '',color=cm.jet(case/(Ncases-1)), label='BLER %s %d'%(name,npath))
+
+#in these plots we focus on the mean performance of the simulation after convergence
+#for the per user rate
+plt.figure(3)
+barwidth=0.9/Ncases/2
+mean_arate = np.mean( ach_rate[:,Nsim//2:,:], axis=1) * 1e-6
+mean_tput = np.mean( (1 - E_dB[:,Nsim//2:,:]) * rate_tx[:,Nsim//2:,:], axis=1) * 1e-6
+for case in range(Ncases):    
+    name,npath=caseParam[case]
+    plt.bar(np.arange(Nu)+(2*case-1/2)*barwidth,mean_arate[case,:],color=cm.jet((2*case)/(Ncases*2-1)),width=barwidth, label='mean AR %s %d'%(name,npath))
+    plt.bar(np.arange(Nu)+(2*case+1-1/2)*barwidth,mean_tput[case,:],color=cm.jet((2*case+1)/(Ncases*2-1)),width=barwidth, label='mean TP %s %d'%(name,npath))
+plt.legend()
+
+#for the per user error probability
+plt.figure(4)
+barwidth=0.9/Ncases
+mean_BLER = np.mean( E_dB[:,Nsim//2:,:], axis=1)
+for case in range(Ncases):    
+    name,npath=caseParam[case]
+    plt.bar(np.arange(Nu)+(case-1/2)*barwidth,mean_BLER[case,:],color=cm.jet((case)/(Ncases-1)),width=barwidth, label='mean BLER %s %d'%(name,npath))
+plt.legend()
 
 plt.figure(6)
 plt.plot(np.arange(Nu * Nsim), marg_perfectCSIT  , 'b')
