@@ -1,6 +1,7 @@
 #%%
 import numpy as np
 import pandas as pd
+import sympy as sp
 
 class ThreeGPPMultipathChannelModel:
     
@@ -797,7 +798,6 @@ class ThreeGPPMultipathChannelModel:
 
     def fitAOA(self, txPos, rxPos, clusters, subpaths):
 
-        aoa = 0
         # datos canle que nos interesan
         aod = clusters['AOD']
         tau = clusters['tau']
@@ -812,18 +812,40 @@ class ThreeGPPMultipathChannelModel:
         d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
 
         losAOD=(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
+        tau0 = losAOD / self.clight
         dAOD = aod - losAOD
 
-        # acercamento diferente - creamos un punto b < vLos
-        # esto tamen resolve que o ángulo de chegada entre por atrás?
+        # corregir  básase en dAOD non en AOD
 
-        b = np.random.uniform(0,vLOS, size = len(aod))
-        li = tau*self.clight - b*np.cos(dAOD)
-        auxPhi = np.arccos((vLOS-b)/li)*(180.0/np.pi)# graos
-        clusters['AOA'] = (180.0+aod-auxPhi)
+        nu = tau / tau0
+        cosdAOD = np.cos(dAOD)
+        sindAOD = np.sin(dAOD)
+        xsolA = (sindAOD*(1-nu))/(nu**2+1-(2*nu*cosdAOD))
+        xsolB = (sindAOD*(1+nu-(2*nu*cosdAOD)))/(nu**2+1-(2*nu*cosdAOD))
 
-        # solo referencio clusters - entender mellor iso
-        
+        #Posibles solucions:
+        solA = np.pi + aod + np.arcsin(xsolA)
+        solB = np.pi + aod + np.arcsin(xsolB)
+
+        # -- Seguintes liñas mover a función de consistencia?
+
+        #Avaliamos según consistencia (o retardo debe ser positivo)
+        #Aoa auxiliar (complementario)
+        auxAOA_A = np.pi + aod - solA
+        auxAOA_B = np.pi + aod - solB
+
+        h_A = losAOD*(np.tan(dAOD)*np.tan(auxAOA_A))/(np.tan(dAOD)+np.tan(auxAOA_A))
+        tau_A = li / ((self.clight*h_A)*((1/np.sin(dAOD))+(1/np.sin(auxAOA_A))))
+
+        if tau_A > 0:
+            clusters['AOA'] = solA
+        else: 
+            clusters['AOA'] = solB
+
+        # Son consciente de que a día de hoxe a solución
+        # non é consistente a nivel de arrays, certas cousas hai
+        # que evalualas elemento a elemento
+
         return(clusters, subpaths) # sería corrected clusters e subpaths, deixo asi ata que acabe
 
     def fitAOD(self, txPos, rxPos, clusters, subpaths):
@@ -851,3 +873,25 @@ class ThreeGPPMultipathChannelModel:
     
     
 # %%
+""" pathPostProc = None - en vez de booleano
+
+phi_ñ + AOA = phi + aod0
+
+mirar en pandas como eliminar un row
+
+xuntar delayChan e ArrayPolar e facer unha correlación
+
+Poñer ao día simraygeommwave
+
+# anterior - integrar noutra función complementaria
+#Método modificando tanto tau como AOA
+        # acercamento diferente - creamos un punto b < vLos
+
+        #b = np.random.uniform(0,vLOS, size = len(aod))
+        #li = tau*self.clight - b*np.cos(dAOD)
+        #auxPhi = np.arccos((vLOS-b)/li)*(180.0/np.pi)# graos
+        #clusters['AOA'] = (180.0+aod-auxPhi) 
+##
+
+
+"""
