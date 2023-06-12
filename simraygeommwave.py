@@ -21,8 +21,8 @@ def fUPA( incidAngle , Nant = 16, dInterElement = .5):
     return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)
 
 def radUPA( Nangpoint, incidAngle , Nant = 16, dInterElement = .5):
-    vUPA=fUPA(incidAngle,Nant,dInterElement)
-    vAngle=fUPA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)
+    vUPA=ch.fULA(incidAngle,Nant,dInterElement)
+    vAngle=ch.fULA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)
     return (np.swapaxes(vUPA,vUPA.ndim-2,vUPA.ndim-1)[...,None,:,:]@vAngle.conj())[...,0,0]
 
 def fitMmWaveChanAoAForLocation(x0,y0,phi0,AoD,dels):
@@ -67,7 +67,7 @@ def fitMmWaveChanDelForLocation(x0,y0,phi0,AoD,AoA):
     c=3e8
     exdel=(l-l0)/c
     return (exdel,x,y)
-print("test")
+
 GEN_CHANS=True
 GEN_PLOT=True
 Nstrongest=40
@@ -123,16 +123,26 @@ if GEN_CHANS:
     refPos=np.zeros((Nmaxpaths,Nsims,2))
     dels=np.zeros((Nmaxpaths,Nsims))
     coefs=np.zeros((Nmaxpaths,Nsims),dtype=complex)
-    for nsim in range(Nsims):    
-        mpch = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
-        amps = np.array([x.complexAmplitude[0] for x in mpch.channelPaths])
-        allaoa_shifted = np.mod( np.array([x.azimutOfArrival[0] for x in mpch.channelPaths])-phi0[nsim] ,np.pi*2)
-        allaod = np.mod( np.array([x.azimutOfDeparture[0] for x in mpch.channelPaths]) ,np.pi*2)
-        alldelay = np.array([x.excessDelay[0] for x in mpch.channelPaths])*1e-9    
+    for nsim in range(Nsims):
+        #chamar ao xenerador de canle do 3GPP
+        plinfo,macro,clusters,subpaths = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
+        tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
+        los, PLfree, SF = plinfo
+        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+        Npath=tau_sp.size
+        #mpch é unha canle estrictamente acorde ao modelo, gardada en listas python normais.
+        # convertimolo en arrays de numpy
+        amps = np.sqrt( pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
+        allaoa_shifted_old = np.mod( AOA_sp*np.pi/180-phi0[nsim] ,np.pi*2)
+        allaod = np.mod( AOD_sp*np.pi/180 ,np.pi*2)
+        alldelay = tau_sp.reshape(-1)  
        
+        #temos todolos camiños en numpy pero non son reflexions fisicamente consistentes
+        #descartamos completamente os AoA do modelo 3GPP e xeneramos uns AoA propios
+        #que se resultan de respetar o AoD e delay do modelo 3GPPP e as ecuacions trigonometricas da reflexion
         (allaoa_shifted,xpos,ypos) = fitMmWaveChanAoAForLocation(x0[nsim],y0[nsim],phi0[nsim],allaod,alldelay) 
     #  
-        #comment change test
+        
         Npaths=np.minimum(Nmaxpaths,amps.size)
         #the paths in backlobes are removed from the channel, receiver Sector may be 
         indbacklobeD=((allaod>np.pi/2)&(allaod<np.pi*3/2))
@@ -1045,4 +1055,3 @@ if PLOT_LOCS:
 #(phi0_aux, x0_aux, y0_aux, x_aux, y_aux,phi0_var) = loc.computeAllLocationsFromPaths( AoD_est[0:10,0], AoA_est[0:10,0], dels_est[0:10,0],method='fsolve_linear',hint_phi0= phi0_coarse[0])
     
 print("Total run time %d seconds"%(time.time()-t_total_run_init))
-
