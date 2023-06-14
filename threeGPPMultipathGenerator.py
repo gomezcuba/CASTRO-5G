@@ -33,8 +33,7 @@ class ThreeGPPMultipathChannelModel:
                     'funPathLoss',
                     'funZODoffset',
                     'xpr_mu','xpr_sg',
-                    'ray_corrDistance',
-                    'los_corrDistance'
+                    'corrO21','corrLOS','corrStatics'
                 ],
             data={
                 ('UMi','LOS'): [
@@ -70,8 +69,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: 0,
                     9,
                     3,
-                    12,
-                    50
+                    50,50,12
                 ],
                 ('UMi','NLOS'): [
                     -0.24*np.log10(1+fc)-6.83,
@@ -106,8 +104,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: -np.power(10.0,-1.5*np.log10(np.maximum(10,d2D)) + 3.3),
                     8,
                     3,
-                    15,
-                    50
+                    50,50,15
                 ],
                 ('UMa','LOS'): [
                     -6.955 - 0.0963*np.log10(fc),
@@ -142,8 +139,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: 0,
                     8,
                     4,
-                    40,
-                    50
+                    50,50,40
                 ],
                 ('UMa','NLOS'): [
                     -6.28 - 0.204*np.log10(fc),
@@ -178,8 +174,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: 7.66*np.log10(self.frecRefGHz) - 5.96 - np.power(10, (0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(hut - 1.5)  ),
                     7,
                     3,
-                    50,
-                    50
+                    50,50,50
                 ],
                 ('RMa','LOS'): [
                     -7.49,
@@ -214,8 +209,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: 0,
                     12,
                     4,
-                    50,
-                    60
+                    50,60,60
                 ],
                 ('RMa','NLOS'): [
                     -7.43,
@@ -250,8 +244,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D),
                     7,
                     3,
-                    60,
-                    60
+                    50,60,60
                 ],                
                 ('InH-Office-Mixed','LOS'): [
                     -0.01*np.log10(1+fc) - 7.692,
@@ -286,8 +279,7 @@ class ThreeGPPMultipathChannelModel:
                    lambda d2D,hut: 0,
                    11,
                    4,
-                   10,
-                   10
+                   0,10,10
                 ],                
                 ('InH-Office-Mixed','NLOS'): [
                     -0.28*np.log10(1+fc) - 7.173,
@@ -322,8 +314,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: 0,
                     10,
                     4,
-                    10,
-                    10
+                    0,10,10
                 ],                
                 ('InH-Office-Open','LOS'): [
                     -0.01*np.log10(1+fc) - 7.692,
@@ -358,8 +349,7 @@ class ThreeGPPMultipathChannelModel:
                    lambda d2D,hut: 0,
                    11,
                    4,
-                   10,
-                   10
+                   0,10,10
                 ],                
                 ('InH-Office-Open','NLOS'): [
                     -0.28*np.log10(1+fc) - 7.173,
@@ -394,8 +384,7 @@ class ThreeGPPMultipathChannelModel:
                     lambda d2D,hut: 0,
                     10,
                     4,
-                    10,
-                    10
+                    0,10,10
                 ]
            })
         return(df)
@@ -417,10 +406,10 @@ class ThreeGPPMultipathChannelModel:
         ]
     
     #RMa hasta 7GHz y el resto hasta 100GHz
-    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40):
+    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40):
         self.frecRefGHz = fc
         self.scenario = scenario
-        self.corrDistance = corrDistance
+        #self.corrDistance = corrDistance
         self.W=avgStreetWidth
         self.h=avgBuildingHeight
         self.bLargeBandwidthOption = bLargeBandwidthOption
@@ -517,7 +506,13 @@ class ThreeGPPMultipathChannelModel:
         
     #macro => Large Scale Correlated parameters
     def get_macro_from_location(self,txPos, rxPos,los):
-        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, self.corrDistance) #ray corr distance
+        if los:
+            dCorr = self.scenarioParams.LOS.corrLOS
+        else:
+            dCorr = self.scenarioParams.NLOS.corrLOS
+
+        #statictis y 021???
+        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, dCorr) #ray corr distance
         macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
         if not macrokey in self.dMacrosGenerated.index:
             return(self.create_macro(macrokey))#saves result to memory
@@ -769,7 +764,20 @@ class ThreeGPPMultipathChannelModel:
     
         return(clusters,subpaths)
     
+
+
+    
+    #Parte de consistencia espacial
+
+    def displaceMultipathChannel(self, clusters, subpaths, deltaPos):
         
+
+        #Codigo que cumpla con el procedimiento A del apartado de consistencia espacial 
+        
+        return (clusters,subpaths)
+            
+
+
     def create_channel(self, txPos, rxPos):
         aPos = np.array(txPos)
         bPos = np.array(rxPos)        
@@ -778,19 +786,6 @@ class ThreeGPPMultipathChannelModel:
         d3D = np.linalg.norm(bPos-aPos)
         hbs = aPos[2]
         hut = bPos[2]
-        
-        losAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
-        losAoA=np.mod(np.pi+losAoD, 2*np.pi ) # revise
-        vaux = (np.linalg.norm(vLOS[0:2]), vLOS[2] )
-        losZoD=np.pi/2-np.arctan( vaux[1] / vaux[0] ) + np.pi*(vaux[1]<0)
-        losZoA=np.pi-losZoD # revise
-        
-        #3GPP model is in degrees but numpy uses radians
-        losAoD=(180.0/np.pi)*losAoD #angle of departure 
-        losZoD=(180.0/np.pi)*losZoD 
-        losAoA=(180.0/np.pi)*losAoA #angle of aperture
-        losZoA=(180.0/np.pi)*losZoA
-        LOSangles = (losAoD,losAoA,losZoD,losZoA)
                 
         pLos=self.scenarioLosProb(d2D,hut)
         los = ( self.get_LOSUnif_from_location(txPos, rxPos) <= pLos)[0]#TODO: make this memorized
@@ -809,30 +804,46 @@ class ThreeGPPMultipathChannelModel:
         zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
         zod_offset_mu = param.funZODoffset(d2D,hut)        
         czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
-        smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)  
+        smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
+        clusters,subpaths = self.get_small_from_location(txPos,rxPos,smallStatistics,clusters,subpaths)
         
         keyChannel = (tuple(txPos),tuple(rxPos))
-
-        #distancia de 1 metro para consistencia espacial
-        def calculateGrid1metro(keyChannel):
-            txPos = keyChannel[0]
-            rxPos = keyChannel[1]
-            
-            RgridXIndex = rxPos[0] - txPos[0]
-            RgridYIndex = rxPos[1] - txPos[1]
-            
-            displacement = ((RgridXIndex ** 2) + (RgridYIndex ** 2)) ** 0.5  # Distancia euclidiana entre las posiciones
-            
-            if displacement > 1:
-                return True #Se ha producido un desplazamiento de más de 1 metro
-            else:
-                return False #Se ha producido un desplazamiento de menos de 1 metro
-          
-        if calculateGrid1metro(keyChannel):
-            clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2D, hut)
-        else:
-            clusters, subpaths = self.displace_small_param(LOSangles, smallStatistics, d2D, hut)
-        
         plinfo = (los,PLconst,sfdB)
         self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
         return(plinfo,macro,clusters,subpaths)
+
+
+
+    def get_small_from_location(self, txPos, rxPos, smallStatistics, clusters, subpaths):
+
+        aPos = np.array(txPos)
+        bPos = np.array(rxPos)        
+        vLOS = bPos-aPos
+        d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
+        d3D = np.linalg.norm(bPos-aPos)
+        hbs = aPos[2]
+        hut = bPos[2]
+    
+        losAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
+        losAoA=np.mod(np.pi+losAoD, 2*np.pi ) # revise
+        vaux = (np.linalg.norm(vLOS[0:2]), vLOS[2] )
+        losZoD=np.pi/2-np.arctan( vaux[1] / vaux[0] ) + np.pi*(vaux[1]<0)
+        losZoA=np.pi-losZoD # revise
+        
+        #3GPP model is in degrees but numpy uses radians
+        losAoD=(180.0/np.pi)*losAoD #angle of departure 
+        losZoD=(180.0/np.pi)*losZoD 
+        losAoA=(180.0/np.pi)*losAoA #angle of aperture
+        losZoA=(180.0/np.pi)*losZoA
+        LOSangles = (losAoD,losAoA,losZoD,losZoA)
+
+        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, 1)
+        deltaPos = (RgridXIndex ** 2 + RgridYIndex ** 2) ** 0.5
+
+        key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
+        if  key in self.dChansGenerated.index:
+            clusters, subpaths = self.dChansGenerated[key]
+            clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaPos)
+
+        else:
+            clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2D, hut)  # Crear canal desde cero
