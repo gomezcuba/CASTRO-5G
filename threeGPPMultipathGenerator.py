@@ -498,7 +498,10 @@ class ThreeGPPMultipathChannelModel:
         
     #hidden uniform variable to compare with pLOS(distabce)
     def get_LOSUnif_from_location(self,txPos, rxPos):
-        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, self.corrDistance) #los corr distance
+         
+        dCorr = 15
+        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, dCorr) #los corr distance
+    
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         if not key in self.dLOSGenerated:
            self.dLOSGenerated[key] = np.random.rand(1)           
@@ -773,7 +776,28 @@ class ThreeGPPMultipathChannelModel:
         
 
         #Codigo que cumpla con el procedimiento A del apartado de consistencia espacial 
-        
+
+       
+        aod = clusters['AOD']
+        tau = clusters['tau']
+        newtau= tau
+
+        newdelay=tdelay+(np.cos(aoa)*deltax+np.sin(aoa)*deltay)/c
+        path_length=c*tdelay
+        #                .....x1y1
+        #           .....      ^
+        #   tg  ....           |   delta_dist
+        #  <.....              |
+        #_path_length__>xoyo
+        delta_distD=-np.sin(aod)*deltax+np.cos(aod)*deltay
+        newaod=aod-np.arctan(delta_distD/path_length)
+        delta_distA=+np.sin(aoa)*deltax-np.cos(aoa)*deltay
+        newaoa=aoa-np.arctan(delta_distA/path_length)
+        delta_distZD=+np.sin(zod)*deltax-np.cos(zod)*deltay
+        newzod=zod-np.arctan(delta_distZD/path_length)
+        delta_distZA=+np.sin(zoa)*deltax-np.cos(zoa)*deltay
+        newzoa=zoa-np.arctan(delta_distZA/path_length)
+        #for 3GPP coefs should be updated according to their delay deppendency
         return (clusters,subpaths)
             
 
@@ -788,7 +812,7 @@ class ThreeGPPMultipathChannelModel:
         hut = bPos[2]
                 
         pLos=self.scenarioLosProb(d2D,hut)
-        los = ( self.get_LOSUnif_from_location(txPos, rxPos) <= pLos)[0]#TODO: make this memorized
+        los = ( self.get_LOSUnif_from_location(txPos, rxPos,) <= pLos)[0]#TODO: make this memorized
         
         if los:
             param = self.scenarioParams.LOS            
@@ -805,7 +829,7 @@ class ThreeGPPMultipathChannelModel:
         zod_offset_mu = param.funZODoffset(d2D,hut)        
         czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
         smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
-        clusters,subpaths = self.get_small_from_location(txPos,rxPos,smallStatistics,clusters,subpaths)
+        clusters,subpaths = self.get_small_from_location(txPos,rxPos,smallStatistics)
         
         keyChannel = (tuple(txPos),tuple(rxPos))
         plinfo = (los,PLconst,sfdB)
@@ -814,7 +838,7 @@ class ThreeGPPMultipathChannelModel:
 
 
 
-    def get_small_from_location(self, txPos, rxPos, smallStatistics, clusters, subpaths):
+    def get_small_from_location(self, txPos, rxPos, smallStatistics):
 
         aPos = np.array(txPos)
         bPos = np.array(rxPos)        
@@ -841,9 +865,13 @@ class ThreeGPPMultipathChannelModel:
         deltaPos = (RgridXIndex ** 2 + RgridYIndex ** 2) ** 0.5
 
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
-        if  key in self.dChansGenerated.index:
+        if key in self.dChansGenerated:
+            print("estoy aqui 1")
             clusters, subpaths = self.dChansGenerated[key]
             clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaPos)
+            return clusters,subpaths
 
         else:
+            print("estoy aqui 2")
             clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2D, hut)  # Crear canal desde cero
+            return clusters,subpaths
