@@ -866,12 +866,10 @@ class ThreeGPPMultipathChannelModel:
 
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         if key in self.dChansGenerated:
-            print("estoy aqui 1")
             clusters, subpaths = self.dChansGenerated[key]
             clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaPos)
             return clusters,subpaths
 
         else:
-            print("estoy aqui 2")
             clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2D, hut)  # Crear canal desde cero
             return clusters,subpaths
