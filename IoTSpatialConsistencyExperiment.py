@@ -61,9 +61,9 @@ def displaceMultipathChannel(de,ad,aa,deltax,deltay):
     return(newdelay,newaod,newaoa)
     
 
-Nt=32
-Nk=32
-Nd=4
+Nt=32 #M = K *T_{CP}/T_(OFDM)
+Nk=32 #K en 
+Nd=4 #
 Na=4
 
 Nxp=4
