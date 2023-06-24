@@ -802,9 +802,7 @@ class ThreeGPPMultipathChannelModel:
         aod = clusters['AOD']
         tau = clusters['tau']
 
-        li = self.clight * tau 
-
-        # obtemos tau0 e los - poden sacarse do obxecto ou hai que introducilos ainda por cli?
+        # obtemos tau0 e los - dende o df de referencia
         aPos = np.array(txPos)
         bPos = np.array(rxPos)        
         vLOS = bPos-aPos
@@ -812,51 +810,80 @@ class ThreeGPPMultipathChannelModel:
         d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
 
         losAOD=(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
+        # tau é realmente dtau, revisar consistencia
+        li = self.clight * tau + losAOD
         tau0 = losAOD / self.clight
         dAOD = aod - losAOD
-
-        # corregir  básase en dAOD non en AOD
 
         nu = tau / tau0
         cosdAOD = np.cos(dAOD)
         sindAOD = np.sin(dAOD)
+
         xsolA = (sindAOD*(1-nu))/(nu**2+1-(2*nu*cosdAOD))
         xsolB = (sindAOD*(1+nu-(2*nu*cosdAOD)))/(nu**2+1-(2*nu*cosdAOD))
 
         #Posibles solucions:
-        solA = np.pi + aod + np.arcsin(xsolA)
-        solB = np.pi + aod + np.arcsin(xsolB)
+        sols = np.zeros((4,aod.size)) 
+        sols[0,:] = np.arcsin(xsolA)
+        sols[1,:] = np.arcsin(xsolB)
+        sols[2,:] = np.pi - np.arcsin(xsolA)
+        sols[3,:] = np.pi - np.arcsin(xsolB)
 
-        # -- Seguintes liñas mover a función de consistencia?
+        #Avaliamos consistencia e distancia:
+        x=(txPos[1]+txPos[0]*np.tan(sols-losAOD))/(np.tan(aod)+np.tan(sols-losAOD))
+        y=x*np.tan(aod)
+        dist=np.sqrt(x**2+y**2)+np.sqrt((x-txPos[0])**2+(y-txPos[1])**2)
+        
+        
+        solIndx=np.argmin(np.abs(dist-li),0)
+        sol = sols[solIndx,range(li.size)]
 
-        #Avaliamos según consistencia (o retardo debe ser positivo)
-        #Aoa auxiliar (complementario)
-        auxAOA_A = np.pi + aod - solA
-        auxAOA_B = np.pi + aod - solB
+        clusters['AOA'] = sol
+        # Eliminamos valores de AOA dos backlobes
 
-        h_A = losAOD*(np.tan(dAOD)*np.tan(auxAOA_A))/(np.tan(dAOD)+np.tan(auxAOA_A))
-        tau_A = li / ((self.clight*h_A)*((1/np.sin(dAOD))+(1/np.sin(auxAOA_A))))
+        clusterFiltered = clusters[(clusters['AOA'] <= np.pi/2) & (clusters['AOA'] >= -(np.pi/2))]
 
-        if tau_A > 0:
-            clusters['AOA'] = solA
-        else: 
-            clusters['AOA'] = solB
+        #TODO - integrate subpaths, revise radians / degrees consistency
 
-        # Son consciente de que a día de hoxe a solución
-        # non é consistente a nivel de arrays, certas cousas hai
-        # que evalualas elemento a elemento
-
-        return(clusters, subpaths) # sería corrected clusters e subpaths, deixo asi ata que acabe
+        return(clusterFiltered, subpaths)
 
     def fitAOD(self, txPos, rxPos, clusters, subpaths):
-        aod = 0
+        
+        
+        aoa = clusters['AOA']
+        tau = clusters['tau']
 
 
-        return aod
+        return(clusters, subpaths)
+    
     def fitDelay(self, txPos, rxPos, clusters, subpaths):
-        tau = 0
 
-        return tau 
+        #TODO: O mesmo - integración con subpaths
+        aoa = clusters['AOA']
+        aod = clusters['AOD']
+
+        #TODO - escribir expresión AOA a partir do df
+        aoa0 = 1
+
+        y0 = txPos[1]
+        x0 = txPos[0]
+
+        tAOA = np.tan(np.pi-(aoa+aoa0))
+        tAOD = np.tan(aod)
+        x = (y0+x0*tAOA)/(tAOA+tAOD)
+        y = x*tAOA
+        l=np.sqrt(x**2+y**2)+np.sqrt((x-x0)**2+(y-y0)**2)
+        l0=np.sqrt(x0**2+y0**2)
+        tauFix=(l-l0)/self.clight
+
+        clusters['tau'] = tauFix
+
+        # preguntar se aquí tamén facemos drop dos aoa backlobes
+        #ou se lle pode dedicar unha función a correxilo logo
+
+        return clusters, subpaths 
+    
+
     def randomFitParameters(self, txPos, rxPos, clusters, subpaths):
 
         index = np.random.randint(0,3)
