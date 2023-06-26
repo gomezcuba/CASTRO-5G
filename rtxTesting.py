@@ -15,12 +15,15 @@ from matplotlib import cm
 
 fig_ctr=0
 
-
-model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
-plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
+# Creamos canal básico - BS en (0,0) e user en (25,25)
+model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
+plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(25,25,1.5))
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
 tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+
+#Plot ubicación da BS e do user (UE)
+
 
 #2D plots of power vs delay
 
@@ -43,6 +46,11 @@ plt.title("Complex Channel - Imaginary")
 plt.stem(delays,np.imag(pathAmplitudes))
 plt.xlabel('t (ns)')
 plt.ylabel('$\Im\{h(t)\}$')
+
+# %%
+# O mesmo pero agora probamos as novas funcións:
+clusters_rtx, subpaths_rtx = model.fitAOA((0,0,10),(25,25,1.5),clusters,subpaths)
+
 
 
 #%% 

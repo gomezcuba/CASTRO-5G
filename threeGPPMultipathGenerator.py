@@ -1,7 +1,6 @@
 #%%
 import numpy as np
 import pandas as pd
-import sympy as sp
 
 class ThreeGPPMultipathChannelModel:
     
@@ -798,32 +797,36 @@ class ThreeGPPMultipathChannelModel:
 
     def fitAOA(self, txPos, rxPos, clusters, subpaths):
 
-        # datos canle que nos interesan
-        aod = clusters['AOD']
-        tau = clusters['tau']
-
-        # obtemos tau0 e los - dende o df de referencia
-        aPos = np.array(txPos)
-        bPos = np.array(rxPos)        
-        vLOS = bPos-aPos
-        # asumindo que temos un vector 3d de entrada igual que en create_channel
-        d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
-
-        losAOD=(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
-        # tau é realmente dtau, revisar consistencia
-        li = self.clight * tau + losAOD
-        tau0 = losAOD / self.clight
-        dAOD = aod - losAOD
-
-        nu = tau / tau0
+        # Datos iniciais - l0, tau0 e aod0 (losAOD)
+        vLOS = np.array(rxPos) - np.array(txPos)
+        l0 = np.linalg.norm(vLOS[0:-1])
+        tau0 = l0 / self.clight
+        losAOD =(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
+        
+        # Extraemos index. de clusters
+        nClusters = clusters.shape[0]
+        
+        #for i in range(0,nClusters -1):
+            # de aquí sacamos aod e tau
+            #TODO organizar para q procese ben valores do df
+            #clusterValues = subpaths.loc()
+        aod = subpaths['AOD'].astype(float)
+        tau = subpaths['tau'].astype(float)
+        #TODO end
+        
+        li = l0 + tau * self.clight
+        dAOD = (aod-losAOD)*(np.pi/180)
+        
         cosdAOD = np.cos(dAOD)
         sindAOD = np.sin(dAOD)
-
+        nu = tau/tau0
+        
+        # Resolvemos:
         xsolA = (sindAOD*(1-nu))/(nu**2+1-(2*nu*cosdAOD))
         xsolB = (sindAOD*(1+nu-(2*nu*cosdAOD)))/(nu**2+1-(2*nu*cosdAOD))
 
         #Posibles solucions:
-        sols = np.zeros((4,aod.size)) 
+        sols = np.zeros((4,8)) 
         sols[0,:] = np.arcsin(xsolA)
         sols[1,:] = np.arcsin(xsolB)
         sols[2,:] = np.pi - np.arcsin(xsolA)
@@ -833,20 +836,24 @@ class ThreeGPPMultipathChannelModel:
         x=(txPos[1]+txPos[0]*np.tan(sols-losAOD))/(np.tan(aod)+np.tan(sols-losAOD))
         y=x*np.tan(aod)
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-txPos[0])**2+(y-txPos[1])**2)
-        
-        
+           
         solIndx=np.argmin(np.abs(dist-li),0)
         sol = sols[solIndx,range(li.size)]
+        # Norm., convertimos de novo a graos e achamos o aoaReal - non o aux.:
+        aoaDeg = np.mod(sol,2*np.pi)
+        aoaDeg = aoaDeg*(180/np.pi)
 
-        clusters['AOA'] = sol
+        clusters['AOA'] = aoaDeg
+
+        
         # Eliminamos valores de AOA dos backlobes
-
-        clusterFiltered = clusters[(clusters['AOA'] <= np.pi/2) & (clusters['AOA'] >= -(np.pi/2))]
-
-        #TODO - integrate subpaths, revise radians / degrees consistency
-
-        return(clusterFiltered, subpaths)
-
+        # Creo función aparte para poder chamala dende calquer lado
+        
+        clusterFix = self.fixAOAConsistency(clusters)
+        subpathsFix = self.fixAOAConsistency(subpaths)
+        
+        #return(clusterFix, subpathsFix)
+        return clusters
     def fitAOD(self, txPos, rxPos, clusters, subpaths):
         
         
@@ -897,6 +904,12 @@ class ThreeGPPMultipathChannelModel:
         
 
         return clusters,subpaths
+    
+    def fixAOAConsistency(self,df):
+        
+        dfFix = df[(df['AOA'] <= 90) & (df['AOA'] >= 270)]
+        
+        return dfFix
     
     
 # %%
