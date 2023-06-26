@@ -804,7 +804,7 @@ class ThreeGPPMultipathChannelModel:
         losAOD =(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
         
         # Extraemos index. de clusters
-        nClusters = clusters.shape[0]
+        #nClusters = clusters.shape[0]
         
         #for i in range(0,nClusters -1):
             # de aquí sacamos aod e tau
@@ -826,34 +826,37 @@ class ThreeGPPMultipathChannelModel:
         xsolB = (sindAOD*(1+nu-(2*nu*cosdAOD)))/(nu**2+1-(2*nu*cosdAOD))
 
         #Posibles solucions:
-        sols = np.zeros((4,8)) 
-        sols[0,:] = np.arcsin(xsolA)
-        sols[1,:] = np.arcsin(xsolB)
-        sols[2,:] = np.pi - np.arcsin(xsolA)
-        sols[3,:] = np.pi - np.arcsin(xsolB)
+        sols = np.zeros((4,aod.size)) 
+        sols[0,:] = np.transpose(np.arcsin(xsolA))
+        sols[1,:] = np.transpose(np.arcsin(xsolB))
+        sols[2,:] = np.transpose(np.pi - np.arcsin(xsolA))
+        sols[3,:] = np.transpose(np.pi - np.arcsin(xsolB))
 
         #Avaliamos consistencia e distancia:
-        x=(txPos[1]+txPos[0]*np.tan(sols-losAOD))/(np.tan(aod)+np.tan(sols-losAOD))
-        y=x*np.tan(aod)
-        dist=np.sqrt(x**2+y**2)+np.sqrt((x-txPos[0])**2+(y-txPos[1])**2)
-           
-        solIndx=np.argmin(np.abs(dist-li),0)
+        #TODO - excepción aquí
+        dist = np.zeros((4,aod.size))
+        for i in range(0,3):
+            numNu= sindAOD + np.sin(sols[i,:])
+            denomNu= sindAOD*np.cos(sols[i,:]) + cosdAOD*np.sin(sols[i,:])
+            dist[i]= (abs(numNu/denomNu)-nu)
+
+        distMod = np.sum(dist,axis=1)    
+        solIndx=np.argmin(distMod,0)
         sol = sols[solIndx,range(li.size)]
         # Norm., convertimos de novo a graos e achamos o aoaReal - non o aux.:
         aoaDeg = np.mod(sol,2*np.pi)
         aoaDeg = aoaDeg*(180/np.pi)
-
-        clusters['AOA'] = aoaDeg
-
+        subpaths['AOA'] = aoaDeg
         
         # Eliminamos valores de AOA dos backlobes
         # Creo función aparte para poder chamala dende calquer lado
         
-        clusterFix = self.fixAOAConsistency(clusters)
+        #clusterFix = self.fixAOAConsistency(clusters)
         subpathsFix = self.fixAOAConsistency(subpaths)
         
         #return(clusterFix, subpathsFix)
-        return clusters
+        return (clusters, subpathsFix)
+    
     def fitAOD(self, txPos, rxPos, clusters, subpaths):
         
         
