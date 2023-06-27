@@ -17,8 +17,9 @@ from progress.bar import Bar
 plt.close('all')
 
 Nchan=100
-Nd=4
-Na=4
+#()
+Nd=4 #Nt (Ntv*Nth) con Ntv=1
+Na=4 #Nr (Nrv*Nrh) con Ntv=1
 Nt=128
 Nxp=2
 Nrft=1
@@ -35,7 +36,7 @@ pilgen = pil.MIMOPilotChannel("IDUV")
 chgen = mp3g.ThreeGPPMultipathChannelModel()
 chgen.bLargeBandwidthOption=True
 probgen = prb.csProblemGenerator(Nt,Nd,Na,Nrft,Nrfr,Nxp,Ts,"IDUV")
-probgen.pregenerate(Nchan)
+#probgen.pregenerate(Nchan)
 
 
 x0=np.random.rand(Nchan)*100-50
