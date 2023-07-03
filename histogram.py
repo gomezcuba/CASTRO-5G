@@ -4,7 +4,7 @@ Created on Sat Nov  5 16:48:43 2022
 
 @author: user
 """
-
+#%%
 import threeGPPMultipathGenerator as pg
 
 import matplotlib.pyplot as plt
@@ -65,3 +65,4 @@ plt.xlabel("Time (s)")
 plt.show()
 print("delay spread", macro.ds)
 print("lambda", lambda_tau)
+# %%

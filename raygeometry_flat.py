@@ -1,15 +1,12 @@
 #!/usr/bin/python
 #from progress#bar import #bar
+#%%
 import matplotlib
-matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
 import numpy as np
-import time
-import os
-import sys
-import argparse
+
 
 plt.close('all')
 Npoint=2
@@ -25,11 +22,6 @@ tau_true=(np.abs(y_true/np.sin(theta_true))+np.abs(y_true/np.sin(phi_true)))/c
 AoD = np.mod(theta_true,2*np.pi)
 AoA = np.mod(phi_true,2*np.pi)
 tau = tau_true-tau0_true
-#AoD = np.random.rand(Npoint,1)*np.pi*2
-#AoA = np.random.rand(Npoint,1)*np.pi + np.pi*(AoD>np.pi)
-#tau=np.random.rand(Npoint,1)*80e-9
-
-
 Dl = tau*c
 
 tgD = np.tan(AoD)
@@ -48,6 +40,7 @@ plt.plot(0,0,'sb')
 plt.plot(l0,np.zeros_like(l0),'^g')
 plt.plot(x,y,'or')
 scaleguide=np.max(np.abs([y,l0,x]))
+plt.show()
 for p in range(np.shape(AoD)[0]):
     plt.plot([0,x[p],l0[p]],[0,y[p],0],':k')
     t=np.linspace(0,1,21)
@@ -57,6 +50,7 @@ for p in range(np.shape(AoD)[0]):
 print("D: %s A: %s"%(AoD*180/np.pi,AoA*180/np.pi))
 plt.axis(np.array([-1.1,1.1,-1.1,1.1])*scaleguide)
 plt.title('Angles of one path  (1D receiver pos)')
+plt.show()
 
 tau_ref_err=np.min(tau)/2*np.linspace(-1,1,5).reshape((1,-1))
 
@@ -67,7 +61,7 @@ y=Dl/argDen
 x=y/tgD
 l=y*(1/siD+1/siA)
 l0=l-Dl
-
+#%%
 plt.figure(2)
 plt.plot(0,0,'sb')
 plt.plot(l0,np.zeros_like(l0),'^g')

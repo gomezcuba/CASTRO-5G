@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+#%%
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
@@ -38,6 +38,7 @@ plt.plot([0,x0_true],[0,y0_true],':g')
 plt.plot(x_true,y_true,'or')
 scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
+#%%
 for p in range(np.shape(theta_true)[0]):
     plt.plot([0,x_true[p],x0_true],[0,y_true[p],y0_true],':k')
     t=np.linspace(0,1,21)

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+#%%
 import threeGPPMultipathGenerator as pg
 
 import matplotlib.pyplot as plt
@@ -124,3 +124,5 @@ anim.save('./testanim.gif', writer='imagemagick', fps=10, progress_callback =  l
 #plt.show()
 #plt.close('all')
 #exit()
+
+# %%
