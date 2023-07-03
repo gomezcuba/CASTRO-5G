@@ -880,29 +880,17 @@ class ThreeGPPMultipathChannelModel:
 
         return(clusters, subpaths)
     
-    def fitDelay(self, txPos, rxPos, clusters, subpaths):
+    def fitDelay(self, txPos, rxPos, aoa, aod):
 
-        #TODO: O mesmo - integración con subpaths
-        aoa = clusters['AOA']
-        aod = clusters['AOD']
-
-        #TODO - escribir expresión AOA a partir do df
-        aoa0 = 1
-
-        y0 = txPos[1]
-        x0 = txPos[0]
-
-        tAOA = np.tan(np.pi-(aoa+aoa0))
+        tAOA = np.tan(np.pi-(aoa))
         tAOD = np.tan(aod)
-        x = (y0+x0*tAOA)/(tAOA+tAOD)
+        x = (txPos[1]+txPos[0]*tAOA)/(tAOA+tAOD)
         y = x*tAOA
         l=np.sqrt(x**2+y**2)+np.sqrt((x-x0)**2+(y-y0)**2)
         l0=np.sqrt(x0**2+y0**2)
         tauFix=(l-l0)/self.clight
-
-        clusters['tau'] = tauFix
-
-        return clusters, subpaths 
+        
+        return tauFix
     
 
     def randomFitParameters(self, txPos, rxPos, clusters, subpaths):
