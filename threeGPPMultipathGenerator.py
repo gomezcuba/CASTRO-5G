@@ -801,7 +801,7 @@ class ThreeGPPMultipathChannelModel:
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         tau0 = l0 / 3e8
-        losAOD =(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
+        losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
                        
         li = l0 + tau * 3e8
         dAOD = (aod-losAOD)*(np.pi/180)
@@ -814,48 +814,33 @@ class ThreeGPPMultipathChannelModel:
         A=(nu-cosdAOD)**2+sindAOD**2
         B=-2*nu*sindAOD*(nu-cosdAOD)
         C=(sindAOD**2)*(nu**2-1)
-        sol1= ( -B + np.sqrt( B**2 - 4*A*C  ) )/( 2*A )
-        sol2= ( -B - np.sqrt( B**2 - 4*A*C  ) )/( 2*A )
+        sol1= -sindAOD # xust.matematica overleaf
+        sol2= ( -B -np.sqrt(B**2- 4*A*C ))/(2*A)
 
         #Posibles solucions:
         sols = np.zeros((4,aod.size)) 
-        sols[0,:] = np.transpose(np.arcsin(sol1))
-        sols[1,:] = np.transpose(np.arcsin(sol2))
-        sols[2,:] = np.transpose(np.pi - np.arcsin(sol1))
-        sols[3,:] = np.transpose(np.pi - np.arcsin(sol2))
+        sols[0,:] = np.arcsin(sol1)
+        sols[1,:] = np.arcsin(sol2)
+        sols[2,:] = np.pi - np.arcsin(sol1)
+        sols[3,:] = np.pi - np.arcsin(sol2)
 
-        #Avaliamos consistencia e distancia:
-        dist = np.zeros((4,aod.size))
-        for i in range(0,3):
-            numNu= sindAOD + np.sin(sols[i,:])
-            denomNu= sindAOD*np.cos(sols[i,:]) + cosdAOD*np.sin(sols[i,:])
-            dist[i]= (abs(numNu/denomNu)-nu)
+        #Ubicacion dos rebotes 
+        x=(vLOS[1]+vLOS[0]*np.tan(sols-losAOD))/(np.tan(aod)+np.tan(sols-losAOD))
+        y=x*np.tan(aod) 
 
-        distMod = np.sum(dist,axis=1)    
-        solIndx=np.argmin(distMod,0)
-        sol = sols[solIndx,range(li.size)]
-        # Norm., convertimos de novo a graos e achamos o aoaReal - non o aux.:
-        aoaDeg = np.mod(sol+np.pi,2*np.pi)
-        aoaDeg = aoaDeg*(180/np.pi)
-        #subpaths['AOA'] = aoaDeg
+        #Mellor solucion - a mais semellante á distancia do path evaluado
+        dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+        solIndx=np.argmin(np.abs(dist-li),0)
+        aoaAux =sols[solIndx,range(li.size)]
+        aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi)*(180.0/np.pi) #falta o offset -phi0
         
-        # Eliminamos valores de AOA dos backlobes
-        # Creo función aparte para poder chamala dende calquer lado
+        return (aoaFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+
+    def fitAOD(self, txPos, rxPos, tau, aoa):
         
-        #clusterFix = self.fixAOAConsistency(clusters)
-        #subpathsFix = self.fixAOAConsistency(subpaths)
-        
-        #return(clusterFix, subpathsFix)
-        return aoaDeg
-    
-    def fitAOD(self, txPos, rxPos, clusters, subpaths):
-        
-        x=1/np.sqrt(2)
-        y=1/np.sqrt(2)
-        x0=np.sqrt(2)
-        y0=0
-        AoD=np.arctan(y/x)#45º
-        AoA=np.arctan((y-y0)/(x-x0))#135º
+        vLOS = np.array(rxPos) - np.array(txPos)
+        l0 = np.linalg.norm(vLOS[0:-1])
+        aoa0=np.pi-np.arctan(vLOS[1]/vLOS[0])
         li=np.sqrt(x**2+y**2) + np.sqrt((x-x0)**2+((y-y0))**2)
         l0=x0
         nu=li/l0
@@ -876,21 +861,25 @@ class ThreeGPPMultipathChannelModel:
         sols[1,:] = np.transpose(np.arcsin(sol2))
         sols[2,:] = np.transpose(np.pi - np.arcsin(sol1))
         sols[3,:] = np.transpose(np.pi - np.arcsin(sol2))
+        distMod = np.sum(dist,axis=1)    
+        solIndx=np.argmin(distMod,0)
+        aodFix = sols[solIndx,range(li.size)]
 
-
-        return(clusters, subpaths)
+        return aodFix
     
     def fitDelay(self, txPos, rxPos, aoa, aod):
-
+        
+        vLOS = np.array(rxPos) - np.array(txPos)
         tAOA = np.tan(np.pi-(aoa))
         tAOD = np.tan(aod)
-        x = (txPos[1]+txPos[0]*tAOA)/(tAOA+tAOD)
-        y = x*tAOA
-        l=np.sqrt(x**2+y**2)+np.sqrt((x-x0)**2+(y-y0)**2)
-        l0=np.sqrt(x0**2+y0**2)
+        # Posición dos rebotes
+        x = (vLOS[1]+vLOS[0]*tAOA)/(tAOA+tAOD)
+        y = vLOS[0]*tAOA
+        l=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+        l0=np.sqrt(vLOS[0]**2+vLOS[1]**2)
         tauFix=(l-l0)/self.clight
         
-        return tauFix
+        return (tauFix, x,y)
     
 
     def randomFitParameters(self, txPos, rxPos, clusters, subpaths):
