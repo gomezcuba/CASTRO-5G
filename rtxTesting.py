@@ -19,14 +19,14 @@ los, PLfree, SF = plinfo
 tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
 
 # 1. Con AOAs correxidos:
-AOA_spFix = model.fitAOA(txPos,rxPos,AOD_sp,tau_sp)
-AOA_fix = model.fitAOA(txPos,rxPos,AOD,tau)
+AOA_fixsp, xPathLoc_sp, yPathLoc_sp = model.fitAOA(txPos,rxPos,AOD_sp,tau_sp)
+AOA_fix, xPathLoc, yPathLoc = model.fitAOA(txPos,rxPos,AOD,tau)
 # 2. Con AODs correxidos:
-AOD_fix = model.fitAOD(txPos,rxPos,)
-AOD_spFix = model.fitAOD(txPos,rxPos,)
+#AOD_fix = model.fitAOD(txPos,rxPos,)
+#AOD_spFix = model.fitAOD(txPos,rxPos,)
 # 3. Con delays consistentes con AOA e AOD non modificados:
-tauFix = model.fitDelay(txPos,rxPos,)
-tau_spFix = model.fitDelay(txPos,rxPos,)
+#tauFix = model.fitDelay(txPos,rxPos,)
+#tau_spFix = model.fitDelay(txPos,rxPos,)
 # 4. Canle con xeración aleatoria de tau, AOD ou AOA
 prob = (0.5,0.2,0.3)
 #TODO mais tarde
