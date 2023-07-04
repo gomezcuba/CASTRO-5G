@@ -840,32 +840,28 @@ class ThreeGPPMultipathChannelModel:
         
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
-        aoa0=np.pi-np.arctan(vLOS[1]/vLOS[0])
-        losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
 
         li = tau/3e8
-        nu=li/l0
-        cosdAOA = np.cos(aoa)
-        sindAOA = np.sin(aoa)
+        nu= li/l0
+        cosdAOA = np.cos(np.pi-aoa)
+        sindAOA = np.sin(np.pi-aoa)
+        
         # resolución
         A=(nu-cosdAOA)**2+sindAOA**2
         B=-2*nu*sindAOA*(nu-cosdAOA)
         C=(sindAOA**2)*(nu**2-1)
         sol1= -sindAOA
         sol2= (-B-np.sqrt(B**2-4*A*C))/(2*A)
-        np.arcsin(sol1)
-        np.arcsin(sol2)
-        np.pi-np.arcsin(sol1)
-        np.pi-np.arcsin(sol2)
-        sols = np.zeros((4,aod.size)) 
+        
+        sols = np.zeros((4,aoa.size)) 
         sols[0,:] = np.arcsin(sol1)
         sols[1,:] = np.arcsin(sol2)
         sols[2,:] = np.pi - np.arcsin(sol1)
         sols[3,:] = np.pi - np.arcsin(sol2)
      
         #Ubicacion dos rebotes 
-        x=(vLOS[1]+vLOS[0]*np.tan(sols-l0))/(np.tan(aoa)+np.tan(sols-losAOD))
-        y=x*np.tan(aoa) 
+        x =(vLOS[1]+vLOS[0]*np.tan(sols-l0))/(np.tan(aoa)+np.tan(sols-losAOD))
+        y = x*np.tan(aoa) 
 
         #Mellor solucion - a mais semellante á distancia do path evaluado
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
@@ -893,7 +889,7 @@ class ThreeGPPMultipathChannelModel:
         
         return (tauFix,x,y)
     
-
+# TODO - adaptar a versión actual
     def randomFitParameters(self, txPos, rxPos, clusters, subpaths):
 
         index = np.random.randint(0,3)
