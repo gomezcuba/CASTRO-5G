@@ -66,10 +66,10 @@ fig_ctr+=1
 fig = plt.figure(fig_ctr)
 plt.title("AOA sen correxir")
 plt.grid(linestyle = '--')
-plt.xlim(-100,100)
+plt.xlim(-60,60)
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.ylim(-100,100)   
+plt.ylim(-60,60)   
 plt.plot(txPos2D[0],txPos2D[1],'^g',color='r',label='BS',linewidth = '4.5')
 plt.plot(rxPos2D[0],rxPos2D[1],'^',color='g',label='UE', linewidth='4.5')
 plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--')
@@ -78,7 +78,7 @@ plt.plot(xPathLoc,yPathLoc,'x',label='Rebotes')
 for i in range(0,AOD.size): 
 
     plt.plot([txPos2D[0],xPathLoc[i]],[txPos2D[1],yPathLoc[i]],'k',color = 'blue',linewidth = '0.5') 
-    plt.plot(rxPos2D[0]+40*rg*np.cos(AOA_r[i]),rxPos2D[1]+40*rg*np.sin(AOA_r[i]),'k',linewidth = '0.5')
+    plt.plot([rxPos2D[0],rxPos2D[0]+liRX[i]*np.cos(AOA_r[i])],[rxPos2D[1],rxPos2D[1]+liRX[i]*np.sin(AOA_r[i])],'k',linewidth = '0.5')
 
 
 legend = plt.legend(shadow=True, fontsize='10')
@@ -95,8 +95,9 @@ plt.ylim(-60,60)
 plt.plot(txPos2D[0],txPos2D[1],'^g',color='r',label='BS',linewidth = '4.5')
 plt.plot(rxPos2D[0],rxPos2D[1],'^',color='g',label='UE', linewidth='4.5')
 plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--')
+plt.plot(xPathLoc,yPathLoc,'x',label='Rebotes')
+
 for i in range(0,AOD.size): 
-    plt.plot(xPathLoc[i],yPathLoc[i],'x')
     plt.plot([txPos2D[0],xPathLoc[i]],[txPos2D[1],yPathLoc[i]],'k',color = 'blue',linewidth = '0.5') 
     plt.plot([rxPos2D[0],rxPos2D[0]+liRX[i]*np.cos(AOA_rF[i])],[rxPos2D[1],rxPos2D[1]+liRX[i]*np.sin(AOA_rF[i])],'k',linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
