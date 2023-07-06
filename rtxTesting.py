@@ -13,8 +13,8 @@ plt.close('all')
 # -------- Datos iniciais ------- #
 fig_ctr=0
 txPos = (0,0,10)
-rxPos = (-40,3,1.5)
-model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
+rxPos = (50,0,1.5)
+model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
@@ -59,7 +59,7 @@ rg = np.linspace(0,1,200)
 tau0=np.linalg.norm(rxPos2D)/3e8
 PathLoc=np.vstack([xPathLoc,yPathLoc])
 tau_fromloc = (np.linalg.norm(PathLoc,axis=0)+np.linalg.norm(PathLoc.T-rxPos2D,axis=1))/3e8 - tau0
-print("dif of taus in percent. :\n %s"%(100 * (tau_fromloc-tau)/tau))
+print("dif of taus (ns). :\n %s"%(1e9 * (tau_fromloc-tau)))
 
 # Representación
 fig_ctr+=1
@@ -101,6 +101,55 @@ for i in range(0,AOD.size):
     plt.plot([txPos2D[0],xPathLoc[i]],[txPos2D[1],yPathLoc[i]],'k',color = 'blue',linewidth = '0.5') 
     plt.plot([rxPos2D[0],rxPos2D[0]+liRX[i]*np.cos(AOA_rF[i])],[rxPos2D[1],rxPos2D[1]+liRX[i]*np.sin(AOA_rF[i])],'k',linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
+
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+nClusters = tau.size
+if los:
+    M=max(subpaths.loc[0,:].index)
+    (tau_los,pow_los,losAoA,losAoD,losZoA,losZoD)=subpaths.loc[(0,M),:]
+    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.drop((0,M)).T.to_numpy()
+else:    
+    M=max(subpaths.loc[0,:].index)+1
+    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+    
+tau_sp=tau_sp.reshape(nClusters,-1)
+pow_sp=pow_sp.reshape(nClusters,-1)
+AOA_sp=AOA_sp.reshape(nClusters,-1)
+AOD_sp=AOD_sp.reshape(nClusters,-1)
+ZOA_sp=ZOA_sp.reshape(nClusters,-1)
+ZOD_sp=ZOD_sp.reshape(nClusters,-1)
+plt.subplot(2,2,1, projection='polar',title="AoD")
+Nsp=AOD_sp.shape[1]
+if los:
+    plt.polar(losAoD*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),':',color=cm.jet(0))
+    plt.scatter(losAoD*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),color=cm.jet(0),marker='<')
+for n in range(nClusters):   
+    pathAmplitudes_sp = np.sqrt( pow_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
+    pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10(np.abs(pathAmplitudes_sp)**2),-45)
+    plt.polar(AOD_sp[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOD_sp[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
+plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
+plt.subplot(2,2,2, projection='polar',title="AoA sen corrixir")
+if los:
+    plt.polar(losAoA*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),':',color=cm.jet(0))
+    plt.scatter(losAoA*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),color=cm.jet(0),marker='<')
+for n in range(nClusters):   
+    pathAmplitudes_sp = np.sqrt( pow_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
+    pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10(np.abs(pathAmplitudes_sp)**2),-45)
+    plt.polar(AOA_sp[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOA_sp[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
+plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
+plt.subplot(2,1,2)
+if los:
+    markerline, stemlines, baseline = plt.stem(0,10*np.log10(pow_los),bottom=np.min(10*np.log10(pow_sp)))
+    plt.setp(stemlines, color=cm.jet(0))
+    plt.setp(markerline, color=cm.jet(0)) 
+for n in range(nClusters):   
+    markerline, stemlines, baseline = plt.stem(tau_sp[n,:],10*np.log10(pow_sp[n,:]),bottom=np.min(10*np.log10(pow_sp)))
+    plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
+    plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 
 # --- ArrayPolar ---
 # 2.1 - Representación da orientación dos AOAs - non correxidos
