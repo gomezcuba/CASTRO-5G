@@ -8,12 +8,10 @@ import multipathChannel as mc
 
 from matplotlib import cm
 
-plt.close('all')
-
 # -------- Datos iniciais ------- #
 fig_ctr=0
 txPos = (0,0,10)
-rxPos = (25,-25,1.5)
+rxPos = (0,25,1.5)
 model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
 plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
@@ -35,8 +33,6 @@ prob = (0.5,0.2,0.3)
 
 # ------------------------------- #
 
-#%%
-
 #1. Plot ubicación da BS e do user (UE) 
 #1.1 - Plot dataset completo non correxido - subplot1
 #1.2 - Plot dataset completo correxido - subplot2
@@ -49,6 +45,9 @@ rxPos2D = rxPos[0:-1]
 AOA_r = AOA*(np.pi/180)
 AOA_rF = AOA_fix*(np.pi/180)
 AOD_r = AOD*(np.pi/180)
+liRX = np.sqrt((xPathLoc-rxPos[0])**2+(yPathLoc - rxPos[1])**2)
+liTX = np.sqrt(xPathLoc**2+yPathLoc**2)
+li = liTX + liRX
 
 scaleguide = np.max(np.abs(np.concatenate([yPathLoc,xPathLoc],0)))
 
@@ -65,12 +64,19 @@ plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 plt.ylim(-100,100)   
 plt.plot(txPos2D[0],txPos2D[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rxPos2D[0],rxPos2D[1],'b',label='UE', linewidth='4.5')
+plt.plot(rxPos2D[0],rxPos2D[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--')
+plt.plot(xPathLoc,yPathLoc,'x',label='Rebotes')
+
 for i in range(0,AOD.size): 
-    plt.plot(xPathLoc[i],yPathLoc[i],'x')
-    plt.plot(txPos2D[0]+40*rg*np.cos(AOD_r[i]),txPos2D[1]+40*rg*np.sin(AOD_r[i]),'k',linewidth = '0.5')
+
+    plt.plot([txPos2D[0],xPathLoc[i]],[txPos2D[1],yPathLoc[i]],'k',color = 'blue',linewidth = '0.5') 
     plt.plot(rxPos2D[0]+40*rg*np.cos(AOA_r[i]),rxPos2D[1]+40*rg*np.sin(AOA_r[i]),'k',linewidth = '0.5')
-# %%
+
+
+legend = plt.legend(shadow=True, fontsize='10')
+
+
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 plt.title("AOA correxidos")
@@ -80,11 +86,13 @@ plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 plt.ylim(-60,60)   
 plt.plot(txPos2D[0],txPos2D[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rxPos2D[0],rxPos2D[1],'b',label='UE', linewidth='4.5')
+plt.plot(rxPos2D[0],rxPos2D[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--')
 for i in range(0,AOD.size): 
-    plt.plot(xPathLoc[i],yPathLoc[i],'o')
-    plt.plot(txPos2D[0]+40*rg*np.cos(AOD_r[i]),txPos2D[1]+40*rg*np.sin(AOD_r[i]),'k',linewidth = '0.5')
-    plt.plot(rxPos2D[0]+40*rg*np.cos(AOA_rF[i]),rxPos2D[1]+40*rg*np.sin(AOA_rF[i]),'k',linewidth = '0.5')
+    plt.plot(xPathLoc[i],yPathLoc[i],'x')
+    plt.plot([txPos2D[0],xPathLoc[i]],[txPos2D[1],yPathLoc[i]],'k',color = 'blue',linewidth = '0.5') 
+    plt.plot([rxPos2D[0],rxPos2D[0]+liRX[i]*np.cos(AOA_rF[i])],[rxPos2D[1],rxPos2D[1]+liRX[i]*np.sin(AOA_rF[i])],'k',linewidth = '0.5')
+legend = plt.legend(shadow=True, fontsize='10')
 
 # --- ArrayPolar ---
 # 2.1 - Representación da orientación dos AOAs - non correxidos
@@ -92,7 +100,7 @@ for i in range(0,AOD.size):
 
 # 3.1 - Diagrama de antena con backlobes non descartados
 # 3.2 - Diagrama de antena con correción de backlobes
-
+#%%
 nClusters = tau.size
 if los:
     M=max(subpaths.loc[0,:].index)

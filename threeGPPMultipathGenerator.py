@@ -818,6 +818,7 @@ class ThreeGPPMultipathChannelModel:
         sol1= -sindAOD # xust.matematica overleaf
         # sol2= ( -B + np.sqrt(B**2- 4*A*C ))/(2*A)
         sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
+        sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
 
         #Posibles solucions:
         sols = np.zeros((4,aod.size)) 
@@ -828,6 +829,8 @@ class ThreeGPPMultipathChannelModel:
 
         #Ubicacion dos rebotes 
         x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan(aod *(np.pi/180) )-np.tan(losAOD+np.pi-sols))
+        x[1,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
+        x[3,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
         y=x*np.tan(aod *(np.pi/180) ) 
 
         #Mellor solucion - a mais semellante á distancia do path evaluado
