@@ -8,10 +8,12 @@ import multipathChannel as mc
 
 from matplotlib import cm
 
+plt.close('all')
+
 # -------- Datos iniciais ------- #
 fig_ctr=0
 txPos = (0,0,10)
-rxPos = (0,25,1.5)
+rxPos = (-40,3,1.5)
 model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
 plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
@@ -53,6 +55,11 @@ scaleguide = np.max(np.abs(np.concatenate([yPathLoc,xPathLoc],0)))
 
 Npoints = 1001
 rg = np.linspace(0,1,200)
+
+tau0=np.linalg.norm(rxPos2D)/3e8
+PathLoc=np.vstack([xPathLoc,yPathLoc])
+tau_fromloc = (np.linalg.norm(PathLoc,axis=0)+np.linalg.norm(PathLoc.T-rxPos2D,axis=1))/3e8 - tau0
+print("dif of taus in percent. :\n %s"%(100 * (tau_fromloc-tau)/tau))
 
 # Representación
 fig_ctr+=1
