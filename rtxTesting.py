@@ -106,48 +106,25 @@ legend = plt.legend(shadow=True, fontsize='10')
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 nClusters = tau.size
-if los:
-    M=max(subpaths.loc[0,:].index)
-    (tau_los,pow_los,losAoA,losAoD,losZoA,losZoD)=subpaths.loc[(0,M),:]
-    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.drop((0,M)).T.to_numpy()
-else:    
-    M=max(subpaths.loc[0,:].index)+1
-    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
-    
-tau_sp=tau_sp.reshape(nClusters,-1)
-pow_sp=pow_sp.reshape(nClusters,-1)
-AOA_sp=AOA_sp.reshape(nClusters,-1)
-AOD_sp=AOD_sp.reshape(nClusters,-1)
-ZOA_sp=ZOA_sp.reshape(nClusters,-1)
-ZOD_sp=ZOD_sp.reshape(nClusters,-1)
 plt.subplot(2,2,1, projection='polar',title="AoD")
-Nsp=AOD_sp.shape[1]
-if los:
-    plt.polar(losAoD*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),':',color=cm.jet(0))
-    plt.scatter(losAoD*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),color=cm.jet(0),marker='<')
 for n in range(nClusters):   
-    pathAmplitudes_sp = np.sqrt( pow_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
-    pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10(np.abs(pathAmplitudes_sp)**2),-45)
-    plt.polar(AOD_sp[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
-    plt.scatter(AOD_sp[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
+    AOD_1c = subpaths.loc[n,:].AOD.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpaths.loc[n,:].P.to_numpy()  ),-45)
+    Nsp=len(AOD_1c)
+    plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
 plt.subplot(2,2,2, projection='polar',title="AoA sen corrixir")
-if los:
-    plt.polar(losAoA*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),':',color=cm.jet(0))
-    plt.scatter(losAoA*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),color=cm.jet(0),marker='<')
-for n in range(nClusters):   
-    pathAmplitudes_sp = np.sqrt( pow_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
-    pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10(np.abs(pathAmplitudes_sp)**2),-45)
-    plt.polar(AOA_sp[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
-    plt.scatter(AOA_sp[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
+for n in range(nClusters):  
+    AOA_1c = subpaths.loc[n,:].AOA.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpaths.loc[n,:].P.to_numpy()  ),-45)
+    Nsp=len(AOA_1c)
+    plt.polar(AOA_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOA_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
 plt.subplot(2,1,2)
-if los:
-    markerline, stemlines, baseline = plt.stem(0,10*np.log10(pow_los),bottom=np.min(10*np.log10(pow_sp)))
-    plt.setp(stemlines, color=cm.jet(0))
-    plt.setp(markerline, color=cm.jet(0)) 
 for n in range(nClusters):   
-    markerline, stemlines, baseline = plt.stem(tau_sp[n,:],10*np.log10(pow_sp[n,:]),bottom=np.min(10*np.log10(pow_sp)))
+    markerline, stemlines, baseline = plt.stem( subpaths.loc[n,:].tau.to_numpy() ,10*np.log10( subpaths.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpaths.P.to_numpy())))
     plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 
