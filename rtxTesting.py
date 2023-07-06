@@ -8,10 +8,12 @@ import multipathChannel as mc
 
 from matplotlib import cm
 
+plt.close('all')
+
 # -------- Datos iniciais ------- #
 fig_ctr=0
 txPos = (0,0,10)
-rxPos = (0,30,1.5)
+rxPos = (25,-25,1.5)
 model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
 plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
@@ -83,7 +85,6 @@ for i in range(0,AOD.size):
     plt.plot(xPathLoc[i],yPathLoc[i],'o')
     plt.plot(txPos2D[0]+40*rg*np.cos(AOD_r[i]),txPos2D[1]+40*rg*np.sin(AOD_r[i]),'k',linewidth = '0.5')
     plt.plot(rxPos2D[0]+40*rg*np.cos(AOA_rF[i]),rxPos2D[1]+40*rg*np.sin(AOA_rF[i]),'k',linewidth = '0.5')
-
 
 # --- ArrayPolar ---
 # 2.1 - Representación da orientación dos AOAs - non correxidos
