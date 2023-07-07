@@ -790,6 +790,11 @@ class ThreeGPPMultipathChannelModel:
         smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
         clusters,subpaths = self.create_small_param(LOSangles,smallStatistics,d2D,hut)
         
+        if self.adaptRaytx:
+            clusters = self.randomFitParameters(txPos,rxPos,clusters)
+            subpaths = self.randomFitParameters(txPos,rxPos,subpaths)
+        
+        
         keyChannel = (tuple(txPos),tuple(rxPos))
         plinfo = (los,PLconst,sfdB)
         self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
@@ -802,6 +807,7 @@ class ThreeGPPMultipathChannelModel:
         l0 = np.linalg.norm(vLOS[0:-1])
         tau0 = l0 / 3e8
         losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi)) # en radians
+        aod[0] = losAOD*180.0/np.pi #necesario para consistencia do primeiro rebote
                                      
         li = l0 + tau * 3e8
         dAOD = (aod*np.pi/180-losAOD)
@@ -890,7 +896,7 @@ class ThreeGPPMultipathChannelModel:
         
         vLOS = np.array(rxPos) - np.array(txPos)
         l0=np.sqrt(vLOS[0]**2+vLOS[1]**2)
-        tAOA = np.tan(np.pi-(aoa))
+        tAOA = np.tan(np.pi-aoa)
         tAOD = np.tan(aod)
         # Posición dos rebotes
         x = (vLOS[1]+vLOS[0]*tAOA)/(tAOA+tAOD)
@@ -901,20 +907,24 @@ class ThreeGPPMultipathChannelModel:
         
         return (tauFix,x,y)
     
-# TODO - adaptar a versión actual
-    def randomFitParameters(self, txPos, rxPos, clusters, subpaths):
+    def randomFitParameters(self, txPos, rxPos, dataset, prob):
 
+        aod = dataset['AOD'].tonumpy()
+        tau = dataset['tau'].tonumpy()
+        aoa = dataset['AOA'].tonumpy()
+        
+        #TODO - incluir posibilidade de procesado elemnto a elemento
+        adaptacions = ['AOAs','AODs','delays']
         index = np.random.randint(0,3)
 
         if index == 0:
-            clusters, subpaths = self.fitAOA(txPos,rxPos,clusters,subpaths)
+            dataset['AOA'] = self.fitAOA(txPos,rxPos,tau,aod)
         elif index == 1:
-            clusters, subpaths = self.fitAOD(txPos,rxPos,clusters,subpaths)
+            dataset['AOD'] = self.fitAOD(txPos,rxPos,tau,aoa)
         elif index == 2:
-            clusters, subpaths = self.fitDelay(txPos,rxPos,clusters,subpaths)
+            dataset['tau'] = self.fitDelay(txPos,rxPos,aod,aoa)
         
-
-        return clusters,subpaths
+        return dataset
     
     def fixAOAConsistency(self,df,AOA_fix):
         
