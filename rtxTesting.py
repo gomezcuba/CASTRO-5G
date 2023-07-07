@@ -13,7 +13,7 @@ plt.close('all')
 # -------- Datos iniciais ------- #
 fig_ctr=0
 txPos = (0,0,10)
-rxPos = (20,20,1.5)
+rxPos = (50,0,1.5)
 model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
@@ -59,7 +59,7 @@ rg = np.linspace(0,1,200)
 tau0=np.linalg.norm(rxPos2D)/3e8
 PathLoc=np.vstack([xPathLoc,yPathLoc])
 tau_fromloc = (np.linalg.norm(PathLoc,axis=0)+np.linalg.norm(PathLoc.T-rxPos2D,axis=1))/3e8 - tau0
-print("dif of taus in percent. :\n %s"%(100 * (tau_fromloc-tau)/tau))
+print("dif of taus (ns). :\n %s"%(1e9 * (tau_fromloc-tau)))
 
 # Representación
 fig_ctr+=1
@@ -98,6 +98,32 @@ for i in range(0,AOD.size):
     plt.plot([txPos2D[0],xPathLoc[i]],[txPos2D[1],yPathLoc[i]],'k',color = 'blue',linewidth = '0.5') 
     plt.plot([rxPos2D[0],rxPos2D[0]+liRX[i]*np.cos(AOA_rF[i])],[rxPos2D[1],rxPos2D[1]+liRX[i]*np.sin(AOA_rF[i])],'k',linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
+
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+nClusters = tau.size
+plt.subplot(2,2,1, projection='polar',title="AoD")
+for n in range(nClusters):   
+    AOD_1c = subpaths.loc[n,:].AOD.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpaths.loc[n,:].P.to_numpy()  ),-45)
+    Nsp=len(AOD_1c)
+    plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='<')
+plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
+plt.subplot(2,2,2, projection='polar',title="AoA sen corrixir")
+for n in range(nClusters):  
+    AOA_1c = subpaths.loc[n,:].AOA.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpaths.loc[n,:].P.to_numpy()  ),-45)
+    Nsp=len(AOA_1c)
+    plt.polar(AOA_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOA_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='<')
+plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
+plt.subplot(2,1,2)
+for n in range(nClusters):   
+    markerline, stemlines, baseline = plt.stem( subpaths.loc[n,:].tau.to_numpy() ,10*np.log10( subpaths.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpaths.P.to_numpy())))
+    plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
+    plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 
 # --- ArrayPolar ---
 # 2.1 - Representación da orientación dos AOAs - non correxidos
