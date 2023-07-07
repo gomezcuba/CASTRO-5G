@@ -883,10 +883,8 @@ class ThreeGPPMultipathChannelModel:
         aoaAux =sols[solIndx,range(li.size)]
         aoaFix = np.mod(np.pi+losAOA-aoaAux,2*np.pi) * (180.0/np.pi)
         
-        return (aoaFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+        return (aodFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
-
-        return aodFix
     
     def fitDelay(self, txPos, rxPos, aod, aoa):
         

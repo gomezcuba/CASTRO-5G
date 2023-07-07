@@ -6,71 +6,65 @@ import threeGPPMultipathGenerator as mpg
 import multipathChannel as mc
 from matplotlib import cm
 
-model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
-plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
-tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
-los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
-AOA_spFix = model.fitAOA(txPos,rxPos,AOD_sp,tau_sp)
+txPos = (0,0,10)
+rxPos=(50,0,1.5)
+resAOD = np.array([-26.4070614 , -17.50105576, -11.19985824,  21.20177412,
+        44.39181685, -27.23832243,  -5.6259779 ,  -0.54415715,
+       -15.44211778, -16.1235986 , -30.87259028, -17.41318048,
+         4.60819095, -34.58314023, -16.83662437,  24.74840315,
+        13.64277166,   7.56088152, -11.35766037])
+tau = np.array([0.00000000e+00, 1.26257744e-07, 1.90503024e-07, 3.05765970e-07,
+       5.28757609e-07, 7.68003813e-07, 8.36037486e-07, 9.81261981e-07,
+       9.90784676e-07, 1.14744248e-06, 1.30927350e-06, 1.37149868e-06,
+       1.40778327e-06, 1.86788685e-06, 1.95813480e-06, 2.43761018e-06,
+       2.49842475e-06, 3.97569578e-06, 5.14698794e-06])
+aoa = np.array([  0.        , 301.47621265, 329.82226723,  42.7304772 ,
+        67.26541771, 321.68196781, 352.13694532, 359.27099778,
+       339.45964842, 339.28277639, 321.78496528, 338.44440155,
+         5.69768743, 319.70810863, 340.34918265,  28.00704216,
+        15.44226848,   8.19273178, 347.91206652])
 
 
-#%%
-# O mesmo pero agora probamos as novas funcións:
-# Datos iniciais - l0, tau0 e aod0 (losAOD)
-clusters2 = clusters
-subpaths2 = subpaths
-# Datos iniciais - l0, tau0 e aod0 (losAOD)
 vLOS = np.array(rxPos) - np.array(txPos)
 l0 = np.linalg.norm(vLOS[0:-1])
-tau0 = l0 / 3e8
-losAOD =(np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi))*(180.0/np.pi) # en graos
+li = l0+tau*3e8
+losAOA = (np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0)+np.pi,2*np.pi))
+dAOA = aoa*(np.pi/180.0)-losAOA
 
-# Extraemos index. de clusters
-#nClusters = clusters.shape[0]
+nu= li/l0
+cosdAOA = np.cos(dAOA)
+sindAOA = np.sin(dAOA)
 
-#for i in range(0,nClusters -1):
-    # de aquí sacamos aod e tau
-    #TODO organizar para q procese ben valores do df
-    #clusterValues = subpaths.loc()
-aod = subpaths2['AOD'].astype(float)
-tau = subpaths2['tau'].astype(float)
-#TODO end
+A=nu**2+1-2*cosdAOA*nu
+B=2*sindAOA*(1-nu*cosdAOA)
+C=(sindAOA**2)*(1-nu**2)
+sol1= -sindAOA
+sol2= sindAOA*(nu**2-1) /  ( nu**2+1-2*cosdAOA*nu )
+sol2[(nu==1)&(cosdAOA==1)] = 0 #LOS path
 
-li = l0 + tau * 3e8
-dAOD = (aod-losAOD)*(np.pi/180)
+sols = np.zeros((4,aoa.size)) 
+sols[0,:] = np.arcsin(sol1)
+sols[1,:] = np.arcsin(sol2)
+sols[2,:] = np.pi - np.arcsin(sol1)
+sols[3,:] = np.pi - np.arcsin(sol2)
 
-cosdAOD = np.cos(dAOD)
-sindAOD = np.sin(dAOD)
-nu = tau/tau0
+#Ubicacion dos rebotes 
+x=(vLOS[1]-vLOS[0]*np.tan(losAOA+np.pi-sols))/(np.tan(aoa *(np.pi/180) )-np.tan(losAOA+np.pi-sols))
+x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
+x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
+y=x*np.tan(aoa *(np.pi/180) ) 
 
-# Resolvemos:
-A=(nu-cosdAOD)**2+sindAOD**2
-B=-2*nu*sindAOD*(nu-cosdAOD)
-C=(sindAOD**2)*(nu**2-1)
-sol1= ( -B + np.sqrt( B**2 - 4*A*C  ) )/( 2*A )
-sol2= ( -B - np.sqrt( B**2 - 4*A*C  ) )/( 2*A )
+#Mellor solucion - a mais semellante á distancia do path evaluado
+dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+solIndx=np.argmin(np.abs(dist-li),axis=0)
+aodAux =sols[solIndx,range(li.size)]
+aod = np.mod(np.pi+losAOA-aodAux,2*np.pi) * (180.0/np.pi)
 
-#Posibles solucions:
-sols = np.zeros((4,aod.size)) 
-sols[0,:] = np.transpose(np.arcsin(sol1))
-sols[1,:] = np.transpose(np.arcsin(sol2))
-sols[2,:] = np.transpose(np.pi - np.arcsin(sol1))
-sols[3,:] = np.transpose(np.pi - np.arcsin(sol2))
 
-#Avaliamos consistencia e distancia:
-dist = np.zeros((4,aod.size))
-for i in range(0,3):
-    numNu= sindAOD + np.sin(sols[i,:])
-    denomNu= sindAOD*np.cos(sols[i,:]) + cosdAOD*np.sin(sols[i,:])
-    dist[i]= (abs(numNu/denomNu)-nu)
+xPathLoc = x[solIndx,range(li.size)]
+yPathLoc = y[solIndx,range(li.size)]
 
-distMod = np.sum(dist,axis=1)    
-solIndx=np.argmin(distMod,0)
-sol = sols[solIndx,range(li.size)]
-# Norm., convertimos de novo a graos e achamos o aoaReal - non o aux.:
-aoaDeg = np.mod(sol+np.pi,2*np.pi)
-aoaDeg = aoaDeg*(180/np.pi)
-subpaths2['AOA'] = aoaDeg
+liRX = np.sqrt((xPathLoc-rxPos[0])**2+(yPathLoc - rxPos[1])**2)
+liTX = np.sqrt(xPathLoc**2+yPathLoc**2)
 
-# Eliminamos valores de AOA dos backlobes
-# Creo función aparte para poder chamala dende calquer lado
+# %%
