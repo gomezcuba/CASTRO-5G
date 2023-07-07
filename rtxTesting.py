@@ -13,8 +13,8 @@ plt.close('all')
 # -------- Datos iniciais ------- #
 fig_ctr=0
 txPos = (0,0,10)
-rxPos = (-40,3,1.5)
-model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
+rxPos = (20,20,1.5)
+model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
@@ -66,14 +66,12 @@ fig_ctr+=1
 fig = plt.figure(fig_ctr)
 plt.title("AOA sen correxir")
 plt.grid(linestyle = '--')
-plt.xlim(-60,60)
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.ylim(-60,60)   
-plt.plot(txPos2D[0],txPos2D[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rxPos2D[0],rxPos2D[1],'^',color='g',label='UE', linewidth='4.5')
-plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--')
-plt.plot(xPathLoc,yPathLoc,'x',label='Rebotes')
+plt.plot(txPos2D[0],txPos2D[1],'^g',color='b',label='BS',linewidth = '4.5')
+plt.plot(rxPos2D[0],rxPos2D[1],'^',color='r',label='UE', linewidth='4.5')
+plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--',color='g',label='LOS')
+plt.plot(xPathLoc,yPathLoc,'x',color='y',label='Rebotes')
 
 for i in range(0,AOD.size): 
 
@@ -83,19 +81,18 @@ for i in range(0,AOD.size):
 
 legend = plt.legend(shadow=True, fontsize='10')
 
+xlim = (1,2)
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 plt.title("AOA correxidos")
 plt.grid(linestyle = '--')
-plt.xlim(-60,60)
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.ylim(-60,60)   
-plt.plot(txPos2D[0],txPos2D[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rxPos2D[0],rxPos2D[1],'^',color='g',label='UE', linewidth='4.5')
-plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--')
-plt.plot(xPathLoc,yPathLoc,'x',label='Rebotes')
+plt.plot(txPos2D[0],txPos2D[1],'^g',color='b',label='BS',linewidth = '4.5')
+plt.plot(rxPos2D[0],rxPos2D[1],'^',color='r',label='UE', linewidth='4.5')
+plt.plot([txPos2D[0],rxPos2D[0]],[txPos2D[1],rxPos2D[1]],'--',color='g',label='LOS')
+plt.plot(xPathLoc,yPathLoc,'x',color='y',label='Rebotes')
 
 for i in range(0,AOD.size): 
     plt.plot([txPos2D[0],xPathLoc[i]],[txPos2D[1],yPathLoc[i]],'k',color = 'blue',linewidth = '0.5') 
@@ -109,54 +106,48 @@ legend = plt.legend(shadow=True, fontsize='10')
 # 3.1 - Diagrama de antena con backlobes non descartados
 # 3.2 - Diagrama de antena con correción de backlobes
 #%%
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
 nClusters = tau.size
 if los:
     M=max(subpaths.loc[0,:].index)
     (tau_los,pow_los,losAoA,losAoD,losZoA,losZoD)=subpaths.loc[(0,M),:]
-    tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.drop((0,M)).T.to_numpy()
+    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.drop((0,M)).T.to_numpy()
 else:    
     M=max(subpaths.loc[0,:].index)+1
-    tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
-    AOA_spFix = model.fitAOA((0,0,10),(40,0,1.5),AOD_sp,tau_sp)
-    #zsubpaths = model.fixAOAConsistency(subpaths, AOA_spFix)
-    #tau_sp,powC_sp,AOA_spFix,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
-    
-tau_sp=tau_sp.reshape(nClusters,-1)
-powC_sp=powC_sp.reshape(nClusters,-1)
-AOA_sp=AOA_sp.reshape(nClusters,-1)
-AOA_spFix=AOA_spFix.reshape(nClusters,-1)
-AOD_sp=AOD_sp.reshape(nClusters,-1)
-ZOA_sp=ZOA_sp.reshape(nClusters,-1)
-ZOD_sp=ZOD_sp.reshape(nClusters,-1)
-plt.close('all')
-fig_ctr=0
+    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
 
-#2D polar plots of AoA
-AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
-AoAs_fix = AOA_spFix.reshape(-1)*np.pi/180
-Npath=np.size(AoAs)
-pathAmplitudes = np.sqrt( powC_sp.reshape(-1) )*np.exp(2j*np.pi*np.random.rand(Npath))
-
-#%%
-#plot of rx AoAs and channel gains - Comparison between fixed and not
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-pathAmplitudesdBtrunc25 = np.maximum(10*np.log10(np.abs(pathAmplitudes)**2),-45)
-
-plt.polar(AoAs*np.ones((2,1)),np.vstack([-40*np.ones((1,Npath)),pathAmplitudesdBtrunc25]),':')
-plt.scatter(AoAs,pathAmplitudesdBtrunc25,color='k',marker='x')
-Nsp=AOA_sp.shape[1]
-
+plt.subplot(2,2,1, projection='polar',title="AoD")
+Nsp=AOD_sp.shape[1]
+if los:
+    plt.polar(losAoD*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),':',color=cm.jet(0))
+    plt.scatter(losAoD*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),color=cm.jet(0),marker='<')
+for n in range(nClusters):   
+    pathAmplitudes_sp = np.sqrt( pow_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
+    pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10(np.abs(pathAmplitudes_sp)**2),-45)
+    plt.polar(AOD_sp[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOD_sp[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
+plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
+plt.subplot(2,2,2, projection='polar',title="AoA sen corrixir")
 if los:
     plt.polar(losAoA*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),':',color=cm.jet(0))
     plt.scatter(losAoA*np.pi/180*np.ones((2,1)),np.vstack([[-40],10*np.log10(pow_los)]),color=cm.jet(0),marker='<')
 for n in range(nClusters):   
-    pathAmplitudes_sp = np.sqrt( powC_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
+    pathAmplitudes_sp = np.sqrt( pow_sp[n,:] )*np.exp(2j*np.pi*np.random.rand(Nsp))
     pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10(np.abs(pathAmplitudes_sp)**2),-45)
-    plt.polar(AOA_spFix[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
-    plt.scatter(AOA_spFix[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
+    plt.polar(AOA_sp[n,:]*np.pi/180*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.scatter(AOA_sp[n,:]*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
-#%%
+plt.subplot(2,1,2)
+if los:
+    markerline, stemlines, baseline = plt.stem(0,10*np.log10(pow_los),bottom=np.min(10*np.log10(pow_sp)))
+    plt.setp(stemlines, color=cm.jet(0))
+    plt.setp(markerline, color=cm.jet(0)) 
+for n in range(nClusters):   
+    markerline, stemlines, baseline = plt.stem(tau_sp[n,:],10*np.log10(pow_sp[n,:]),bottom=np.min(10*np.log10(pow_sp)))
+    plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
+    plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 # compute the response of the antenna array with Nant antennas
 Nant = 16
 AntennaResponses =mc.fULA(AoAs_fix,Nant)
