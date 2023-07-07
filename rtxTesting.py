@@ -38,7 +38,7 @@ prob = (0.5,0.2,0.3)
 #1. Plot ubicación da BS e do user (UE) 
 #1.1 - Plot dataset completo non correxido - subplot1
 #1.2 - Plot dataset completo correxido - subplot2
-
+#%%
 
 
 txPos2D = txPos[0:-1]
