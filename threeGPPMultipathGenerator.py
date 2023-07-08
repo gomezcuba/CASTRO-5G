@@ -854,40 +854,41 @@ class ThreeGPPMultipathChannelModel:
         
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
-        li = l0+tau/3e8
-        losAOA = (np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0)+np.pi,2*np.pi))
-        dAOA = aoa*(np.pi/180.0)-losAOA
-        
-        nu= li/l0
-        cosdAOA = np.cos(dAOA)
-        sindAOA = np.sin(dAOA)
-        
-        # resolución
-        # Resolvemos:
+        li = l0+tau*3e8
+        aoaR = aoa*(np.pi/180.0)
+        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*(vLOS[0]<0),2*np.pi)) # en radians
+        aoaAux = losAOD+np.pi-aoaR
+        cosdAOA = np.cos(aoaR)
+        sindAOA = np.sin(aoaR)
+        nu = li/l0
+
         A=nu**2+1-2*cosdAOA*nu
-        B=2*sindAOA*(1-nu*cosdAOA)#OLLO AQUI CAMBIOU O SIGNO
+        B=2*sindAOA*(1-nu*cosdAOA)
         C=(sindAOA**2)*(1-nu**2)
-        sol1= -sindAOA # xust.matematica overleaf
+
+        sol1= -sindAOA
         sol2= sindAOA*(nu**2-1) /  ( nu**2+1-2*cosdAOA*nu )
         sol2[(nu==1)&(cosdAOA==1)] = 0 #LOS path
-        
+
+        #Posibles solucions:
         sols = np.zeros((4,aoa.size)) 
         sols[0,:] = np.arcsin(sol1)
         sols[1,:] = np.arcsin(sol2)
         sols[2,:] = np.pi - np.arcsin(sol1)
         sols[3,:] = np.pi - np.arcsin(sol2)
-     
+
         #Ubicacion dos rebotes 
-        x=(vLOS[1]-vLOS[0]*np.tan(losAOA+np.pi-sols))/(np.tan(aoa *(np.pi/180) )-np.tan(losAOA+np.pi-sols))
+        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(losAOD+sols)-np.tan(losAOD+np.pi-aoaAux))
         x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
-        y=x*np.tan(aoa *(np.pi/180) ) 
+        y=x*np.tan(losAOD + sols) 
 
-        #Mellor solucion - a mais semellante á distancia do path evaluado
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
         solIndx=np.argmin(np.abs(dist-li),axis=0)
-        aoaAux =sols[solIndx,range(li.size)]
-        aoaFix = np.mod(np.pi+losAOA-aoaAux,2*np.pi) * (180.0/np.pi)
+        aodAux =sols[solIndx,range(li.size)]
+        aod = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
+
+        aodiff = np.abs(aod-resAOD)
         
         return (aodFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
