@@ -887,10 +887,8 @@ class ThreeGPPMultipathChannelModel:
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aodAux =sols[solIndx,range(li.size)]
         aod = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
-
-        aodiff = np.abs(aod-resAOD)
         
-        return (aodFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+        return (aod,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
     
     def fitDelay(self, txPos, rxPos, aod, aoa):
