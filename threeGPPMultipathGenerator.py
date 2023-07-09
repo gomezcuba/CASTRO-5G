@@ -856,7 +856,7 @@ class ThreeGPPMultipathChannelModel:
         l0 = np.linalg.norm(vLOS[0:-1])
         li = l0+tau*3e8
         aoaR = aoa*(np.pi/180.0)
-        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*(vLOS[0]<0),2*np.pi)) # en radians
+        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*+np.pi*(vLOS[0]<0),2*np.pi))
         aoaAux = losAOD+np.pi-aoaR
         cosdAOA = np.cos(aoaR)
         sindAOA = np.sin(aoaR)
@@ -878,7 +878,7 @@ class ThreeGPPMultipathChannelModel:
         sols[3,:] = np.pi - np.arcsin(sol2)
 
         #Ubicacion dos rebotes 
-        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(losAOD+sols)-np.tan(losAOD+np.pi-aoaAux))
+        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(losAOD+sols)-np.tan(losAOD-aoaAux))
         x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         y=x*np.tan(losAOD + sols) 
@@ -886,9 +886,9 @@ class ThreeGPPMultipathChannelModel:
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aodAux =sols[solIndx,range(li.size)]
-        aod = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
+        aodFix = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
         
-        return (aod,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+        return (aodFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
     
     def fitDelay(self, txPos, rxPos, aod, aoa):
@@ -925,34 +925,9 @@ class ThreeGPPMultipathChannelModel:
         
         return dataset
     
-    def fixAOAConsistency(self,df,AOA_fix):
+    def deleteBacklobes(self,df,phi0):
         
-        df['AOA'] = AOA_fix
+        df['AOA'] = np.mod(subpaths['AOA'] + phi0, 360.0)        
         dfFix = df[(df['AOA'] >= 90) & (df['AOA'] <= 270)]
         
         return dfFix
-    
-    
-# %%
-""" pathPostProc = None - en vez de booleano
-
-phi_ñ + AOA = phi + aod0
-
-mirar en pandas como eliminar un row
-
-xuntar delayChan e ArrayPolar e facer unha correlación
-
-Poñer ao día simraygeommwave
-
-# anterior - integrar noutra función complementaria
-#Método modificando tanto tau como AOA
-        # acercamento diferente - creamos un punto b < vLos
-
-        #b = np.random.uniform(0,vLOS, size = len(aod))
-        #li = tau*self.clight - b*np.cos(dAOD)
-        #auxPhi = np.arccos((vLOS-b)/li)*(180.0/np.pi)# graos
-        #clusters['AOA'] = (180.0+aod-auxPhi) 
-##
-
-
-"""
