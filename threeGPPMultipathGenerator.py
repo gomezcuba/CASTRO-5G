@@ -852,7 +852,10 @@ class ThreeGPPMultipathChannelModel:
         
         return (df,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
-    def fitAOD(self, txPos, rxPos, tau, aoa):
+    def fitAOD(self, txPos, rxPos, df):
+        
+        aoa = df['AOA'].T.to_numpy()
+        tau = df['tau'].T.to_numpy()
         
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
@@ -890,10 +893,15 @@ class ThreeGPPMultipathChannelModel:
         aodAux =sols[solIndx,range(li.size)]
         aodFix = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
         
-        return (aodFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+        df['AOD'] = aodFix
+        
+        return (df,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
     
-    def fitDelay(self, txPos, rxPos, aod, aoa):
+    def fitDelay(self, txPos, rxPos, df):
+        
+        aoa = df['AOA'].T.to_numpy()
+        aod = df['AOD'].T.to_numpy()
         
         vLOS = np.array(rxPos) - np.array(txPos)
         l0=np.sqrt(vLOS[0]**2+vLOS[1]**2)
@@ -904,9 +912,9 @@ class ThreeGPPMultipathChannelModel:
         y = vLOS[0]*tAOA
         l=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
 
-        tauFix=(l-l0)/self.clight
-        
-        return (tauFix,x,y)
+        df['tau'] = (l-l0)/self.clight
+       
+        return (df,x,y)
     
     def randomFitParameters(self, txPos, rxPos, dataset, prob):
 
@@ -914,22 +922,23 @@ class ThreeGPPMultipathChannelModel:
         tau = dataset['tau'].tonumpy()
         aoa = dataset['AOA'].tonumpy()
         
+        nPaths = aoa.size()
+        
         #TODO - incluir posibilidade de procesado elemnto a elemento
         adaptacions = ['AOAs','AODs','delays']
         index = np.random.randint(0,3)
 
         if index == 0:
-            dataset['AOA'] = self.fitAOA(txPos,rxPos,tau,aod)
+            dataset= self.fitAOA(txPos,rxPos,dataset)
         elif index == 1:
-            dataset['AOD'] = self.fitAOD(txPos,rxPos,tau,aoa)
+            dataset = self.fitAOD(txPos,rxPos,dataset)
         elif index == 2:
-            dataset['tau'] = self.fitDelay(txPos,rxPos,aod,aoa)
-        
+            dataset = self.fitDelay(txPos,rxPos,dataset)
         return dataset
     
     def deleteBacklobes(self,df,phi0):
         
-        df['AOA'] = np.mod(subpaths['AOA'] + phi0, 360.0)        
+        df['AOA'] = np.mod(df['AOA'] + phi0, 360.0)        
         dfFix = df[(df['AOA'] >= 90) & (df['AOA'] <= 270)]
         
         return dfFix
