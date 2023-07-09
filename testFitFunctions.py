@@ -29,8 +29,8 @@ l0 = np.linalg.norm(vLOS[0:-1])
 li = l0+tau*3e8
 tau0 = l0 / 3e8
 aoaR = aoa*(np.pi/180.0)
-losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*(vLOS[0]<0),2*np.pi)) # en radians
-aoaAux = losAOD+np.pi-aoaR
+losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi)) # en radians
+aoaAux = np.mod(losAOD+np.pi-aoaR,2*np.pi)
 cosdAOA = np.cos(aoaR)
 sindAOA = np.sin(aoaR)
 nu = li/l0
@@ -59,7 +59,7 @@ y=x*np.tan(losAOD + sols)
 dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
 solIndx=np.argmin(np.abs(dist-li),axis=0)
 aodAux =sols[solIndx,range(li.size)]
-aod = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
+aod = np.mod(aodAux+losAOD+np.pi*(vLOS[0]<0),2*np.pi) * (180.0/np.pi)
 
 aodiff = np.abs(aod-resAOD)
 
