@@ -800,13 +800,16 @@ class ThreeGPPMultipathChannelModel:
         self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
         return(plinfo,macro,clusters,subpaths)
 
-    def fitAOA(self, txPos, rxPos, aod, tau):
+    def fitAOA(self, txPos, rxPos, df):
 
+        aod = df['AOD'].T.to_numpy()
+        tau = df['tau'].T.to_numpy()
+        
         # Datos iniciais - l0, tau0 e aod0
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         tau0 = l0 / 3e8
-        losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi)) # en radians
+        losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
         aod[0] = losAOD*180.0/np.pi #necesario para consistencia do primeiro rebote
                                      
         li = l0 + tau * 3e8
@@ -814,11 +817,11 @@ class ThreeGPPMultipathChannelModel:
         
         cosdAOD = np.cos(dAOD)
         sindAOD = np.sin(dAOD)
-        nu = li/l0 #ollo li/l0 = (tau0+tau)/tau0
+        nu = li/l0
         
         # Resolvemos:
         A=nu**2+1-2*cosdAOD*nu
-        B=2*sindAOD*(1-nu*cosdAOD)#OLLO AQUI CAMBIOU O SIGNO
+        B=2*sindAOD*(1-nu*cosdAOD)
         C=(sindAOD**2)*(1-nu**2)
         # sol1= ( -B - np.sqrt(B**2- 4*A*C ))/(2*A)
         sol1= -sindAOD # xust.matematica overleaf
@@ -842,13 +845,12 @@ class ThreeGPPMultipathChannelModel:
         #Mellor solucion - a mais semellante á distancia do path evaluado
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
         solIndx=np.argmin(np.abs(dist-li),axis=0)
-        # print(solIndx)
-        # print(np.abs(dist-li))
-        # solIndx=2*np.ones_like(aod,dtype=np.int32)
         aoaAux =sols[solIndx,range(li.size)]
-        aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi) * (180.0/np.pi) #falta o offset -phi0
+        aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi) * (180.0/np.pi)
         
-        return (aoaFix,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+        df['AOA'] = aoaFix
+        
+        return (df,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
     def fitAOD(self, txPos, rxPos, tau, aoa):
         
