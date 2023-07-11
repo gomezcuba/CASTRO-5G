@@ -430,6 +430,7 @@ class ThreeGPPMultipathChannelModel:
          ]).set_index(['TGridx','TGridy','RGridx','RGridy','LOS'])
         self.dChansGenerated = {}
         self.dLOSGenerated = {}
+        self.miscasillas = {}
 
     # TODO introduce code for multi-floor hut in UMi & UMa
     #         if not indoor:
@@ -587,7 +588,8 @@ class ThreeGPPMultipathChannelModel:
             Cphi = self.CphiNLOStable[N]
         phiAOAprima = 2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
         phiAODprima = 2*(ASD/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
-        
+    
+
         Xaoa = np.random.choice((-1,1),size=powC.shape)
         Xaod = np.random.choice((-1,1),size=powC.shape)
         Yaoa = np.random.normal(0,ASA/7,size=powC.shape)
@@ -603,7 +605,6 @@ class ThreeGPPMultipathChannelModel:
         
         tetaZOAprima = -((ZSA*np.log(powC/maxP))/Cteta)
         tetaZODprima = -((ZSD*np.log(powC/maxP))/Cteta)
-        
         Xzoa = np.random.choice((-1,1),size=powC.shape)
         Xzod = np.random.choice((-1,1),size=powC.shape)
         Yzoa = np.random.normal(0, ZSA/7 ,size=powC.shape)
@@ -777,27 +778,26 @@ class ThreeGPPMultipathChannelModel:
 
         #Codigo que cumpla con el procedimiento A del apartado de consistencia espacial 
 
-       
+        c= 3e8
         aod = clusters['AOD']
+        zoa = clusters['ZOA']
+        zod = clusters['ZOD']
+        aoa = clusters['AOA']
         tau = clusters['tau']
-        newtau= tau
+        powc = clusters['powC']
+        deltaentrec= (deltaPos/c)
+        Rrx = np.array([[np.sin(zoa)* np.cos(aoa)], [np.sin(zoa)* np.sin(aoa)], [np.cos(zoa)]])
+        
+        Rrx = np.multiply(Rrx, deltaentrec)
 
-        newdelay=tdelay+(np.cos(aoa)*deltax+np.sin(aoa)*deltay)/c
-        path_length=c*tdelay
-        #                .....x1y1
-        #           .....      ^
-        #   tg  ....           |   delta_dist
-        #  <.....              |
-        #_path_length__>xoyo
-        delta_distD=-np.sin(aod)*deltax+np.cos(aod)*deltay
-        newaod=aod-np.arctan(delta_distD/path_length)
-        delta_distA=+np.sin(aoa)*deltax-np.cos(aoa)*deltay
-        newaoa=aoa-np.arctan(delta_distA/path_length)
-        delta_distZD=+np.sin(zod)*deltax-np.cos(zod)*deltay
-        newzod=zod-np.arctan(delta_distZD/path_length)
-        delta_distZA=+np.sin(zoa)*deltax-np.cos(zoa)*deltay
-        newzoa=zoa-np.arctan(delta_distZA/path_length)
-        #for 3GPP coefs should be updated according to their delay deppendency
+       
+        Rtx = np.array([[np.sin(zod)*np.cos(aod)], [np.sin(zod)* np.sin(aod)], [np.cos(zod)]])
+        Rtx = np.multiply(Rtx, deltaentrec)
+       
+        #newtauprima= tau - Rrx -Rtx
+        #newtau = np.sort( newtauprima-np.min(newtauprima) )
+
+        clusters= pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau,powc,aoa,aod,zoa,zod]).T)
         return (clusters,subpaths)
             
 
@@ -862,14 +862,27 @@ class ThreeGPPMultipathChannelModel:
         LOSangles = (losAoD,losAoA,losZoD,losZoA)
 
         TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, 1)
+        casilla = TgridXIndex + TgridYIndex + RgridXIndex + RgridYIndex 
+        key= casilla - 1
+        key2 = (tuple(txPos),tuple(rxPos))
+
+
         deltaPos = (RgridXIndex ** 2 + RgridYIndex ** 2) ** 0.5
 
-        key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
-        if key in self.dChansGenerated:
-            clusters, subpaths = self.dChansGenerated[key]
+
+        if key in self.miscasillas:
+            print("Canal a menos de 1 metro")
+            key3 = self.miscasillas[key]
+
+            clusters, subpaths = self.dChansGenerated[key3][1], self.dChansGenerated[key3][2]
+        
             clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaPos)
             return clusters,subpaths
 
         else:
+            print("Canal a más de 1 metro")
+            self.miscasillas[key] = key2
             clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2D, hut)  # Crear canal desde cero
+        
+
             return clusters,subpaths

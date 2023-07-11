@@ -65,61 +65,61 @@ Npointsplot=1001
 angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
 
-#plot of receive array response of first path
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-arrayGain1Path=(BeamformingVectors.transpose([0,2,1]).conj()@AntennaResponses[0,:,:]).reshape(-1)
-arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGain1Path)**2),-25)
+# #plot of receive array response of first path
+# fig_ctr+=1
+# fig = plt.figure(fig_ctr)
+# arrayGain1Path=(BeamformingVectors.transpose([0,2,1]).conj()@AntennaResponses[0,:,:]).reshape(-1)
+# arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGain1Path)**2),-25)
 
-plt.polar(angles_plot,arrayGain1PathdBtrunc25)
-plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+# plt.polar(angles_plot,arrayGain1PathdBtrunc25)
+# plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 
-Nsp=AOA_sp.shape[1]
-
-
-#plot of receive array response of ALL paths in SEPARATE LINES, WITHOUT the effect of power
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
-
-arrayGainAllPathsdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGainAllPaths)**2),-25)
-
-plt.polar(angles_plot,arrayGainAllPathsdBtrunc25)
-plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+# Nsp=AOA_sp.shape[1]
 
 
-#plot of receive array response of ALL paths in SEPARATE LINES, WITH the effect of power
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
+# #plot of receive array response of ALL paths in SEPARATE LINES, WITHOUT the effect of power
+# fig_ctr+=1
+# fig = plt.figure(fig_ctr)
+# arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
 
-channelArrayGainAllPaths =  arrayGainAllPaths*pathAmplitudes 
-channelArrayGainAllPathsdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(channelArrayGainAllPaths)**2),-25)
+# arrayGainAllPathsdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGainAllPaths)**2),-25)
 
-plt.polar(angles_plot,channelArrayGainAllPathsdBtrunc25)
-plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
-
-#plot of receive array response of 5 STRONGEST PATHS ONLY, in SEPARATE LINES, WITH the effect of power
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-Nbig = 5 # can also use something like np.sum(np.abs(pathAmplitudes)**2>1e-2) to calculate the number of paths greater than 0.01
-sortIndices = np.argsort(np.abs(pathAmplitudes)**2)
-
-channelArrayGainBigPaths =  arrayGainAllPaths[:,sortIndices[-Nbig:]]*pathAmplitudes [sortIndices[-Nbig:]]
-channelArrayGainBigPathsdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(channelArrayGainBigPaths)**2),-35)
-
-plt.polar(angles_plot,channelArrayGainBigPathsdBtrunc25)
-plt.polar(AoAs[sortIndices[-Nbig:]]*np.ones((2,1)),np.vstack([-35*np.ones((1,Nbig)),10*np.log10(np.abs(pathAmplitudes [sortIndices[-Nbig:]])**2)]),':')
-plt.scatter(AoAs[sortIndices[-Nbig:]],10*np.log10(np.abs(pathAmplitudes [sortIndices[-Nbig:]])**2),color='k',marker='x')
-plt.yticks(ticks=[-30,-20,-10,0],labels=['-20dB','-30dB','-10dB','0dB'])
+# plt.polar(angles_plot,arrayGainAllPathsdBtrunc25)
+# plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 
 
-#plot of receive array response of ALL paths COMBINED
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
+# #plot of receive array response of ALL paths in SEPARATE LINES, WITH the effect of power
+# fig_ctr+=1
+# fig = plt.figure(fig_ctr)
 
-arrayResponseCombined = np.sum( arrayGainAllPaths*pathAmplitudes , axis=1)
-arrayResCondBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayResponseCombined)**2),-25)
+# channelArrayGainAllPaths =  arrayGainAllPaths*pathAmplitudes 
+# channelArrayGainAllPathsdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(channelArrayGainAllPaths)**2),-25)
 
-plt.polar(angles_plot,arrayResCondBtrunc25)
-plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+# plt.polar(angles_plot,channelArrayGainAllPathsdBtrunc25)
+# plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+
+# #plot of receive array response of 5 STRONGEST PATHS ONLY, in SEPARATE LINES, WITH the effect of power
+# fig_ctr+=1
+# fig = plt.figure(fig_ctr)
+# Nbig = 5 # can also use something like np.sum(np.abs(pathAmplitudes)**2>1e-2) to calculate the number of paths greater than 0.01
+# sortIndices = np.argsort(np.abs(pathAmplitudes)**2)
+
+# channelArrayGainBigPaths =  arrayGainAllPaths[:,sortIndices[-Nbig:]]*pathAmplitudes [sortIndices[-Nbig:]]
+# channelArrayGainBigPathsdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(channelArrayGainBigPaths)**2),-35)
+
+# plt.polar(angles_plot,channelArrayGainBigPathsdBtrunc25)
+# plt.polar(AoAs[sortIndices[-Nbig:]]*np.ones((2,1)),np.vstack([-35*np.ones((1,Nbig)),10*np.log10(np.abs(pathAmplitudes [sortIndices[-Nbig:]])**2)]),':')
+# plt.scatter(AoAs[sortIndices[-Nbig:]],10*np.log10(np.abs(pathAmplitudes [sortIndices[-Nbig:]])**2),color='k',marker='x')
+# plt.yticks(ticks=[-30,-20,-10,0],labels=['-20dB','-30dB','-10dB','0dB'])
+
+
+# #plot of receive array response of ALL paths COMBINED
+# fig_ctr+=1
+# fig = plt.figure(fig_ctr)
+
+# arrayResponseCombined = np.sum( arrayGainAllPaths*pathAmplitudes , axis=1)
+# arrayResCondBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayResponseCombined)**2),-25)
+
+# plt.polar(angles_plot,arrayResCondBtrunc25)
+# plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 plt.show()

@@ -29,7 +29,7 @@ Npath=np.size(AoAs)
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 ax = Axes3D(fig)
-
+plt.show()
 
 
 #since there is no plot.polar() in 3D, we need to draw the axis manually
@@ -129,7 +129,8 @@ for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
     x=radius*np.cos(angles_plot)
     y=radius*np.sin(angles_plot)
     ax.plot3D(x,y,delays[pind]*np.ones_like(x),linestyle='-.',marker='x',color=clr)
-    
+
+plt.show()
 #the code below makes a "gif animation" that helps view the 3D but is not imprescindible
     
 # from matplotlib import animation, rc

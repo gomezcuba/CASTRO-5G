@@ -13,8 +13,8 @@ plt.close('all')
 #-------------------------PLOTEO MACRO-------------------------------------
 txPos = np.array((0,0,10))
 Nusers = 300
-corrDist = 15 #m
-numberCellsMap = 20
+corrDist = 10 #m
+numberCellsMap = 6
 distance = numberCellsMap*corrDist#m
 
 contadorY = []
