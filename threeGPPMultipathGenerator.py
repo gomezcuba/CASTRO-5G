@@ -847,10 +847,17 @@ class ThreeGPPMultipathChannelModel:
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aoaAux =sols[solIndx,range(li.size)]
         aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi) * (180.0/np.pi)
+        xLoc = x[solIndx,range(li.size)]
+        yLoc = y[solIndx,range(li.size)]
+        
+        
+        df['xloc'] = xLoc[0:li.size]
+        df['yloc'] = yLoc[0:li.size]
         
         df['AOA'] = aoaFix
         
-        return (df,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+        return df
+        #return (df,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
     def fitAOD(self, txPos, rxPos, df):
         
@@ -892,10 +899,15 @@ class ThreeGPPMultipathChannelModel:
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aodAux =sols[solIndx,range(li.size)]
         aodFix = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
+        xLoc = x[solIndx,range(li.size)]
+        yLoc = y[solIndx,range(li.size)]
+        
+        df['xloc'] = xLoc[0:li.size]
+        df['yloc'] = yLoc[0:li.size]
         
         df['AOD'] = aodFix
         
-        return (df,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
+        return df
 
     
     def fitDelay(self, txPos, rxPos, df):
@@ -911,10 +923,13 @@ class ThreeGPPMultipathChannelModel:
         x = (vLOS[1]+vLOS[0]*tAOA)/(tAOA+tAOD)
         y = vLOS[0]*tAOA
         l=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+        
+        df['xloc'] = x[0:l.size]
+        df['yloc'] = y[0:l.size]
 
         df['tau'] = (l-l0)/self.clight
        
-        return (df,x,y)
+        return df
     
     def randomFitParameters(self, txPos, rxPos, dataset, prob):
 
