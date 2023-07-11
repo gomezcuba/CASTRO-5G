@@ -15,7 +15,7 @@ fig_ctr = 0
 
 tx = (0,0,10)
 rx = (40,30,1.5)
-phi0 = np.random.uniform(0,2*np.pi)
+phi0 = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
@@ -58,11 +58,11 @@ AOA_cfA = ad_clustersA['AOA'].T.to_numpy() * (np.pi/(180.0))
 AOA_sfA = ad_subpathsA['AOA'].T.to_numpy() * (np.pi/(180.0))
 
 #AODs e tau non varían
-AOD_cA = clustersA['AOD'].T.to_numpy() * (np.pi/(180.0))
-AOD_sA = subpathsA['AOD'].T.to_numpy() * (np.pi/(180.0))
+AOD_cA = ad_clustersA['AOD'].T.to_numpy() * (np.pi/(180.0))
+AOD_sA = ad_subpathsA['AOD'].T.to_numpy() * (np.pi/(180.0))
 
-tau_cA = clustersA['tau'].T.to_numpy() * (np.pi/(180.0))
-tau_sA = subpathsA['tau'].T.to_numpy() * (np.pi/(180.0))
+tau_cA = ad_clustersA['tau'].T.to_numpy() * (np.pi/(180.0))
+tau_sA = ad_subpathsA['tau'].T.to_numpy() * (np.pi/(180.0))
 
 
 # -----------------------------
