@@ -41,6 +41,7 @@ ad_subpathsA = modelA.fitAOA(tx,rx,subpathsA)
 # Se queremos ademais correxir backlobes:
 
 ad_clustersA = modelA.deleteBacklobes(ad_clustersA,phi0)
+ad_subpathsA = modelA.deleteBacklobes(ad_subpathsA,phi0)
 
 #Posición dos rebotes:
 xc_A,yc_A = [ad_clustersA['xloc'].T.to_numpy(),ad_clustersA['yloc'].T.to_numpy()]
@@ -161,7 +162,7 @@ for n in range(nClus):
     AOD_1c = subpathsA.loc[n,:].AOD.to_numpy() *np.pi/180
     pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathsA.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOD_1c)
-    plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
+    plt.polar(AOD_1c*np.ones((1,2)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
     plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClus-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize = 7)
 
