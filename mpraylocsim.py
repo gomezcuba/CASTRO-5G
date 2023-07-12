@@ -1,7 +1,8 @@
 #!/usr/bin/python
 #from progress#bar import #bar
+#%%
 import matplotlib
-matplotlib.rcParams['text.usetex'] = True
+#matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
@@ -46,16 +47,15 @@ parser.add_argument('--show', help='Open plot figures in window', action='store_
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
 ## TO DO: (In progress) -- CLI arguments (line100)
-parser.add_argument('-xmax',type=int,help='Simulation model x-axis max. size coordinate (meters from the origin)')
-parser.add_argument('-xmin',type=int,help='Simulation model x-axis min. size coordinate (meters from the origin)')
-parser.add_argument('-ymax',type=int,help='Simulation model y-axis max. size coordinate (meters from the origin)')
-parser.add_argument('-ymin',type=int,help='Simulation model y-axis min. size coordinate (meters from the origin)')
+#parser.add_argument('-xmax',type=int,help='Simulation model x-axis max. size coordinate (meters from the origin)')
+#parser.add_argument('-xmin',type=int,help='Simulation model x-axis min. size coordinate (meters from the origin)')
+#parser.add_argument('-ymax',type=int,help='Simulation model y-axis max. size coordinate (meters from the origin)')
+#parser.add_argument('-ymin',type=int,help='Simulation model y-axis min. size coordinate (meters from the origin)')
 #refine to make it consistent before reestructuring all this code
 
 args = parser.parse_args("-N 100 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
-
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -82,7 +82,7 @@ NerrMod=len(lErrMod)
 
 
 # multipath generator
-mpgen = args.G if args.G else 'Geo'
+mpgen = args.G if args.G else '3gpp'
 #TODO: Aquí parece que hai bastantes parametros que completar
 
 #location algorythms - evolución de location estimator
@@ -131,6 +131,7 @@ Ymin=-50
 phi0GyrQuant=2*np.pi/64
 
 # if this parameter is present we get the mpg data from a known file (better for teset&debug)
+
 if args.nompg:
     data=np.load(outfoldername+'/chanGenData.npz') 
     x=data["x"]         
@@ -174,18 +175,25 @@ else:
         c=3e8
         tau=(np.abs(y/np.sin(theta))+np.abs((y-y0)/np.sin(phi)))/c
         tau0=y0/np.sin(theta0)/c
-        tauE=tau0+np.random.randn(1,Nsims)*40e-9
+        tauE=tau0+np.random.randn(1,Nsims)*40e-9 
     elif mpgen == "3gpp":
         
         x0=np.random.rand(1,Nsims)*(Xmax-Xmin)+Xmin
         y0=np.random.rand(1,Nsims)*(Ymax-Ymin)+Ymin
         
+        txPos = (0,0,10)
+        rxPos = (25,25,1.5)
+        
         # Sugerencia - introducir param de entrada para regular blargeBW
         # Tamen mais tarde - Elección de escenario vía param. de entrada
         model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
-        plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(x0,y0,1.5))
+        plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
         
         phi0=np.random.rand(1,Nsims)*2*np.pi #receiver angular measurement offset
+        
+        clusters = model.fitAOA(txPos,rxPos,clusters)
+        subpaths = model.fitAOA(txPos,rxPos,subpaths)
+        
         clusters = model.deleteBacklobes(clusters,phi0)
         subpaths = model.deleteBacklobes(subpaths,phi0)
         
@@ -880,6 +888,5 @@ if args.D:
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+'/taue_vs_ntau.eps')
-print(prueba)
 if args.show:
     plt.show()
