@@ -11,11 +11,13 @@ from IPython.display import HTML, Image
 # equivalent to rcParams['animation.html'] = 'html5'
 rc('animation', html='html5')
 
+model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
+plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
+tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
+nClusters=tau.size
+los, PLfree, SF = plinfo
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
 
-
-model = pg.ThreeGPPMultipathChannelModel()
-model.bLargeBandwidthOption=True
-model.create_channel((0,0,10),(40,0,1.5))
 fig = plt.figure(1)
 ax = Axes3D(fig)
 t=np.linspace(0,2*np.pi,100)
@@ -29,14 +31,13 @@ for labeltheta in np.arange(0,2*np.pi,2*np.pi/8):
     ax.text3D(42*np.cos(labeltheta),42*np.sin(labeltheta),-1,'%.2f pi'%(labeltheta/np.pi),color='k')
 
 ax.text3D(42*np.cos(np.pi/16),42*np.sin(np.pi/16),-1,'AoA',color='k')
-maxdel=np.max([np.abs(x.excessDelay) for x in list(model.dChansGenerated.values())[0].channelPaths])
+maxdel=np.max(tau_sp)
 ax.plot3D([0,0],[0,0],[0,np.ceil(maxdel/100)*100],color='k')
 ax.text3D(0,0,np.ceil(maxdel/100)*100,"delay [ns]",color='k')
-mpchan=next(iter(model.dChansGenerated.values()))
-allAoA=np.array([x.azimutOfArrival[0] for x in mpchan.channelPaths])
-allDel=np.array([x.excessDelay[0] for x in mpchan.channelPaths])
-allAoD=np.array([x.azimutOfDeparture[0] for x in mpchan.channelPaths])
-allGain=np.abs(np.array([x.complexAmplitude[0] for x in mpchan.channelPaths]))**2
+
+allAoA=AOA_sp.reshape(-1)
+allDel=tau_sp.reshape(-1)
+allGain=pow_sp.reshape(-1)
 
 inds=np.argpartition(-allGain,4,axis=0)[0:50]
 selectedAoA=allAoA[inds]

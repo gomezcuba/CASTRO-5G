@@ -113,7 +113,8 @@ class OMPCachedRunner:
                 self.cachedDics[(Nt,Nd,Na,Xt,Xd,Xa)].observations.pop(pilotsID)  
                 
     def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0, accelDel = False):
-        if (Xt!=1.0):
+        if (Xt!=int(Xt)):
+        # if (Xt!=1.0):
             accelDel = False
         Nt=np.shape(v)[0]
         Nxp=np.shape(vp)[1]
@@ -138,7 +139,7 @@ class OMPCachedRunner:
                 observDic=self.create2DObsDic(pilotsID,vp,wp,1.0,Xd,Xa)
             else:
                 observDic=dicParams.observations[pilotsID]
-            Tdic=np.arange(0.0,Nt)
+            Tdic=np.arange(0.0,Nt,1.0/Xt)
             Ddic=dicParams.AoDs
             Adic=dicParams.AoAs
         else:
@@ -169,7 +170,7 @@ class OMPCachedRunner:
         while ((ctr<Nt*Nxp*Nrfr) and (np.sum(np.abs(r)**2)>xi)) or ctr==0:
             if (accelDel):
                 Call=(observDicConj*r.T).reshape(np.size(Ddic)*np.size(Adic),Nt,Nxp*Nrfr)
-                c=np.sum(np.fft.ifft(Call,Nt,axis=1)*Nt,axis=2).T.reshape(-1)
+                c=np.sum(np.fft.ifft(Call,int(Nt*Xt),axis=1)*Nt*Xt,axis=2).T.reshape(-1)
 #                c_aux=self.cachedDics[(Nt,Nd,Na,1.0,Xd,Xa)].observations[pilotsID].transpose().conj()@r
 #                print(np.all(np.isclose(c_aux.T,c)))
             else:    
@@ -224,6 +225,8 @@ class OMPCachedRunner:
             else:      
                 if (accelDel):
                     angle_ind = a+np.size(Adic)*d
+                    # vt=np.fft.fft(np.sinc( np.arange(0.0,Nt,1.0).reshape(Nt,1,1) - Tdic[t] ),axis=0)                
+                    # Rsupp[:,ctr]  = (vt*observDic[:,angle_ind].reshape(Nt,Nxp,Nrfr) ).reshape(-1)                    
                     Rsupp[:,ctr]  = (np.exp(-2j*np.pi*np.arange(0,1,1/Nt)*Tdic[t]).reshape(Nt,1,1)*observDic[:,angle_ind].reshape(Nt,Nxp,Nrfr) ).reshape(-1)                    
                 else:            
                     Rsupp[:,ctr]  = observDic[:,ind]        
