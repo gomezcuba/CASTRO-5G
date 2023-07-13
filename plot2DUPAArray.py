@@ -16,14 +16,15 @@ model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+nClusters = tau.size
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
 
 #4D  color intensity plots vs delay, AoA and AoD grid
 AoAs = AOA_sp*np.pi/180#radians
 ZoAs = ZOA_sp*np.pi/180#radians
 delays = tau_sp*1e9#nanoseconds
 Npath=np.size(delays)
-pathAmplitudes = np.sqrt( pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
+pathAmplitudes = np.sqrt( pow_sp )*np.exp(1j*phase00)
 
 plt.close('all')
 fig_ctr=0

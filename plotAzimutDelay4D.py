@@ -17,14 +17,14 @@ model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
 
 #4D  color intensity plots vs delay, AoA and AoD grid
 AoAs = AOA_sp*np.pi/180#radians
 AoDs = AOD_sp*np.pi/180#radians
 delays = tau_sp*1e9#nanoseconds
 Npath=np.size(delays)
-pathAmplitudes = np.sqrt( pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
+pathAmplitudes = np.sqrt( pow_sp )*np.exp(1j*phase00)
 Npath=np.size(AoAs)
 
 
@@ -50,7 +50,7 @@ pulses = pulses.reshape(Ntaps,1,1,Npath)#move the delay to a new axis
 
 hnArray = np.sum(pulses*arrayGainAllPathsTx[None,:,:,:]*arrayGainAllPathsRx[None,None,:,:]*pathAmplitudes[None,None,None,:],axis=3)
 
-NtapsPerFigure = 20
+NtapsPerFigure = 10
 
 Nfigs = int(np.ceil(Ntaps/NtapsPerFigure))
 chanGainsdB=10*np.log10(np.abs(hnArray)**2)
@@ -59,12 +59,13 @@ manual_colors= (chanGainsdB-np.min(chanGainsdB)) / ( np.max(chanGainsdB)-np.min(
 for nfig in range(0,Nfigs):
     fig_ctr+=1
     # fig = plt.figure(fig_ctr)
-    fig = plt.figure(fig_ctr,figsize=(25, 4),dpi=80)#size is in in with dpi converting to pixels
+    fig = plt.figure(fig_ctr,figsize=(12, 9),dpi=80)#size is in in with dpi converting to pixels
     ax = fig.add_subplot(111, projection='3d')#Axes3D(fig)
     # ax.set_box_aspect((4, 25, 4))
     # ax.set_aspect("equal")
     ax.set_proj_type('ortho')
-    ax.view_init(azim=-3,elev=25)
+    ax.set_box_aspect((1, 4, 1))
+    ax.view_init(azim=-20,elev=10)
     X = np.linspace(0, 2*np.pi, Npointsplot)
     Z = np.linspace(0, 2*np.pi, Npointsplot)
     X, Z = np.meshgrid(X, Z)

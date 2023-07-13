@@ -16,7 +16,7 @@ plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 nClusters=tau.size
 los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
 
 fig = plt.figure(1)
 ax = Axes3D(fig)

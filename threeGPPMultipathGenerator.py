@@ -623,24 +623,38 @@ class ThreeGPPMultipathChannelModel:
                     ZOD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZOD_sp[n,self.tableSubclusterIndices[scl]])
             
         #mask = (ZOA_sp>=180) & (ZOA_sp<=360)
-        #ZOA_sp[mask] = 360 - ZOA_sp
+        #ZOA_sp[mask] = 360 - ZOA_sp             
+    
+        # Generate the cross polarization power ratios
+        xpr_mu = param.xpr_mu
+        xpr_sg = param.xpr_sg
+        X = np.random.normal(xpr_mu,xpr_sg,size=tau_sp.shape)
+        XPR_sp =  10**(X/10)
+        
+        # Generate the initial phase
+        phase = np.random.uniform(-np.pi,np.pi,size=(4,nClusters,M))        
         
         subpaths = pd.DataFrame(
-            columns=['tau','P','AOA','AOD','ZOA','ZOD'],
+            columns=['tau','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'],
             data=np.vstack([
                 tau_sp.reshape(-1),
                 pow_sp.reshape(-1),
                 AOA_sp.reshape(-1),
                 AOD_sp.reshape(-1),
                 ZOA_sp.reshape(-1),
-                ZOD_sp.reshape(-1)
+                ZOD_sp.reshape(-1),
+                XPR_sp.reshape(-1),
+                phase[0,:,:].reshape(-1),
+                phase[1,:,:].reshape(-1),
+                phase[2,:,:].reshape(-1),
+                phase[3,:,:].reshape(-1)
                 ]).T,
             index=pd.MultiIndex.from_product([np.arange(nClusters),np.arange(M)],names=['n','m'])
             )
         if los:
             subpaths.P[:]=subpaths.P[:]/(K+1)
             #the LOS ray is the M+1-th subpath of the first cluster
-            subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD)
+            subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD,0,0,0,0,0)
         
         return(subpaths)
    
@@ -687,25 +701,38 @@ class ThreeGPPMultipathChannelModel:
         AOD_sp = np.tile(AOD[:,None],(1,M)) + casd*alpha_AOD
        
         ZOA_sp = np.tile(ZOA[:,None],(1,M)) + czsa*alpha_ZOA
-        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*alpha_ZOD
+        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*alpha_ZOD        
         
+        # Generate the cross polarization power ratios
+        xpr_mu = param.xpr_mu
+        xpr_sg = param.xpr_sg
+        X = np.random.normal(xpr_mu,xpr_sg,size=tau_sp.shape)
+        XPR_sp =  10**(X/10)
+        
+        # Generate the initial phase
+        phase = np.random.uniform(-np.pi,np.pi,size=(4,nClusters,M))        
         
         subpaths = pd.DataFrame(
-            columns=['tau','P','AOA','AOD','ZOA','ZOD'],
+            columns=['tau','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'],
             data=np.vstack([
                 tau_sp.reshape(-1),
                 pow_sp.reshape(-1),
                 AOA_sp.reshape(-1),
                 AOD_sp.reshape(-1),
                 ZOA_sp.reshape(-1),
-                ZOD_sp.reshape(-1)
+                ZOD_sp.reshape(-1),
+                XPR_sp.reshape(-1),
+                phase[0,:,:].reshape(-1),
+                phase[1,:,:].reshape(-1),
+                phase[2,:,:].reshape(-1),
+                phase[3,:,:].reshape(-1)
                 ]).T,
             index=pd.MultiIndex.from_product([np.arange(nClusters),np.arange(M)],names=['n','m'])
             )
         if los:
             subpaths.P[:]=subpaths.P[:]/(K+1)
             #the LOS ray is the M+1-th subpath of the first cluster
-            subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD)
+            subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD,0,0,0,0,0)
         
         return(subpaths)
     
@@ -719,18 +746,6 @@ class ThreeGPPMultipathChannelModel:
             subpaths = self.create_subpaths_largeBW(smallStatistics,clusters,LOSangles,d2D,hut)
         else:
             subpaths = self.create_subpaths_basics(smallStatistics,clusters,LOSangles)
-        
-        tau_sp,powC_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()       
-    
-        # Generate the cross polarization power ratios
-        if los:
-            param = param = self.scenarioParams.LOS
-        else:
-            param = self.scenarioParams.NLOS
-        xpr_mu = param.xpr_mu
-        xpr_sg = param.xpr_sg
-        X = np.random.normal(xpr_mu,xpr_sg,size=tau_sp.shape)
-        kappa =  10**(X/10)
     
         return(clusters,subpaths)
     

@@ -17,13 +17,12 @@ plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 nClusters=tau.size
 los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
 
 #3D delay-and-polar plots of delay vs AoA
 AoAs = AOA_sp*np.pi/180#radians
 delays = tau_sp*1e9#nanoseconds
 Npath=np.size(delays)
-pathAmplitudes = np.sqrt( pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
 Npath=np.size(AoAs)
 
 fig_ctr+=1
@@ -68,7 +67,7 @@ arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors
 clusterInd = subpaths.reset_index(inplace=False).loc[:,'n']
 for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
     clr = cm.jet(clusterInd[pind]/(nClusters-1))
-    coefdB=10*np.log10(np.abs(pathAmplitudes[pind])**2)
+    coefdB=10*np.log10( pow_sp[pind] )
     radius = coefdB - dBat0polar
     x=np.maximum(radius,0)*np.cos(AoAs[pind])
     y=np.maximum(radius,0)*np.sin(AoAs[pind])
@@ -116,7 +115,7 @@ arrayGainAllPaths=(AntennaResponses.transpose([0,2,1]).conj()@BeamformingVectors
 
 for pind in range(0,Npath):#plot3D needs to be called 1 line at a time
     clr = cm.jet(clusterInd[pind]/(nClusters-1))
-    coefdB=10*np.log10(np.abs(pathAmplitudes[pind])**2)
+    coefdB=10*np.log10( pow_sp[pind] )
     radius = coefdB - dBat0polar
     x=np.maximum(radius,0)*np.cos(AoAs[pind])
     y=np.maximum(radius,0)*np.sin(AoAs[pind])

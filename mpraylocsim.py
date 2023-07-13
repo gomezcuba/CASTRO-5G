@@ -176,7 +176,7 @@ else:
             if c3=='inf':
                 tau_est[nv,:,:]=tau-tauE
             else:
-                Ts=1.0/400e6#2.5ns
+                Ts=1.0/400e6 #2.5ns
                 Ds=320e-9#Ts*128 FIR filter
                 tau_est[nv,:,:]=np.round((tau-tauE)*int(c3)/Ds)*Ds/int(c3)
         else:
