@@ -31,7 +31,7 @@ parser.add_argument('--maxstd', help='Maximum error std in dB')
 parser.add_argument('-D', type=str,help='Add dictionary-based error models, comma separated')
 
 #parameters that affect multipath generator
-parser.add_argument('-G', type=int,help='Type of generator')
+parser.add_argument('-G', type=str,help='Type of generator')
 parser.add_argument('--npathgeo', type=int,help='No. paths per channel (Geo only)')
 
 #parameters that affect location algorithms
@@ -53,8 +53,8 @@ parser.add_argument('--print', help='Save plot files in eps to results folder', 
 #parser.add_argument('-ymin',type=int,help='Simulation model y-axis min. size coordinate (meters from the origin)')
 #refine to make it consistent before reestructuring all this code
 
-args = parser.parse_args("-N 100 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
-
+#args = parser.parse_args("-N 5 -S 7 -D -G 3gpp --noerror --label test --show --print".split(' '))
+args = parser.parse_args("-N 2 -G 3gpp --noerror --label test --show --print".split(' '))
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
 # numero de simulacions
@@ -82,7 +82,7 @@ NerrMod=len(lErrMod)
 
 
 # multipath generator
-mpgen = args.G if args.G else '3gpp'
+mpgen = args.G if args.G else 'Geo'
 #TODO: Aquí parece que hai bastantes parametros que completar
 
 #location algorythms - evolución de location estimator
@@ -178,18 +178,21 @@ else:
         tauE=tau0+np.random.randn(1,Nsims)*40e-9 
     elif mpgen == "3gpp":
         
+        Npath = 20
         x0=np.random.rand(1,Nsims)*(Xmax-Xmin)+Xmin
         y0=np.random.rand(1,Nsims)*(Ymax-Ymin)+Ymin
         
         txPos = (0,0,10)
         rxPos = (25,25,1.5)
         
+        tau0 = np.linalg.norm(rxPos[0:-1]) / 3e8
+        
         # Sugerencia - introducir param de entrada para regular blargeBW
         # Tamen mais tarde - Elección de escenario vía param. de entrada
         model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
         plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
         
-        phi0=np.random.rand(1,Nsims)*2*np.pi #receiver angular measurement offset
+        phi0=np.pi #receiver angular measurement offset
         
         clusters = model.fitAOA(txPos,rxPos,clusters)
         subpaths = model.fitAOA(txPos,rxPos,subpaths)
@@ -197,9 +200,11 @@ else:
         clusters = model.deleteBacklobes(clusters,phi0)
         subpaths = model.deleteBacklobes(subpaths,phi0)
         
-        tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
+        tau,powC,phi,theta,ZOA,ZOD,xc,yc = clusters.T.to_numpy()
         los, PLfree, SF = plinfo
-        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,xs,ys = subpaths.T.to_numpy()
+        tauE=tau0+tau
+
 
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
