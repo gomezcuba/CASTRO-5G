@@ -43,6 +43,8 @@ ad_subpathsA = modelA.fitAOA(tx,rx,ad_subpathsA)
 
 # Se queremos ademais correxir backlobes:
 
+# clustersA = modelA.deleteBacklobes(clustersA,phi0)
+# subpathsA = modelA.deleteBacklobes(subpathsA,phi0)
 # ad_clustersA = modelA.deleteBacklobes(ad_clustersA,phi0)
 # ad_subpathsA = modelA.deleteBacklobes(ad_subpathsA,phi0)
 
@@ -178,11 +180,11 @@ legend = plt.legend(shadow=True, fontsize='10')
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-nClus = ad_clustersA['tau'].size
+nClus = clustersA['tau'].size
 plt.subplot(2,2,1, projection='polar',title="AoD")
 for n in range(nClus):   
-    AOD_1c = ad_subpathsA.loc[n,:].AOD.to_numpy() *np.pi/180
-    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy()  ),-45)
+    AOD_1c = subpathsA.loc[n,:].AOD.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathsA.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOD_1c)
     plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
     plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClus-1)),marker='<')
@@ -199,7 +201,7 @@ plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
 plt.xlabel("TDoA (s)")
 for n in range(nClus):   
-    markerline, stemlines, baseline = plt.stem( ad_subpathsA.loc[n,:].tau.to_numpy() ,10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(ad_subpathsA.P.to_numpy())))
+    markerline, stemlines, baseline = plt.stem( subpathsA.loc[n,:].tau.to_numpy() ,10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(ad_subpathsA.P.to_numpy())))
     plt.setp(stemlines, color=cm.jet(n/(nClus-1)))
     plt.setp(markerline, color=cm.jet(n/(nClus-1))) 
 plt.grid()
