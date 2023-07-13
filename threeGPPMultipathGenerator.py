@@ -189,7 +189,7 @@ class ThreeGPPMultipathChannelModel:
                     3.8,
                     11,
                     20,
-                    0,
+                    3.91,
                     2,
                     3,
                     3,
@@ -223,7 +223,7 @@ class ThreeGPPMultipathChannelModel:
                     1.7,
                     10,
                     20,
-                    0,
+                    3.91,
                     2,
                     3,
                     3,
@@ -257,7 +257,7 @@ class ThreeGPPMultipathChannelModel:
                     3.6,
                     15,
                     20,
-                    0,
+                    3.91,
                     5,
                     8,
                     9,
@@ -291,7 +291,7 @@ class ThreeGPPMultipathChannelModel:
                     3,
                     19,
                     20,
-                    0,
+                    3.91,
                     5,
                     11,
                     9,
@@ -325,7 +325,7 @@ class ThreeGPPMultipathChannelModel:
                     3.6,
                     15,
                     20,
-                    0,
+                    3.91,
                     5,
                     8,
                     9,
@@ -359,7 +359,7 @@ class ThreeGPPMultipathChannelModel:
                     3,
                     19,
                     20,
-                    0,
+                    3.91,
                     5,
                     11,
                     9,
@@ -861,20 +861,25 @@ class ThreeGPPMultipathChannelModel:
 
     def fitAOD(self, txPos, rxPos, df):
         
-        aoa = df['AOA'].T.to_numpy()
         tau = df['tau'].T.to_numpy()
+        aoa = df['AOA'].T.to_numpy()
+
         
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         li = l0+tau*3e8
-        aoaR = aoa*(np.pi/180.0)
         losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*+np.pi*(vLOS[0]<0),2*np.pi))
-        aoaAux = losAOD+np.pi-aoaR
-        cosdAOA = np.cos(aoaR)
-        sindAOA = np.sin(aoaR)
+        losAOA = np.mod(np.pi+losAOD,2*np.pi)
+        aoa[0] = losAOA #necesario para consistencia do primeiro rebote
+
+        aoaR = aoa*(np.pi/180.0)
+
+        aoaAux = np.mod(-aoaR+losAOA*(vLOS[0]>0),2*np.pi)
+        cosdAOA = np.cos(aoaAux)
+        sindAOA = np.sin(aoaAux)
         nu = li/l0
 
-        A=nu**2+1-2*cosdAOA*nu
+        A=nu**2+1+2*cosdAOA*nu
         B=2*sindAOA*(1-nu*cosdAOA)
         C=(sindAOA**2)*(1-nu**2)
 
@@ -884,13 +889,14 @@ class ThreeGPPMultipathChannelModel:
 
         #Posibles solucions:
         sols = np.zeros((4,aoa.size)) 
+        # sols[0,:] = np.arcsin(sol1)
         sols[0,:] = np.arcsin(sol1)
         sols[1,:] = np.arcsin(sol2)
         sols[2,:] = np.pi - np.arcsin(sol1)
         sols[3,:] = np.pi - np.arcsin(sol2)
 
         #Ubicacion dos rebotes 
-        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(losAOD+sols)-np.tan(losAOD+np.pi-aoaAux))
+        x=(vLOS[1]-vLOS[0]*np.tan(aoaR))/(np.tan(losAOD+sols)-np.tan(aoaR))
         x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         y=x*np.tan(losAOD + sols) 
@@ -899,11 +905,12 @@ class ThreeGPPMultipathChannelModel:
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aodAux =sols[solIndx,range(li.size)]
         aodFix = np.mod(aodAux+losAOD,2*np.pi) * (180.0/np.pi)
-        xLoc = x[solIndx,range(li.size)]
-        yLoc = y[solIndx,range(li.size)]
+
+        xPathLoc = x[solIndx,range(li.size)]
+        yPathLoc = y[solIndx,range(li.size)]
         
-        df['xloc'] = xLoc[0:li.size]
-        df['yloc'] = yLoc[0:li.size]
+        df['xloc'] = xPathLoc
+        df['yloc'] = yPathLoc
         
         df['AOD'] = aodFix
         
