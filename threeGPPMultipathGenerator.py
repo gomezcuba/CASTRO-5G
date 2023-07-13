@@ -878,8 +878,8 @@ class ThreeGPPMultipathChannelModel:
         B=2*sindAOA*(1-nu*cosdAOA)
         C=(sindAOA**2)*(1-nu**2)
 
-        sol1= -sindAOA
-        sol2= sindAOA*(nu**2-1) /  ( nu**2+1-2*cosdAOA*nu )
+        sol1= ( -B - np.sqrt(B**2- 4*A*C ))/(2*A)
+        sol2= ( -B + np.sqrt(B**2- 4*A*C ))/(2*A)
         sol2[(nu==1)&(cosdAOA==1)] = 0 #LOS path
 
         #Posibles solucions:
@@ -890,7 +890,7 @@ class ThreeGPPMultipathChannelModel:
         sols[3,:] = np.pi - np.arcsin(sol2)
 
         #Ubicacion dos rebotes 
-        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(losAOD+sols)-np.tan(losAOD-aoaAux))
+        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(losAOD+sols)-np.tan(losAOD+np.pi-aoaAux))
         x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         y=x*np.tan(losAOD + sols) 
@@ -898,7 +898,7 @@ class ThreeGPPMultipathChannelModel:
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aodAux =sols[solIndx,range(li.size)]
-        aodFix = np.mod(losAOD+aodAux,2*np.pi) * (180.0/np.pi)
+        aodFix = np.mod(aodAux+losAOD,2*np.pi) * (180.0/np.pi)
         xLoc = x[solIndx,range(li.size)]
         yLoc = y[solIndx,range(li.size)]
         
@@ -915,10 +915,22 @@ class ThreeGPPMultipathChannelModel:
         aoa = df['AOA'].T.to_numpy()
         aod = df['AOD'].T.to_numpy()
         
+        
         vLOS = np.array(rxPos) - np.array(txPos)
-        l0=np.sqrt(vLOS[0]**2+vLOS[1]**2)
-        tAOA = np.tan(np.pi-aoa)
-        tAOD = np.tan(aod)
+        l0 = np.linalg.norm(vLOS[0:-1])
+        
+        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*+np.pi*(vLOS[0]<0),2*np.pi))
+        # aoaR = aoa*np.pi/180.0
+        # aodR = aod*np.pi/180.0
+        
+        # Q = (np.cos(aoaR)+np.cos(aodR))/(np.sin(aodR)*np.cos(aoaR)-np.cos(aodR)*np.sin(aoaR))
+        # P = -Q*np.tan(aoaR)
+        # x = vLOS[0]*P
+        # y = vLOS[1]*Q
+        # l = (x+y)/3e8
+
+        tAOA = np.tan(np.pi-aoa*(np.pi/180.0))
+        tAOD = np.tan(aod*(np.pi/180.0))
         # Posición dos rebotes
         x = (vLOS[1]+vLOS[0]*tAOA)/(tAOA+tAOD)
         y = vLOS[0]*tAOA
@@ -928,7 +940,7 @@ class ThreeGPPMultipathChannelModel:
         df['yloc'] = y[0:l.size]
 
         df['tau'] = (l-l0)/self.clight
-       
+                       
         return df
     
     def randomFitParameters(self, txPos, rxPos, dataset, prob):
