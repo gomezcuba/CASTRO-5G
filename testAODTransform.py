@@ -9,7 +9,7 @@ import pandas as pd
 plt.close('all')
 fig_ctr = 0
 
-""" Banco de gráficas e tests exclusivo da función fitAOA (e correción de backlobes se corresponde)"""
+""" Banco de gráficas e tests exclusivo da función fitAOD (e correción de backlobes se corresponde)"""
 
 # Posicións transmisor e receptor
 
@@ -28,7 +28,7 @@ sce = "RMa"
 modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
 plinfoA,macroA,clustersA,subpathsA = modelA.create_channel(tx,rx)
 
-#AOAs non correxidos
+#AODs non correxidos
 AOD_cA = clustersA['AOD'].T.to_numpy() * (np.pi/(180.0))
 AOD_sA = subpathsA['AOD'].T.to_numpy() * (np.pi/(180.0))
 
@@ -38,10 +38,11 @@ AOD_sA = subpathsA['AOD'].T.to_numpy() * (np.pi/(180.0))
 ad_clustersA  = modelA.fitAOD(tx,rx,clustersA)
 ad_subpathsA = modelA.fitAOD(tx,rx,subpathsA)
 
-# Se queremos ademais correxir backlobes:
-
+# OPCIONAL -- Se queremos ademais correxir backlobes:
+#-------
 #ad_clustersA = modelA.deleteBacklobes(ad_clustersA,phi0)
 #ad_subpathsA = modelA.deleteBacklobes(ad_subpathsA,phi0)
+#-------
 
 #Posición dos rebotes:
 xc_A,yc_A = [ad_clustersA['xloc'].T.to_numpy(),ad_clustersA['yloc'].T.to_numpy()]
@@ -69,7 +70,7 @@ tau_sA = ad_subpathsA['tau'].T.to_numpy() * (np.pi/(180.0))
 # ---- Gráfica 1, camiños non adaptados:
 
 fig_ctr+=1
-plt.subplot(2,1,1)
+# plt.subplot(2,1,1)
 fig = plt.figure(fig_ctr)
 plt.title("AOD sen correxir")
 plt.grid(linestyle = '--')
@@ -88,29 +89,29 @@ for i in range(0,AOD_cA.size):
     plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(AOA_cA[i])],[rx[1],rx[1]+liRX_cA[i]*np.sin(AOA_cA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.subplot(2,1,2)
-plt.grid(linestyle = '--')
-plt.xlabel('x-location (m)')
-plt.ylabel('y-location (m)')
+# plt.subplot(2,1,2)
+# plt.grid(linestyle = '--')
+# plt.xlabel('x-location (m)')
+# plt.ylabel('y-location (m)')
 
-nClus = tau_cA.size
-nSubp = tau_sA.size
+# nClus = tau_cA.size
+# nSubp = tau_sA.size
 
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
-plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
-plt.plot(xs_A,ys_A,'x',label='Rebotes')
-for i in range(0,AOD_sA.size): 
-    plt.plot([tx[0],tx[0]+liTX_sA[i]*np.cos(AOD_sA[i])],[tx[1],tx[1]+liTX_sA[i]*np.sin(AOD_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5') 
-    plt.plot([rx[0],rx[0]+liRX_sA[i]*np.cos(AOA_sA[i])],[rx[1],rx[1]+liRX_sA[i]*np.sin(AOA_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5')
-legend = plt.legend(shadow=True, fontsize='10')
+# plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
+# plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+# plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
+# plt.plot(xs_A,ys_A,'x',label='Rebotes')
+# for i in range(0,AOD_sA.size): 
+#     plt.plot([tx[0],tx[0]+liTX_sA[i]*np.cos(AOD_sA[i])],[tx[1],tx[1]+liTX_sA[i]*np.sin(AOD_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5') 
+#     plt.plot([rx[0],rx[0]+liRX_sA[i]*np.cos(AOA_sA[i])],[rx[1],rx[1]+liRX_sA[i]*np.sin(AOA_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5')
+# legend = plt.legend(shadow=True, fontsize='10')
 
 
 # Gráfica 2 - Camiños clusters adaptados 
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-plt.subplot(2,1,1)
+# plt.subplot(2,1,1)
 plt.title("AOD correxidos")
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
@@ -124,7 +125,9 @@ for i in range(0,AOD_cA.size):
     plt.plot([tx[0],tx[0]+liTX_cA[i]*np.cos(AOD_cfA[i])],[tx[1],tx[1]+liTX_cA[i]*np.sin(AOD_cfA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5') 
     plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(AOA_cA[i])],[rx[1],rx[1]+liRX_cA[i]*np.sin(AOA_cA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
-plt.subplot(2,1,2)
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
