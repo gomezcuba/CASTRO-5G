@@ -12,7 +12,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTE.md) for details on our code of conduct,
 * Version [0.0.2](https://github.com/gomezcuba/CASTRO-5G/commit/2cdb85b31b8327e2401333abb74ab661c051118a) - [gonzaFero](https://github.com/gonzaFero) finished his TFG, upgrading MultipathLocationEstimator.py and creating its tutorials
 * Version [0.1.0](https://github.com/gomezcuba/CASTRO-5G/releases/tag/v0.1.0-alpha.multipathlocationlibrary) - [gomezcuba](https://github.com/gomezcuba) prepared the repo for going public, 
 * Version [0.1.1](https://github.com/gomezcuba/CASTRO-5G/commit/cb1310b779897ac864780a305b1d415b6ecc48d9) - [iagoalvarez](https://github.com/iagoalvarez) finished his TFG, upgrading threeGPPMultipathGenerator.py and creating its test files
-* Version [0.1.2]() - [gts-99](https://github.com/gts-99) finished his TFG, upgrading the IoTSpatialConsistencyExperimentthreeGPPMultipathGenerator.py to simulate a multi-user system with link adaptation
+* Version [0.1.2](https://github.com/gomezcuba/CASTRO-5G/commit/fd4cb8a4e868ae48db633350e20564a11be52962) - [gts-99](https://github.com/gts-99) finished his TFG, upgrading the IoTSpatialConsistencyExperimentthreeGPPMultipathGenerator.py to simulate a multi-user system with link adaptation
 * Version [0.2.0](https://github.com/gomezcuba/CASTRO-5G/releases/tag/v0.2.0-alpha3gpp) - [gomezcuba](https://github.com/gomezcuba) refactored the code to return values as Pandas Dataframes and support clusters with variable number of subpaths and prepared the new release version
 
 ## Authors
