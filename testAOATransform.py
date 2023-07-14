@@ -14,7 +14,7 @@ fig_ctr = 0
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
-rx = (40,0,1.5)
+rx = (-40,-30,1.5)
 phi0 = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
@@ -32,8 +32,8 @@ plinfoA,macroA,clustersA,subpathsA = modelA.create_channel(tx,rx)
 AOA_cA = clustersA['AOA'].T.to_numpy() * (np.pi/(180.0))
 AOA_sA = subpathsA['AOA'].T.to_numpy() * (np.pi/(180.0))
 
-ad_clustersA = clustersA
-ad_subpathsA = subpathsA
+ad_clustersA = clustersA.copy()
+ad_subpathsA = subpathsA.copy()
 
 
 # Adaptación canle 1:
@@ -114,8 +114,8 @@ plt.ylabel('y-location (m)')
 nClus = tau_cA.size
 nSubp = tau_sA.size
 
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 plt.plot(xc_A,yc_A,'x',label='Rebotes')
 for i in range(0,AOD_cA.size): 
@@ -133,8 +133,8 @@ plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 plt.plot(xc_A,yc_A,'x',label='Rebotes')
 for i in range(0,AOD_cA.size): 
@@ -150,8 +150,8 @@ plt.title("AOA non correxidos (subpaths)")
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 
 plt.plot(xs_A,ys_A,'x',label='Rebotes subpaths')
 for i in range(0,AOD_sA.size):
@@ -167,8 +167,8 @@ plt.title("AOA correxidos (subpaths)")
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 
 plt.plot(xs_A,ys_A,'x',label='Rebotes subpaths')
 for i in range(0,AOD_sA.size):

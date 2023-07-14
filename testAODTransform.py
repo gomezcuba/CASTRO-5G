@@ -14,12 +14,12 @@ fig_ctr = 0
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
-rx = (50,-60,1.5)
+rx = (50,-40,1.5)
 phi0 = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
-sce = "UMi"
+sce = "UMa"
 
 # ----------------------------
 # ---- Canle A, largeBW = true
@@ -32,11 +32,13 @@ plinfoA,macroA,clustersA,subpathsA = modelA.create_channel(tx,rx)
 AOD_cA = clustersA['AOD'].T.to_numpy() * (np.pi/(180.0))
 AOD_sA = subpathsA['AOD'].T.to_numpy() * (np.pi/(180.0))
 
+ad_clustersA = clustersA.copy()
+ad_subpathsA = subpathsA.copy()
 
 # Adaptación canle 1:
 
-ad_clustersA  = modelA.fitAOD(tx,rx,clustersA)
-ad_subpathsA = modelA.fitAOD(tx,rx,subpathsA)
+ad_clustersA  = modelA.fitAOD(tx,rx,ad_clustersA)
+ad_subpathsA = modelA.fitAOD(tx,rx,ad_subpathsA)
 
 # OPCIONAL -- Se queremos ademais correxir backlobes:
 #-------
@@ -66,7 +68,7 @@ AOA_sA = ad_subpathsA['AOA'].T.to_numpy() * (np.pi/(180.0))
 tau_cA = ad_clustersA['tau'].T.to_numpy() * (np.pi/(180.0))
 tau_sA = ad_subpathsA['tau'].T.to_numpy() * (np.pi/(180.0))
 
-
+#%%
 # ---- Gráfica 1, camiños non adaptados:
 
 fig_ctr+=1
@@ -116,8 +118,8 @@ plt.title("AOD non correxidos (subpaths)")
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 
 plt.plot(xs_A,ys_A,'x',label='Rebotes subpaths')
 for i in range(0,AOD_sA.size):
@@ -144,22 +146,23 @@ legend = plt.legend(shadow=True, fontsize='10')
 
 
 # Gráfica 5: Deck de subpaths AOD, AOA e delay non correxido
-
+#%%
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 nClus = ad_clustersA['tau'].size
+nSubp = ad_subpathsA['tau'].size
 plt.subplot(2,2,1, projection='polar',title="AoD")
 for n in range(nClus):   
-    AOD_1c = ad_subpathsA.loc[n,:].AOD.to_numpy() *np.pi/180
-    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy()  ),-45)
+    AOD_1c = subpathsA.loc[n,:].AOA.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathsA.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOD_1c)
     plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
     plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClus-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize = 7)
 plt.subplot(2,2,2, projection='polar')
 for n in range(nClus):  
-    AOA_1cf = ad_subpathsA.loc[n,:].AOA.to_numpy() *np.pi/180
-    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10(ad_subpathsA.loc[n,:].P.to_numpy()  ),-45)
+    AOA_1cf = subpathsA.loc[n,:].AOA.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10(subpathsA.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOA_1cf)
     plt.polar(AOA_1cf*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
     plt.scatter(AOA_1cf,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClus-1)),marker='+')
@@ -168,7 +171,7 @@ plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
 plt.xlabel("TDoA (s)")
 for n in range(nClus):   
-    markerline, stemlines, baseline = plt.stem( ad_subpathsA.loc[n,:].tau.to_numpy() ,10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(ad_subpathsA.P.to_numpy())))
+    markerline, stemlines, baseline = plt.stem( subpathsA.loc[n,:].tau.to_numpy() ,10*np.log10( subpathsA.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(ad_subpathsA.P.to_numpy())))
     plt.setp(stemlines, color=cm.jet(n/(nClus-1)))
     plt.setp(markerline, color=cm.jet(n/(nClus-1))) 
 plt.grid()
@@ -180,16 +183,16 @@ fig = plt.figure(fig_ctr)
 nClus = clustersA['tau'].size
 plt.subplot(2,2,1, projection='polar',title="AoD")
 for n in range(nClus):   
-    AOD_1c = subpathsA.loc[n,:].AOD.to_numpy() *np.pi/180
-    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathsA.loc[n,:].P.to_numpy()  ),-45)
+    AOD_1c = ad_subpathsA.loc[n,:].AOD.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOD_1c)
     plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
     plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClus-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize = 7)
 plt.subplot(2,2,2, projection='polar')
 for n in range(nClus):  
-    AOA_1cf = subpathsA.loc[n,:].AOA.to_numpy() *np.pi/180
-    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathsA.loc[n,:].P.to_numpy()  ),-45)
+    AOA_1cf = ad_subpathsA.loc[n,:].AOA.to_numpy() *np.pi/180
+    pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOA_1cf)
     plt.polar(AOA_1cf*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
     plt.scatter(AOA_1cf,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClus-1)),marker='+')
@@ -198,7 +201,7 @@ plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
 plt.xlabel("TDoA (s)")
 for n in range(nClus):   
-    markerline, stemlines, baseline = plt.stem( subpathsA.loc[n,:].tau.to_numpy() ,10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(ad_subpathsA.P.to_numpy())))
+    markerline, stemlines, baseline = plt.stem( ad_subpathsA.loc[n,:].tau.to_numpy() ,10*np.log10( ad_subpathsA.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(ad_subpathsA.P.to_numpy())))
     plt.setp(stemlines, color=cm.jet(n/(nClus-1)))
     plt.setp(markerline, color=cm.jet(n/(nClus-1))) 
 plt.grid()
