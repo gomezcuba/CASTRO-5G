@@ -868,9 +868,9 @@ class ThreeGPPMultipathChannelModel:
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         li = l0+tau*3e8
-        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*+np.pi*(vLOS[0]<0),2*np.pi))
+        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
         losAOA = np.mod(np.pi+losAOD,2*np.pi)
-        aoa[0] = losAOA #necesario para consistencia do primeiro rebote
+        aoa[0] = losAOA*(180.0/np.pi) #necesario para consistencia do primeiro rebote
 
         aoaR = aoa*(np.pi/180.0)
 
@@ -883,8 +883,8 @@ class ThreeGPPMultipathChannelModel:
         B=2*sindAOA*(1-nu*cosdAOA)
         C=(sindAOA**2)*(1-nu**2)
 
-        sol1= ( -B - np.sqrt(B**2- 4*A*C ))/(2*A)
-        sol2= ( -B + np.sqrt(B**2- 4*A*C ))/(2*A)
+        sol1= -sindAOA
+        sol2= sindAOA*(nu**2-1) /  ( nu**2+1-2*cosdAOA*nu )
         sol2[(nu==1)&(cosdAOA==1)] = 0 #LOS path
 
         #Posibles solucions:

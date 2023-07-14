@@ -14,7 +14,7 @@ fig_ctr = 0
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
-rx = (50,0,1.5)
+rx = (50,-60,1.5)
 phi0 = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
@@ -80,8 +80,8 @@ plt.ylabel('y-location (m)')
 nClus = tau_cA.size
 nSubp = tau_sA.size
 
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 plt.plot(xc_A,yc_A,'x',label='Rebotes')
 for i in range(0,AOD_cA.size): 
@@ -99,12 +99,12 @@ plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 plt.plot(xc_A,yc_A,'x',label='Rebotes')
 for i in range(0,AOD_cA.size): 
-    plt.plot([tx[0],tx[0]-liTX_cA[i]*np.cos(AOD_cfA[i])],[tx[1],tx[1]-liTX_cA[i]*np.sin(AOD_cfA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5') 
+    plt.plot([tx[0],tx[0]+liTX_cA[i]*np.cos(AOD_cfA[i])],[tx[1],tx[1]+liTX_cA[i]*np.sin(AOD_cfA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5') 
     plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(AOA_cA[i])],[rx[1],rx[1]+liRX_cA[i]*np.sin(AOA_cA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
@@ -121,7 +121,7 @@ plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
 
 plt.plot(xs_A,ys_A,'x',label='Rebotes subpaths')
 for i in range(0,AOD_sA.size):
-    plt.plot([tx[0],tx[0]-liTX_sA[i]*np.cos(AOD_sA[i])],[tx[1],tx[1]-liTX_sA[i]*np.sin(AOD_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5') 
+    plt.plot([tx[0],tx[0]+liTX_sA[i]*np.cos(AOD_sA[i])],[tx[1],tx[1]+liTX_sA[i]*np.sin(AOD_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5') 
     plt.plot([rx[0],rx[0]+liRX_sA[i]*np.cos(AOA_sA[i])],[rx[1],rx[1]+liRX_sA[i]*np.sin(AOA_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
@@ -133,12 +133,12 @@ plt.title("AOD correxidos (subpaths)")
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.plot(tx[0],tx[1],'^g',color='r',label='BS',linewidth = '4.5')
-plt.plot(rx[0],rx[1],'^',color='g',label='UE', linewidth='4.5')
+plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
+plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 
 plt.plot(xs_A,ys_A,'x',label='Rebotes subpaths')
 for i in range(0,AOD_sA.size):
-    plt.plot([tx[0],tx[0]-liTX_sA[i]*np.cos(AOD_sfA[i])],[tx[1],tx[1]-liTX_sA[i]*np.sin(AOD_sfA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5') 
+    plt.plot([tx[0],tx[0]+liTX_sA[i]*np.cos(AOD_sfA[i])],[tx[1],tx[1]+liTX_sA[i]*np.sin(AOD_sfA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5') 
     plt.plot([rx[0],rx[0]+liRX_sA[i]*np.cos(AOA_sA[i])],[rx[1],rx[1]+liRX_sA[i]*np.sin(AOA_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
