@@ -808,7 +808,6 @@ class ThreeGPPMultipathChannelModel:
         # Datos iniciais - l0, tau0 e aod0
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
-        tau0 = l0 / 3e8
         losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
         aod[0] = losAOD*180.0/np.pi #necesario para consistencia do primeiro rebote
                                      
@@ -820,12 +819,7 @@ class ThreeGPPMultipathChannelModel:
         nu = li/l0
         
         # Resolvemos:
-        A=nu**2+1-2*cosdAOD*nu
-        B=2*sindAOD*(1-nu*cosdAOD)
-        C=(sindAOD**2)*(1-nu**2)
-        # sol1= ( -B - np.sqrt(B**2- 4*A*C ))/(2*A)
         sol1= -sindAOD # xust.matematica overleaf
-        # sol2= ( -B + np.sqrt(B**2- 4*A*C ))/(2*A)
         sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
         sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
 
@@ -857,7 +851,6 @@ class ThreeGPPMultipathChannelModel:
         df['AOA'] = aoaFix
         
         return df
-        #return (df,x[solIndx,range(li.size)],y[solIndx,range(li.size)])
 
     def fitAOD(self, txPos, rxPos, df):
         
@@ -896,6 +889,9 @@ class ThreeGPPMultipathChannelModel:
         sols[3,:] = np.pi - np.arcsin(sol2)
 
         #Ubicacion dos rebotes 
+        
+        #x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(aoaR )-np.tan(losAOD+np.pi-aoaAux))
+
         x=(vLOS[1]-vLOS[0]*np.tan(aoaR))/(np.tan(losAOD+sols)-np.tan(aoaR))
         x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
@@ -919,56 +915,72 @@ class ThreeGPPMultipathChannelModel:
     
     def fitDelay(self, txPos, rxPos, df):
         
-        aoa = df['AOA'].T.to_numpy()
-        aod = df['AOD'].T.to_numpy()
-        
+        aoa = df['AOA'].T.to_numpy() * (np.pi/180.0)
+        aod = df['AOD'].T.to_numpy() * (np.pi/180.0)
         
         vLOS = np.array(rxPos) - np.array(txPos)
-        l0 = np.linalg.norm(vLOS[0:-1])
-        
-        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])*+np.pi*(vLOS[0]<0),2*np.pi))
-        # aoaR = aoa*np.pi/180.0
-        # aodR = aod*np.pi/180.0
-        
-        # Q = (np.cos(aoaR)+np.cos(aodR))/(np.sin(aodR)*np.cos(aoaR)-np.cos(aodR)*np.sin(aoaR))
-        # P = -Q*np.tan(aoaR)
-        # x = vLOS[0]*P
-        # y = vLOS[1]*Q
-        # l = (x+y)/3e8
+        aod0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
 
-        tAOA = np.tan(np.pi-aoa*(np.pi/180.0))
-        tAOD = np.tan(aod*(np.pi/180.0))
-        # Posición dos rebotes
-        x = (vLOS[1]+vLOS[0]*tAOA)/(tAOA+tAOD)
-        y = vLOS[0]*tAOA
-        l=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+        aodmin = (aod>aod0)
+        aoalim = np.mod(aod0+np.pi,2*np.pi)
+
+        if vLOS[0] > 0:
+            for n in range(aoa.size):
+                if (aod[n] < aoa[n] < aoalim) and aodmin[n]:
+                    aoa[n] = aoa[n]
+                else:
+                    if(aodmin[n]):
+                        aoa[n] = np.random.uniform(aod[n],aoalim)+np.pi*(vLOS[1]<0)
+                    else:
+                        aoa[n] = np.random.uniform(aoalim, aod[n])+np.pi*(not aodmin[n])+np.pi*(vLOS[1]<0)
+        else:
+            for n in range(aoa.size):
+                if (aoalim < aoa[n] < aod[n]) and (not aodmin[n]):
+                    aoa[n] = aoa[n]
+                else:
+                    if(aodmin[n]):
+                        aoa[n] = np.random.uniform(aoalim,aod[n])
+                    else:
+                        aoa[n] = np.mod(aoa[n]+np.pi,2*np.pi)+np.pi*(aodmin[n])+np.pi*(vLOS[1]<0)    
+
+        l0 = np.linalg.norm(vLOS[0:-1])
+        TA=np.tan(np.pi-aoa)
+        TD=np.tan(aod)
+        x=((rxPos[1]+rxPos[0]*TA)/(TD+TA))
+        y=x*TD
+        l=np.sqrt(x**2+y**2)+np.sqrt((x-rxPos[0])**2+(y-rxPos[1])**2)
+        l0=np.sqrt(rxPos[0]**2+rxPos[1]**2)
+
+        tau = (l-l0)/3e8
+        
+        aoaD = aoa* (180.0/np.pi)
         
         df['xloc'] = x[0:l.size]
         df['yloc'] = y[0:l.size]
 
-        df['tau'] = (l-l0)/self.clight
+        df['tau'] = tau
+        df['AOA'] = aoaD
                        
         return df
     
     def randomFitParameters(self, txPos, rxPos, dataset, prob):
 
-        aod = dataset['AOD'].tonumpy()
-        tau = dataset['tau'].tonumpy()
-        aoa = dataset['AOA'].tonumpy()
+        totalSize = dataset.shape[0]
+        splitSizes = np.floor(prob * totalSize).astype(int)
         
-        nPaths = aoa.size()
-        
-        #TODO - incluir posibilidade de procesado elemnto a elemento
-        adaptacions = ['AOAs','AODs','delays']
-        index = np.random.randint(0,3)
-
-        if index == 0:
-            dataset= self.fitAOA(txPos,rxPos,dataset)
-        elif index == 1:
-            dataset = self.fitAOD(txPos,rxPos,dataset)
-        elif index == 2:
-            dataset = self.fitDelay(txPos,rxPos,dataset)
-        return dataset
+        indx = 0
+        dataset1= dataset.iloc[indx:indx+splitSizes[0]]       
+        dataset1= self.fitAOA(txPos,rxPos,dataset1.reset_index(drop=True))
+        indx += splitSizes[0]
+        dataset2= dataset.iloc[indx:indx+splitSizes[1]]       
+        dataset2= self.fitAOD(txPos,rxPos,dataset2.reset_index(drop=True))
+        indx += splitSizes[1]
+        dataset3= dataset.iloc[indx:totalSize]       
+        dataset3= self.fitDelay(txPos,rxPos,dataset3.reset_index(drop=True))
+            
+        datasetFix = pd.concat([dataset1, dataset2, dataset3], axis=0)
+           
+        return datasetFix
     
     def deleteBacklobes(self,df,phi0):
         
