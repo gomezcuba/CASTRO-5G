@@ -14,7 +14,7 @@ fig_ctr = 0
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
-rx = (50,-40,1.5)
+rx = (30,40,1.5)
 phi0 = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
@@ -68,7 +68,7 @@ AOA_sA = ad_subpathsA['AOA'].T.to_numpy() * (np.pi/(180.0))
 tau_cA = ad_clustersA['tau'].T.to_numpy() * (np.pi/(180.0))
 tau_sA = ad_subpathsA['tau'].T.to_numpy() * (np.pi/(180.0))
 
-#%%
+
 # ---- Gráfica 1, camiños non adaptados:
 
 fig_ctr+=1
@@ -153,7 +153,7 @@ nClus = ad_clustersA['tau'].size
 nSubp = ad_subpathsA['tau'].size
 plt.subplot(2,2,1, projection='polar',title="AoD")
 for n in range(nClus):   
-    AOD_1c = subpathsA.loc[n,:].AOA.to_numpy() *np.pi/180
+    AOD_1c = subpathsA.loc[n,:].AOD.to_numpy() *np.pi/180
     pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathsA.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOD_1c)
     plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClus-1)) )
