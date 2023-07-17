@@ -922,32 +922,14 @@ class ThreeGPPMultipathChannelModel:
         
         vLOS = np.array(rxPos) - np.array(txPos)
         aod0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
-
-        aodmin = (aod>aod0)
-        aoalim = np.mod(aod0+np.pi,2*np.pi)
-
-        if vLOS[0] > 0:
-            for n in range(aoa.size):
-                if (aod[n] < aoa[n] < aoalim) and aodmin[n]:
-                    aoa[n] = aoa[n]
-                else:
-                    if(aodmin[n]):
-                        aoa[n] = np.random.uniform(aod[n],aoalim)+np.pi*(vLOS[1]<0)
-                    else:
-                        aoa[n] = np.random.uniform(aoalim, aod[n])-np.pi*(vLOS[1]>0)
-        else:
-            for n in range(aoa.size):
-                if (aoalim < aoa[n] < aod[n]) and (not aodmin[n]):
-                    aoa[n] = aoa[n]
-                else:
-                    if(aodmin[n]):
-                        aoa[n] = np.random.uniform(aoalim,aod[n])
-                    else:
-                        aoa[n] = np.mod(aoa[n]+np.pi,2*np.pi)-np.pi*(vLOS[1]>0)
+        aoa0 = np.mod(aod0+np.pi,2*np.pi)
+        
+        dAOA = np.mod(-aoa+aoa0*(vLOS[0]>0),2*np.pi)
+        dAOD = np.mod(aod-aod0+np.pi*(vLOS[0]<0),2*np.pi)
 
         l0 = np.linalg.norm(vLOS[0:-1])
-        TA=np.tan(np.pi-aoa)
-        TD=np.tan(aod)
+        TA=np.tan(np.pi-dAOA)
+        TD=np.tan(dAOD)
         x=((rxPos[1]+rxPos[0]*TA)/(TD+TA))
         y=x*TD
         l=np.sqrt(x**2+y**2)+np.sqrt((x-rxPos[0])**2+(y-rxPos[1])**2)
