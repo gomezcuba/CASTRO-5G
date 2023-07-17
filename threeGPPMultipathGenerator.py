@@ -943,11 +943,10 @@ class ThreeGPPMultipathChannelModel:
         df['yloc'] = y[0:l.size]
 
         df['tau'] = tau[0:l.size]
-        df['AOA'] = aoaD[0:l.size]
         #Límite superior de un TDoA de 1.0e-6 para non introducir valores extremos
-        dfFix = df[df['tau'] <= 1.0e-06]
+        # dfFix = df[df['tau'] <= 1.0e-06]
         
-        return dfFix
+        return df
     
     def randomFitParameters(self, txPos, rxPos, dataset, prob):
 
