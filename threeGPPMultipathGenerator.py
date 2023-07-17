@@ -791,8 +791,11 @@ class ThreeGPPMultipathChannelModel:
         clusters,subpaths = self.create_small_param(LOSangles,smallStatistics,d2D,hut)
         
         if self.adaptRaytx:
-            clusters = self.randomFitParameters(txPos,rxPos,clusters)
-            subpaths = self.randomFitParameters(txPos,rxPos,subpaths)
+            
+            prob = np.array([0.5,0.5,0])
+            #TODO - introducir tanto clusters como subpaths para procesar no mesmo porque así os datos non teñen relación
+            clusters = self.randomFitParameters(txPos,rxPos,clusters,prob)
+            subpaths = self.randomFitParameters(txPos,rxPos,subpaths,prob)
         
         
         keyChannel = (tuple(txPos),tuple(rxPos))
@@ -911,7 +914,6 @@ class ThreeGPPMultipathChannelModel:
         df['AOD'] = aodFix
         
         return df
-
     
     def fitDelay(self, txPos, rxPos, df):
         
@@ -932,7 +934,7 @@ class ThreeGPPMultipathChannelModel:
                     if(aodmin[n]):
                         aoa[n] = np.random.uniform(aod[n],aoalim)+np.pi*(vLOS[1]<0)
                     else:
-                        aoa[n] = np.random.uniform(aoalim, aod[n])+np.pi*(not aodmin[n])+np.pi*(vLOS[1]<0)
+                        aoa[n] = np.random.uniform(aoalim, aod[n])-np.pi*(vLOS[1]>0)
         else:
             for n in range(aoa.size):
                 if (aoalim < aoa[n] < aod[n]) and (not aodmin[n]):
@@ -941,7 +943,7 @@ class ThreeGPPMultipathChannelModel:
                     if(aodmin[n]):
                         aoa[n] = np.random.uniform(aoalim,aod[n])
                     else:
-                        aoa[n] = np.mod(aoa[n]+np.pi,2*np.pi)+np.pi*(aodmin[n])+np.pi*(vLOS[1]<0)    
+                        aoa[n] = np.mod(aoa[n]+np.pi,2*np.pi)-np.pi*(vLOS[1]>0)
 
         l0 = np.linalg.norm(vLOS[0:-1])
         TA=np.tan(np.pi-aoa)
@@ -958,8 +960,8 @@ class ThreeGPPMultipathChannelModel:
         df['xloc'] = x[0:l.size]
         df['yloc'] = y[0:l.size]
 
-        df['tau'] = tau
-        df['AOA'] = aoaD
+        df['tau'] = tau[0:l.size]
+        df['AOA'] = aoaD[0:l.size]
                        
         return df
     
