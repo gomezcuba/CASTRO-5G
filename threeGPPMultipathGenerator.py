@@ -999,9 +999,7 @@ class ThreeGPPMultipathChannelModel:
         
         aoalim1 = np.mod(aoa0+90+phi0,360.0)
         aoalim2 = np.mod(aoalim1+180,360.0)
-        
-        df['AOA'] = np.mod(df['AOA'] + phi0, 360.0)        
-        
+                
         if(aoalim2>aoalim1):
             dfFix = df[(df['AOA'] >= aoalim1) & (df['AOA'] <= aoalim2)]
         else:
