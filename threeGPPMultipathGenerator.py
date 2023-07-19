@@ -178,7 +178,7 @@ class ThreeGPPMultipathChannelModel:
                     3.8,
                     11,
                     20,
-                    0,
+                    3.91,
                     2,
                     3,
                     3,
@@ -212,7 +212,7 @@ class ThreeGPPMultipathChannelModel:
                     1.7,
                     10,
                     20,
-                    0,
+                    3.91,
                     2,
                     3,
                     3,
@@ -246,7 +246,7 @@ class ThreeGPPMultipathChannelModel:
                     3.6,
                     15,
                     20,
-                    0,
+                    3.91,
                     5,
                     8,
                     9,
@@ -280,7 +280,7 @@ class ThreeGPPMultipathChannelModel:
                     3,
                     19,
                     20,
-                    0,
+                    3.91,
                     5,
                     11,
                     9,
@@ -314,7 +314,7 @@ class ThreeGPPMultipathChannelModel:
                     3.6,
                     15,
                     20,
-                    0,
+                    3.91,
                     5,
                     8,
                     9,
@@ -348,7 +348,7 @@ class ThreeGPPMultipathChannelModel:
                     3,
                     19,
                     20,
-                    0,
+                    3.91,
                     5,
                     11,
                     9,
@@ -584,7 +584,7 @@ class ThreeGPPMultipathChannelModel:
         los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
         (losAoD,losAoA,losZoD,losZoA) = LOSangles
         (tau,powC,AOA,AOD,ZOA,ZOD)=clusters.T.to_numpy()
-        nClusters=tau.size        
+        nClusters=tau.size   
         if los:
             param = self.scenarioParams.LOS
             powC_nlos= powC*(1+K)
@@ -592,7 +592,7 @@ class ThreeGPPMultipathChannelModel:
         else:
             param = self.scenarioParams.NLOS
             powC_nlos= powC 
-        M=param.M
+        M=param.M     
         
         indStrongestClusters = np.argsort(-powC)[0:2]
         
