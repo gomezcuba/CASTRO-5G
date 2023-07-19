@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="421.60089mm"
+   width="542.15564mm"
    height="242.14954mm"
-   viewBox="0 0 421.60089 242.14953"
+   viewBox="0 0 542.15564 242.14953"
    version="1.1"
    id="svg8"
    sodipodi:docname="code_structure.svg"
@@ -122,7 +122,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.52843783"
-     inkscape:cx="628.26691"
+     inkscape:cx="1084.3281"
      inkscape:cy="710.58501"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
@@ -152,7 +152,7 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(105.95946,-42.820497)">
+     transform="translate(226.51418,-42.820497)">
     <rect
        style="fill:#ffffff;fill-opacity:1;stroke:#4d4d4d;stroke-width:0.584235;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="rect1121"
@@ -165,29 +165,57 @@
        id="rect815"
        width="58.984978"
        height="42.781967"
-       x="15.305859"
+       x="-105.24886"
        y="95.039383" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="44.501209"
+       x="-76.053513"
        y="107.14669"
        id="text819"><tspan
          sodipodi:role="line"
          id="tspan817"
-         x="44.501209"
+         x="-76.053513"
          y="107.14669"
          style="text-align:center;text-anchor:middle;stroke-width:0.264583">Channel</tspan><tspan
          sodipodi:role="line"
-         x="44.501209"
+         x="-76.053513"
          y="120.37582"
          style="text-align:center;text-anchor:middle;stroke-width:0.264583"
          id="tspan821">Multipath</tspan><tspan
          sodipodi:role="line"
-         x="44.501209"
+         x="-76.053513"
          y="133.60493"
          style="text-align:center;text-anchor:middle;stroke-width:0.264583"
          id="tspan823">Generator</tspan></text>
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#4d4d4d;stroke-width:0.584235;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect815-3"
+       width="58.984978"
+       height="42.781967"
+       x="17.942923"
+       y="95.371201" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="47.138271"
+       y="107.47851"
+       id="text819-6"><tspan
+         sodipodi:role="line"
+         id="tspan817-7"
+         x="47.138271"
+         y="107.47851"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583">Ray-tracing</tspan><tspan
+         sodipodi:role="line"
+         x="47.138271"
+         y="120.70763"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan823-3">Compati-</tspan><tspan
+         sodipodi:role="line"
+         x="47.138271"
+         y="133.93675"
+         style="text-align:center;text-anchor:middle;stroke-width:0.264583"
+         id="tspan1691">bility</tspan></text>
     <g
        id="g13012">
       <rect
@@ -236,7 +264,7 @@
          id="tspan1123" /></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
-       d="M -47.141278,117.39653 H 13.962065"
+       d="m -167.69599,117.39653 h 61.10334"
        id="path835"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
@@ -245,97 +273,97 @@
        id="rect1121-3"
        width="58.984978"
        height="42.781971"
-       x="-105.66734"
+       x="-226.22206"
        y="96.442139" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="-76.567589"
+       x="-197.1223"
        y="108.54945"
        id="text833-6"><tspan
          sodipodi:role="line"
          id="tspan831-7"
-         x="-76.567589"
+         x="-197.1223"
          y="108.54945"
          style="text-align:center;text-anchor:middle;stroke-width:0.264583">Position/</tspan><tspan
          sodipodi:role="line"
-         x="-76.567589"
+         x="-197.1223"
          y="121.77858"
          style="text-align:center;text-anchor:middle;fill:#ff0000;stroke-width:0.264583"
          id="tspan1127-5">Movement</tspan><tspan
          sodipodi:role="line"
-         x="-76.567589"
+         x="-197.1223"
          y="135.00771"
          style="text-align:center;text-anchor:middle;stroke-width:0.264583"
          id="tspan1494">Generator</tspan><tspan
          sodipodi:role="line"
-         x="-76.567589"
+         x="-197.1223"
          y="148.23683"
          id="tspan1123-3" /></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="-16.381468"
+       x="-136.93619"
        y="114.72746"
        id="text1756"><tspan
          sodipodi:role="line"
          id="tspan1754"
-         x="-16.381468"
+         x="-136.93619"
          y="114.72746"
          style="stroke-width:0.264583">device</tspan><tspan
          sodipodi:role="line"
-         x="-16.381468"
+         x="-136.93619"
          y="127.95659"
          style="stroke-width:0.264583"
          id="tspan1758">location</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
-       d="M -77.1062,139.28277 V 262.62633 H 134.6151"
+       d="M -195.72661,139.28277 V 262.62633 H 135.28008"
        id="path2424"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccc" />
     <text
        id="text2454"
        y="220.17656"
-       x="-25.435183"
+       x="-145.9899"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
        xml:space="preserve"><tspan
          style="fill:#000000;stroke-width:0.264583"
          y="220.17656"
-         x="-25.435181"
+         x="-145.9899"
          id="tspan2450"
          sodipodi:role="line">deployment and</tspan><tspan
          style="fill:#000000;stroke-width:0.264583"
          y="233.40569"
-         x="-25.435181"
+         x="-145.9899"
          sodipodi:role="line"
          id="tspan7462">accelerometer</tspan><tspan
          id="tspan2452"
          style="fill:#000000;stroke-width:0.264583"
          y="246.63481"
-         x="-25.435183"
+         x="-145.9899"
          sodipodi:role="line">information</tspan></text>
     <path
        sodipodi:nodetypes="cc"
        inkscape:connector-curvature="0"
        id="path2624"
-       d="M 74.526299,117.39653 H 135.62964"
+       d="M -46.028416,117.39653 H 15.074925"
        style="fill:none;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker2634)" />
     <text
        id="text2630"
        y="114.72746"
-       x="105.28611"
+       x="-15.268604"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
        xml:space="preserve"><tspan
          style="stroke-width:0.264583"
          y="114.72746"
-         x="105.28611"
+         x="-15.268603"
          id="tspan2626"
          sodipodi:role="line">delay, AoD,</tspan><tspan
          id="tspan2628"
          style="stroke-width:0.264583"
          y="127.95659"
-         x="105.28611"
+         x="-15.268604"
          sodipodi:role="line">AoA, etc.</tspan></text>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker3072)"
@@ -379,26 +407,26 @@
        sodipodi:nodetypes="cccc"
        inkscape:connector-curvature="0"
        id="path3500"
-       d="M 286.34955,92.724844 V 53.932059 H -76.33727 v 38.146236"
+       d="M 286.34955,92.724844 V 53.932059 h -482.69391 v 38.146236"
        style="fill:none;stroke:#ff0000;stroke-width:0.300623px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#marker3504)" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#ff0000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="104.20822"
+       x="41.381454"
        y="50.861324"
        id="text5940"><tspan
          sodipodi:role="line"
          id="tspan5936"
-         x="104.20822"
+         x="41.381454"
          y="50.861324"
          style="fill:#ff0000;stroke-width:0.264583">self-location</tspan><tspan
          sodipodi:role="line"
-         x="104.20822"
+         x="41.381454"
          y="64.090446"
          style="fill:#ff0000;stroke-width:0.264583"
          id="tspan5946">feedback</tspan><tspan
          sodipodi:role="line"
-         x="104.20822"
+         x="41.381454"
          y="77.319572"
          id="tspan5938" /></text>
     <path
@@ -504,5 +532,27 @@
          y="148.64951"
          style="stroke-width:0.264583"
          id="tspan17849">MCS Rate</tspan></text>
+    <path
+       sodipodi:nodetypes="cc"
+       inkscape:connector-curvature="0"
+       id="path2958"
+       d="M 76.922177,117.39653 H 138.02552"
+       style="fill:none;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker2634)" />
+    <text
+       id="text2964"
+       y="114.72746"
+       x="107.68199"
+       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       xml:space="preserve"><tspan
+         style="stroke-width:0.264583"
+         y="114.72746"
+         x="107.68199"
+         id="tspan2960"
+         sodipodi:role="line">delay', AoD',</tspan><tspan
+         id="tspan2962"
+         style="stroke-width:0.264583"
+         y="127.95659"
+         x="107.68199"
+         sodipodi:role="line">AoA', etc.</tspan></text>
   </g>
 </svg>
