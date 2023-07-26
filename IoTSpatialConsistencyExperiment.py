@@ -13,8 +13,8 @@ import argparse
 plt.close('all')
 #import MultipathLocationEstimator as mploc
 #import threeGPPMultipathGenerator as mp3g
-import multipathChannel as ch
-import OMPCachedRunner as oc
+from CASTRO5G import multipathChannel as ch
+from CASTRO5G import OMPCachedRunner as oc
 import MIMOPilotChannel as pil
 
 plt.close('all')

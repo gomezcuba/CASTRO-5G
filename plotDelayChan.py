@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import threeGPPMultipathGenerator as pg
+from CASTRO5G import threeGPPMultipathGenerator as pg
 
 import matplotlib.pyplot as plt
 import numpy as np

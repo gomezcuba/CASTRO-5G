@@ -9,8 +9,8 @@ rc('animation', html='html5')
 from matplotlib import cm
 import os
 
-import threeGPPMultipathGenerator as pg
-import multipathChannel as mc
+from CASTRO5G import threeGPPMultipathGenerator as pg
+from CASTRO5G import multipathChannel as mc
 
 model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))

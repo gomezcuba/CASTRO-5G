@@ -12,8 +12,8 @@ import sys
 import argparse
 import ast
 
-import MultipathLocationEstimator
-import threeGPPMultipathGenerator as mpg
+from CASTRO5G import MultipathLocationEstimator
+from CASTRO5G import threeGPPMultipathGenerator as mpg
 #TODO: make the script below the __main__() of a class that can be imported by other python programs
 parser = argparse.ArgumentParser(description='Multipath Location Estimation Simulator')
 #parameters that affect number of simulations
@@ -53,7 +53,7 @@ parser.add_argument('--print', help='Save plot files in eps to results folder', 
 #refine to make it consistent before reestructuring all this code
 
 #args = parser.parse_args("-N 5 -S 7 -D -G 3gpp --noerror --label test --show --print".split(' '))
-args = parser.parse_args("-N 2 -G 3gpp --noerror --label test --show --print".split(' '))
+args = parser.parse_args("-N 2 -G Geo --noerror --label test --show --print".split(' '))
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
 # numero de simulacions

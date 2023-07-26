@@ -1,9 +1,8 @@
 #!/usr/bin/python
 
-import OMPCachedRunner as oc
+from CASTRO5G import OMPCachedRunner as oc
 import MIMOPilotChannel as pil
 import csProblemGenerator as prb
-#import testRLmp as rl
 
 import matplotlib.pyplot as plt
 import numpy as np

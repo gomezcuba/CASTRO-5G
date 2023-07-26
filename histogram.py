@@ -5,11 +5,12 @@ Created on Sat Nov  5 16:48:43 2022
 @author: user
 """
 
-import threeGPPMultipathGenerator as pg
-
 import matplotlib.pyplot as plt
 import numpy as np
 import math as mt
+
+from CASTRO5G import threeGPPMultipathGenerator as pg
+
 plt.close('all')
 model = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
 model.bLargeBandwidthOption=True

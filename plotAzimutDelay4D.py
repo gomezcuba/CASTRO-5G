@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-import threeGPPMultipathGenerator as pg
-import multipathChannel as mc
+from CASTRO5G import threeGPPMultipathGenerator as pg
+from CASTRO5G import multipathChannel as mc
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,6 +9,9 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import animation, rc
 rc('animation', html='html5')
 from matplotlib import cm
+
+from CASTRO5G import threeGPPMultipathGenerator as pg
+from CASTRO5G import multipathChannel as mc
 
 plt.close('all')
 fig_ctr=0

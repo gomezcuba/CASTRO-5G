@@ -4,9 +4,10 @@ Created on Wed Nov 30 16:28:39 2022
 
 @author: user
 """
-import threeGPPMultipathGenerator as pg
 import numpy as np
 import matplotlib.pyplot as plt
+
+from CASTRO5G import threeGPPMultipathGenerator as pg
 
 plt.close('all')
 

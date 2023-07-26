@@ -1,5 +1,5 @@
 import MIMOPilotChannel as pil
-import threeGPPMultipathGenerator as pg
+from CASTRO5G import threeGPPMultipathGenerator as pg
 
 import numpy as np
 

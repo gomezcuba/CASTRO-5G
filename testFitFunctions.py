@@ -1,11 +1,14 @@
-# %%
+#!/usr/bin/python
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
-import threeGPPMultipathGenerator as mpg
-import multipathChannel as mc
 from matplotlib import cm
 import pandas as pd
+import os
+
+from CASTRO5G import threeGPPMultipathGenerator as mpg
+from CASTRO5G import multipathChannel as mc
+plt.close('all')
+
 
 txPos = (0,0,10)
 rxPos = (25,45,1.5)

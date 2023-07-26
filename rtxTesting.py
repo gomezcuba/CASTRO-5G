@@ -1,11 +1,12 @@
-#%% #%% 
+#!/usr/bin/python
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.image as mpi
-import threeGPPMultipathGenerator as mpg
-import multipathChannel as mc
 from matplotlib import cm
+import matplotlib.image as mpi
+
+from CASTRO5G import threeGPPMultipathGenerator as mpg
+from CASTRO5G import multipathChannel as mc
 plt.close('all')
 # -------- Datos iniciais ------- #
 fig_ctr=0
@@ -15,7 +16,7 @@ model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 = subpaths.T.to_numpy()
 # 1. Con AOAs correxidos:
 AOA_fixsp, xPathLoc_sp, yPathLoc_sp = model.fitAOA(txPos,rxPos,AOD_sp,tau_sp)
 AOA_fix, xPathLoc, yPathLoc = model.fitAOA(txPos,rxPos,AOD,tau)

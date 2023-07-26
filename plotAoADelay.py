@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
-import threeGPPMultipathGenerator as pg
-import multipathChannel as mc
+from CASTRO5G import threeGPPMultipathGenerator as pg
+from CASTRO5G import multipathChannel as mc
 
 import matplotlib.pyplot as plt
 import numpy as np

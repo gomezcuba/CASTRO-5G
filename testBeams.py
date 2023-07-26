@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 plt.close('all')
 
-import multipathChannel as mc
+from CASTRO5G import multipathChannel as mc
 import MIMOPilotChannel as pil
 
 Nant = 32

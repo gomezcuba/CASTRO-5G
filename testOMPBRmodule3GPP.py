@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
-import threeGPPMultipathGenerator as mp3g
-import multipathChannel as ch
-import OMPCachedRunner as oc
+from CASTRO5G import threeGPPMultipathGenerator as mp3g
+from CASTRO5G import multipathChannel as ch
+from CASTRO5G import OMPCachedRunner as oc
 import MIMOPilotChannel as pil
 import csProblemGenerator as prb
 #import testRLmp as rl
@@ -72,11 +72,11 @@ for ichan in range(0,Nchan):
     plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
     tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
     los, PLfree, SF = plinfo
-    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 = subpaths.T.to_numpy()
 
     mpch = ch.MultipathChannel((0,0,10),(40,0,1.5),[])
     Npath = tau_sp.size
-    pathAmplitudes = np.sqrt( pow_sp )*np.exp(2j*np.pi*np.random.rand(Npath))
+    pathAmplitudes = np.sqrt( pow_sp )*np.exp(-1j*phase00)
     mpch.insertPathsFromListParameters(pathAmplitudes,tau_sp,AOA_sp*np.pi/180,AOD_sp*np.pi/180,ZOA_sp*np.pi/180,ZOD_sp*np.pi/180,np.zeros_like(pathAmplitudes))
     ht=mpch.getDEC(Na,Nd,Nt,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
     hk=np.fft.fft(ht.transpose([2,0,1]),K,axis=0)

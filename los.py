@@ -4,7 +4,7 @@ Created on Wed Nov 30 16:37:08 2022
 
 @author: user
 """
-import threeGPPMultipathGenerator as pg
+from CASTRO5G import threeGPPMultipathGenerator as pg
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter

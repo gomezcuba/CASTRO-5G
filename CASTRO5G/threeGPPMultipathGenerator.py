@@ -919,3 +919,96 @@ class ThreeGPPMultipathChannelModel:
         
         return df
     
+    def fitDelay(self, txPos, rxPos, df):
+        
+        aoa = df['AOA'].T.to_numpy() * (np.pi/180.0)
+        aod = df['AOD'].T.to_numpy() * (np.pi/180.0)
+        
+        vLOS = np.array(rxPos) - np.array(txPos)
+        aod0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
+        aoa0 = np.mod(aod0+np.pi,2*np.pi)
+
+        dAOA = np.mod((aoa0-aoa)*(vLOS[0]>0 & (aoa0>aoa)) + (aoa-aoa0)*(vLOS[0]>0 & (aoa0<aoa)) + np.pi*(aod>aoa),2*np.pi)
+        dAOD = np.mod((aod-aod0)*(vLOS[0]>0 & (aod>aod0)) + (aod0-aod)*(vLOS[0]<0 & (aod0>aod)),2*np.pi)
+
+        angleSum = dAOA + dAOD
+        
+        aodmin = (aod>aod0)
+        aoalim = np.mod(aod0+np.pi,2*np.pi)
+
+        if vLOS[0] > 0:
+            for n in range(aoa.size):
+                if (aod[n] < aoa[n] < aoalim) and aodmin[n]:
+                    aoa[n] = aoa[n]
+                else:
+                    if(aodmin[n]):
+                        aoa[n] = np.random.uniform(aod[n],aoalim)+np.pi*(vLOS[1]<0)
+                    else:
+                        aoa[n] = np.random.uniform(aoalim, aod[n])-np.pi*(vLOS[1]>0)
+        else:
+            for n in range(aoa.size):
+                if (aoalim < aoa[n] < aod[n]) and (not aodmin[n]):
+                    aoa[n] = aoa[n]
+                else:
+                    if(aodmin[n]):
+                        aoa[n] = np.random.uniform(aoalim,aod[n])
+                    else:
+                        aoa[n] = np.mod(aoa[n]+np.pi,2*np.pi)-np.pi*(vLOS[1]>0)
+
+        l0 = np.linalg.norm(vLOS[0:-1])
+        TA=np.tan(np.pi-aoa)
+        TD=np.tan(aod)
+        x=((rxPos[1]+rxPos[0]*TA)/(TD+TA))
+        y=x*TD
+        l=np.sqrt(x**2+y**2)+np.sqrt((x-rxPos[0])**2+(y-rxPos[1])**2)
+        l0=np.sqrt(rxPos[0]**2+rxPos[1]**2)
+
+        tau = (l-l0)/3e8
+        
+        aoaD = aoa* (180.0/np.pi)
+        
+        df['xloc'] = x[0:l.size]
+        df['yloc'] = y[0:l.size]
+
+        df['tau'] = tau[0:l.size]
+        df['AOA'] = aoaD[0:l.size]
+        #Límite superior de un TDoA de 1.0e-6 para non introducir valores extremos
+        dfFix = df[df['tau'] <= 1.0e-06]
+        
+        return dfFix
+    
+    def randomFitParameters(self, txPos, rxPos, dataset, prob):
+
+        totalSize = dataset.shape[0]
+        splitSizes = np.floor(prob * totalSize).astype(int)
+        
+        indx = 0
+        dataset1= dataset.iloc[indx:indx+splitSizes[0]]       
+        dataset1= self.fitAOA(txPos,rxPos,dataset1.reset_index(drop=True))
+        indx += splitSizes[0]
+        dataset2= dataset.iloc[indx:indx+splitSizes[1]]       
+        dataset2= self.fitAOD(txPos,rxPos,dataset2.reset_index(drop=True))
+        indx += splitSizes[1]
+        dataset3= dataset.iloc[indx:totalSize]       
+        dataset3= self.fitDelay(txPos,rxPos,dataset3.reset_index(drop=True))
+            
+        datasetFix = pd.concat([dataset1, dataset2, dataset3], axis=0)
+           
+        return datasetFix
+    
+    def deleteBacklobes(self,tx,rx,df,phi0):
+        
+        vLOS = np.array(rx) - np.array(tx)
+        aoa0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0)+np.pi,2*np.pi))*180.0/np.pi
+        
+        aoalim1 = np.mod(aoa0+90+phi0,360.0)
+        aoalim2 = np.mod(aoalim1+180,360.0)
+        
+        df['AOA'] = np.mod(df['AOA'] + phi0, 360.0)        
+        
+        if(aoalim2>aoalim1):
+            dfFix = df[(df['AOA'] >= aoalim1) & (df['AOA'] <= aoalim2)]
+        else:
+            dfFix = df[(df['AOA'] >= aoalim2) & (df['AOA'] <= aoalim1)]
+
+        return dfFix

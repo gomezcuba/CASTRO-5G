@@ -5,11 +5,14 @@ Created on Mon Sep 26 14:51:53 2022
 @author: user
 """
 
-import threeGPPMultipathGenerator as pg
+plt.close('all')
+
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 import pandas as pd
+
+from CASTRO5G import threeGPPMultipathGenerator as pg
 
 model = pg.ThreeGPPMultipathChannelModel(scenario="RMa")
 model1 = pg.ThreeGPPMultipathChannelModel(scenario="UMi")

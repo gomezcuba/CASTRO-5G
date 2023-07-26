@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-import threeGPPMultipathGenerator as mp3g
+
+from CASTRO5G import threeGPPMultipathGenerator as mp3g
 import MIMOPilotChannel as pil
 import OMPCachedRunner as oc
 import numpy as np
