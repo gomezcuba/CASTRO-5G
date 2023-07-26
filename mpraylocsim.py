@@ -13,21 +13,30 @@ import argparse
 import ast
 
 import MultipathLocationEstimator
+import threeGPPMultipathGenerator as mpg
 #TODO: make the script below the __main__() of a class that can be imported by other python programs
 parser = argparse.ArgumentParser(description='Multipath Location Estimation Simulator')
 #parameters that affect number of simulations
 parser.add_argument('-N', type=int,help='No. simulated channels')
 #parameters that affect error
+
+# case 1: no error
 parser.add_argument('--noerror', help='Add zero error case', action='store_true')
+
+# case 2: add a personalized number of error points
 parser.add_argument('-S', type=int,help='Add S normalized error Std. points')
 parser.add_argument('--minstd', help='Minimum error std in dB')
 parser.add_argument('--maxstd', help='Maximum error std in dB')
 parser.add_argument('-D', type=str,help='Add dictionary-based error models, comma separated')
+
 #parameters that affect multipath generator
-parser.add_argument('-G', type=int,help='Type of generator')
+parser.add_argument('-G', type=str,help='Type of generator')
 parser.add_argument('--npathgeo', type=int,help='No. paths per channel (Geo only)')
+
 #parameters that affect location algorithms
 parser.add_argument('--algs', type=str,help='comma-separated list of algorithms')
+
+
 #parameters that affect workflow
 parser.add_argument('--label', type=str,help='text label for stored results')
 parser.add_argument('--nosave', help='Do not save simulation data to new results file', action='store_true')
@@ -36,19 +45,28 @@ parser.add_argument('--noloc',help='Do not perform location estimation, load pri
 parser.add_argument('--show', help='Open plot figures in window', action='store_true')
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
-# args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
+## TO DO: (In progress) -- CLI arguments (line100)
+#parser.add_argument('-xmax',type=int,help='Simulation model x-axis max. size coordinate (meters from the origin)')
+#parser.add_argument('-xmin',type=int,help='Simulation model x-axis min. size coordinate (meters from the origin)')
+#parser.add_argument('-ymax',type=int,help='Simulation model y-axis max. size coordinate (meters from the origin)')
+#parser.add_argument('-ymin',type=int,help='Simulation model y-axis min. size coordinate (meters from the origin)')
+#refine to make it consistent before reestructuring all this code
 
-args = parser.parse_args("--nompg --noloc -N 100 --noerror -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf --label test --show --print".split(' '))
-
-#args = parser.parse_args("--nompg --noloc -N 10 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf --label test --show --print".split(' '))
-
+#args = parser.parse_args("-N 5 -S 7 -D -G 3gpp --noerror --label test --show --print".split(' '))
+args = parser.parse_args("-N 2 -G 3gpp --noerror --label test --show --print".split(' '))
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
+# numero de simulacions
 Nsims=args.N if args.N else 100
+
+# error vector modeling
 if args.noerror:
     lErrMod=[('no',0,0,0)]
 else:
-    lErrMod=[]
+    lSTD=[]
+
+#case with errors
+
 if args.S:
     minStd = args.minstd if args.minstd else -7
     maxStd = args.maxstd if args.maxstd else -1
@@ -60,8 +78,13 @@ if args.D:
     lErrMod = lErrMod+lDicSizes    
 #TODO add ifs etc. to make this selectable with OMP
 NerrMod=len(lErrMod)
-mpgen = args.G if args.G else 'Geo'
 
+
+# multipath generator
+mpgen = args.G if args.G else 'Geo'
+#TODO: Aquí parece que hai bastantes parametros que completar
+
+#location algorythms - evolución de location estimator
 if args.algs:
     lCases=[
             tuple(case.split(':'))
@@ -95,14 +118,12 @@ if not os.path.isdir(outfoldername):
 #TODO: create command line arguments for these parameters
 Xmax=50
 Xmin=-50
-        #locations from angles
-        #generate angles 3GPP
-        #adaptation of angles and locations
 Ymax=50
 Ymin=-50
 
 phi0GyrQuant=2*np.pi/64
 
+# if this parameter is present we get the mpg data from a known file (better for teset&debug)
 if args.nompg:
     data=np.load(outfoldername+'/chanGenData.npz') 
     x=data["x"]         
@@ -123,6 +144,7 @@ if args.nompg:
     (Npath,Nsims)=x.shape
 else:        
     t_start_gen=time.time()
+    # TO DO; this has to be modeled in a separate class
     if mpgen == 'Geo':
         if args.npathgeo:
             Npath=args.npathgeo
@@ -144,10 +166,35 @@ else:
         tau0=y0/np.sin(theta0)/c
         tauE=tau0+np.random.randn(1,Nsims)*40e-9
     elif mpgen == "3gpp":
-        #locations from angles
-        #generate angles 3GPP
-        #adaptation of angles and locations
-        print("MultiPath generation method %s to be written"%mpgen)
+        
+        Npath = 20
+        x0=np.random.rand(1,Nsims)*(Xmax-Xmin)+Xmin
+        y0=np.random.rand(1,Nsims)*(Ymax-Ymin)+Ymin
+        
+        txPos = (0,0,10)
+        rxPos = (25,25,1.5)
+        
+        tau0 = np.linalg.norm(rxPos[0:-1]) / 3e8
+        
+        # Sugerencia - introducir param de entrada para regular blargeBW
+        # Tamen mais tarde - Elección de escenario vía param. de entrada
+        model = mpg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
+        plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
+        
+        phi0=np.pi #receiver angular measurement offset
+        
+        clusters = model.fitAOA(txPos,rxPos,clusters)
+        subpaths = model.fitAOA(txPos,rxPos,subpaths)
+        
+        clusters = model.deleteBacklobes(clusters,phi0)
+        subpaths = model.deleteBacklobes(subpaths,phi0)
+        
+        tau,powC,phi,theta,ZOA,ZOD,xc,yc = clusters.T.to_numpy()
+        los, PLfree, SF = plinfo
+        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,xs,ys = subpaths.T.to_numpy()
+        tauE=tau0+tau
+
+
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
     
@@ -176,7 +223,7 @@ else:
             if c3=='inf':
                 tau_est[nv,:,:]=tau-tauE
             else:
-                Ts=1.0/400e6 #2.5ns
+                Ts=1.0/400e6#2.5ns
                 Ds=320e-9#Ts*128 FIR filter
                 tau_est[nv,:,:]=np.round((tau-tauE)*int(c3)/Ds)*Ds/int(c3)
         else:
@@ -498,7 +545,7 @@ if args.D:
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+'/cdflocerr_Kt256.eps')
-        1
+        
     if np.any([x[2]=='256' and x[0]=='dic' for x in lErrMod]):
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
@@ -733,7 +780,7 @@ if args.D:
         if args.print:
             plt.savefig(outfoldername+'/map_vs_nrant.eps')  
         
-            fig_ctr=fig_ctr+1
+        fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]
         lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf'])

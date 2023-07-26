@@ -400,6 +400,8 @@ class ThreeGPPMultipathChannelModel:
         self.wavelength = 3e8/(fc*1e9)
         self.allParamTable = self.dfTS38900Table756(fc)
         
+        self.funPostprocess = funPostprocess
+
         self.scenarioLosProb= self.tableFunLOSprob[self.scenario]
         self.scenarioParams = self.allParamTable[self.scenario]
         
@@ -792,8 +794,128 @@ class ThreeGPPMultipathChannelModel:
         smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
         clusters,subpaths = self.create_small_param(LOSangles,smallStatistics,d2D,hut)
         
+        if self.funPostprocess:
+            plinfo,clusters,subpaths = self.funPostprocess(plinfo,clusters,subpaths)
+            #prob = np.array([0.5,0.5,0])
+            ##TODO - introducir tanto clusters como subpaths para procesar no mesmo porque así os datos non teñen relación
+            #clusters = self.randomFitParameters(txPos,rxPos,clusters,prob)
+            #subpaths = self.randomFitParameters(txPos,rxPos,subpaths,prob)
+        
+        
         keyChannel = (tuple(txPos),tuple(rxPos))
         plinfo = (los,PLconst,sfdB)
         self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
         return(plinfo,macro,clusters,subpaths)
+
+    def fitAOA(self, txPos, rxPos, df):
+
+        aod = df['AOD'].T.to_numpy()
+        tau = df['tau'].T.to_numpy()
+        
+        # Datos iniciais - l0, tau0 e aod0
+        vLOS = np.array(rxPos) - np.array(txPos)
+        l0 = np.linalg.norm(vLOS[0:-1])
+        losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
+        aod[0] = losAOD*180.0/np.pi #necesario para consistencia do primeiro rebote
+                                     
+        li = l0 + tau * 3e8
+        dAOD = (aod*np.pi/180-losAOD)
+        
+        cosdAOD = np.cos(dAOD)
+        sindAOD = np.sin(dAOD)
+        nu = li/l0
+        
+        # Resolvemos:
+        sol1= -sindAOD # xust.matematica overleaf
+        sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
+        sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
+
+        #Posibles solucions:
+        sols = np.zeros((4,aod.size)) 
+        sols[0,:] = np.arcsin(sol1)
+        sols[1,:] = np.arcsin(sol2)
+        sols[2,:] = np.pi - np.arcsin(sol1)
+        sols[3,:] = np.pi - np.arcsin(sol2)
+
+        #Ubicacion dos rebotes 
+        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan(aod *(np.pi/180) )-np.tan(losAOD+np.pi-sols))
+        x[1,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
+        x[3,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
+        y=x*np.tan(aod *(np.pi/180) ) 
+
+        #Mellor solucion - a mais semellante á distancia do path evaluado
+        dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+        solIndx=np.argmin(np.abs(dist-li),axis=0)
+        aoaAux =sols[solIndx,range(li.size)]
+        aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi) * (180.0/np.pi)
+        xLoc = x[solIndx,range(li.size)]
+        yLoc = y[solIndx,range(li.size)]
+        
+        
+        df['xloc'] = xLoc[0:li.size]
+        df['yloc'] = yLoc[0:li.size]
+        
+        df['AOA'] = aoaFix
+        
+        return df
+
+    def fitAOD(self, txPos, rxPos, df):
+        
+        tau = df['tau'].T.to_numpy()
+        aoa = df['AOA'].T.to_numpy()
+
+        
+        vLOS = np.array(rxPos) - np.array(txPos)
+        l0 = np.linalg.norm(vLOS[0:-1])
+        li = l0+tau*3e8
+        losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
+        losAOA = np.mod(np.pi+losAOD,2*np.pi)
+        #aoa[0] = losAOA*(180.0/np.pi) #necesario para consistencia do primeiro rebote
+
+        aoaR = aoa*(np.pi/180.0)
+
+        aoaAux = np.mod(-aoaR+losAOA*(vLOS[0]>0),2*np.pi)
+        cosdAOA = np.cos(aoaAux)
+        sindAOA = np.sin(aoaAux)
+        nu = li/l0
+
+        A=nu**2+1+2*cosdAOA*nu
+        B=2*sindAOA*(1-nu*cosdAOA)
+        C=(sindAOA**2)*(1-nu**2)
+
+        sol1= -sindAOA
+        sol2= sindAOA*(nu**2-1) /  ( nu**2+1-2*cosdAOA*nu )
+        sol2[(nu==1)&(cosdAOA==1)] = 0 #LOS path
+
+        #Posibles solucions:
+        sols = np.zeros((4,aoa.size)) 
+        # sols[0,:] = np.arcsin(sol1)
+        sols[0,:] = np.arcsin(sol1)
+        sols[1,:] = np.arcsin(sol2)
+        sols[2,:] = np.pi - np.arcsin(sol1)
+        sols[3,:] = np.pi - np.arcsin(sol2)
+
+        #Ubicacion dos rebotes 
+        
+        #x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(aoaR )-np.tan(losAOD+np.pi-aoaAux))
+
+        x=(vLOS[1]-vLOS[0]*np.tan(aoaR))/(np.tan(losAOD+sols)-np.tan(aoaR))
+        x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
+        x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
+        y=x*np.tan(losAOD + sols) 
+
+        dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+        solIndx=np.argmin(np.abs(dist-li),axis=0)
+        aodAux =sols[solIndx,range(li.size)]
+        aodFix = np.mod(aodAux+losAOD,2*np.pi) * (180.0/np.pi)
+
+        xPathLoc = x[solIndx,range(li.size)]
+        yPathLoc = y[solIndx,range(li.size)]
+        
+        df['xloc'] = xPathLoc
+        df['yloc'] = yPathLoc
+        
+        df['AOD'] = aodFix
+        
+        return df
     

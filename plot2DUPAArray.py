@@ -19,6 +19,8 @@ los, PLfree, SF = plinfo
 nClusters = tau.size
 tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
 
+#TODO - insert adapted AOA and compare response
+
 #4D  color intensity plots vs delay, AoA and AoD grid
 AoAs = AOA_sp*np.pi/180#radians
 ZoAs = ZOA_sp*np.pi/180#radians
