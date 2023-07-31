@@ -396,7 +396,7 @@ class ThreeGPPMultipathChannelModel:
         ]
     
     #RMa hasta 7GHz y el resto hasta 100GHz
-    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, adaptRaytx = False):
+    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, funPostprocess = None, prob = None):
         self.frecRefGHz = fc
         self.scenario = scenario
         self.corrDistance = corrDistance
@@ -411,7 +411,8 @@ class ThreeGPPMultipathChannelModel:
         self.wavelength = 3e8/(fc*1e9)
         self.allParamTable = self.dfTS38900Table756(fc)
 
-        self.adaptRaytx = adaptRaytx
+        self.funPostprocess = funPostprocess
+        self.prob = prob
         
         self.scenarioLosProb= self.tableFunLOSprob[self.scenario]
         self.scenarioParams = self.allParamTable[self.scenario]
@@ -790,12 +791,15 @@ class ThreeGPPMultipathChannelModel:
         smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
         clusters,subpaths = self.create_small_param(LOSangles,smallStatistics,d2D,hut)
         
-        if self.adaptRaytx:
+        if self.funPostprocess:
             
-            prob = np.array([0.5,0.5,0])
-            #TODO - introducir tanto clusters como subpaths para procesar no mesmo porque así os datos non teñen relación
-            clusters = self.randomFitParameters(txPos,rxPos,clusters,prob)
-            subpaths = self.randomFitParameters(txPos,rxPos,subpaths,prob)
+            if self.prob:
+                prob = self.prob
+                clusters = self.funPostprocess(txPos,rxPos,clusters,prob)
+                subpaths = self.funPostprocess(txPos,rxPos,subpaths,prob)
+            else:
+                clusters = self.funPostprocess(txPos,rxPos,clusters)
+                subpaths = self.funPostprocess(txPos,rxPos,subpaths)
         
         
         keyChannel = (tuple(txPos),tuple(rxPos))
@@ -820,9 +824,7 @@ class ThreeGPPMultipathChannelModel:
         cosdAOD = np.cos(dAOD)
         sindAOD = np.sin(dAOD)
         nu = li/l0
-        
-        # Resolvemos:
-        sol1= -sindAOD # xust.matematica overleaf
+        sol1= -sindAOD 
         sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
         sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
 
@@ -859,17 +861,15 @@ class ThreeGPPMultipathChannelModel:
         
         tau = df['tau'].T.to_numpy()
         aoa = df['AOA'].T.to_numpy()
-
         
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         li = l0+tau*3e8
         losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
-        losAOA = np.mod(np.pi+losAOD,2*np.pi)
-        #aoa[0] = losAOA*(180.0/np.pi) #necesario para consistencia do primeiro rebote
+        losAOA = np.pi+losAOD
+        aoa[0] = losAOA*(180.0/np.pi) #necesario para consistencia do primeiro rebote
 
         aoaR = aoa*(np.pi/180.0)
-
         aoaAux = np.mod(-aoaR+losAOA*(vLOS[0]>0),2*np.pi)
         cosdAOA = np.cos(aoaAux)
         sindAOA = np.sin(aoaAux)
@@ -885,15 +885,10 @@ class ThreeGPPMultipathChannelModel:
 
         #Posibles solucions:
         sols = np.zeros((4,aoa.size)) 
-        # sols[0,:] = np.arcsin(sol1)
         sols[0,:] = np.arcsin(sol1)
         sols[1,:] = np.arcsin(sol2)
         sols[2,:] = np.pi - np.arcsin(sol1)
         sols[3,:] = np.pi - np.arcsin(sol2)
-
-        #Ubicacion dos rebotes 
-        
-        #x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(aoaR )-np.tan(losAOD+np.pi-aoaAux))
 
         x=(vLOS[1]-vLOS[0]*np.tan(aoaR))/(np.tan(losAOD+sols)-np.tan(aoaR))
         x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
@@ -986,7 +981,6 @@ class ThreeGPPMultipathChannelModel:
         dataset2= self.fitAOD(txPos,rxPos,dataset2.reset_index(drop=True))
         indx += splitSizes[1]
         dataset3= dataset.iloc[indx:totalSize]       
-        dataset3= self.fitDelay(txPos,rxPos,dataset3.reset_index(drop=True))
             
         datasetFix = pd.concat([dataset1, dataset2, dataset3], axis=0)
            
@@ -995,9 +989,9 @@ class ThreeGPPMultipathChannelModel:
     def deleteBacklobes(self,tx,rx,df,phi0):
         
         vLOS = np.array(rx) - np.array(tx)
-        aoa0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0)+np.pi,2*np.pi))*180.0/np.pi
+        #aoa0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0)+np.pi,2*np.pi))*180.0/np.pi
         
-        aoalim1 = np.mod(aoa0+90+phi0,360.0)
+        aoalim1 = np.mod(90+phi0,360.0)
         aoalim2 = np.mod(aoalim1+180,360.0)
                 
         if(aoalim2>aoalim1):

@@ -92,7 +92,7 @@ for i in range(0,AOD_cA.size):
     plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(AOA_cA[i])],[rx[1],rx[1]+liRX_cA[i]*np.sin(AOA_cA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-ruta = os.path.join("img", "fitAOD_clusNAD.png")
+ruta = os.path.join("img", "testNAD.png")
 plt.savefig(ruta)
 
 
@@ -115,10 +115,10 @@ for i in range(0,AOD_cA.size):
     plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(AOA_cA[i])],[rx[1],rx[1]+liRX_cA[i]*np.sin(AOA_cA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-ruta = os.path.join("img", "fitAOD_clusAD.png")
+ruta = os.path.join("img", "testAD.png")
 plt.savefig(ruta)
 
-
+#%%
 # Gráfica 3 - Subpaths non adaptados
 
 fig_ctr+=1
@@ -139,7 +139,7 @@ legend = plt.legend(shadow=True, fontsize='10')
 ruta = os.path.join("img", "fitAOD_subpNAD.png")
 plt.savefig(ruta)
 
-
+#%%
 # Gráfica 4 - Subpaths adaptados
 
 fig_ctr+=1
@@ -159,7 +159,7 @@ legend = plt.legend(shadow=True, fontsize='10')
 
 ruta = os.path.join("img", "fitAOD_subpAD.png")
 plt.savefig(ruta)
-
+#%%
 
 
 # Gráfica 5: Deck de subpaths AOD, AOA e delay non correxido

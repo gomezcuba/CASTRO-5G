@@ -129,8 +129,7 @@ plt.title("Delay non correxidos (subpaths)")
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.xlim(-60,60)
-plt.ylim(-60,60)
+
 plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 
@@ -152,8 +151,7 @@ plt.title("Delay correxidos (subpaths)")
 plt.grid(linestyle = '--')
 plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
-plt.xlim(-60,60)
-plt.ylim(-60,60)
+
 plt.plot(tx[0],tx[1],'^g',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'^r',label='UE', linewidth='4.5')
 
@@ -165,9 +163,8 @@ legend = plt.legend(shadow=True, fontsize='10')
 ruta = os.path.join("img", "fitDelay_subpAD.png")
 plt.savefig(ruta)
 
-
 # Gráfica 5: Deck de subpaths AOD, AOA e delay non correxido
-#%%
+
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 nClus = ad_clustersA['tau'].size
@@ -196,6 +193,8 @@ for n in range(nClus):
     plt.setp(stemlines, color=cm.jet(n/(nClus-1)))
     plt.setp(markerline, color=cm.jet(n/(nClus-1))) 
 plt.grid()
+ruta = os.path.join("img", "fitDelay_deckNAD.png")
+plt.savefig(ruta)
 
 # Gráfica 6: Deck de subpaths AOD, AOA e delay correxido
 
@@ -226,3 +225,6 @@ for n in range(nClus):
     plt.setp(stemlines, color=cm.jet(n/(nClus-1)))
     plt.setp(markerline, color=cm.jet(n/(nClus-1))) 
 plt.grid()
+
+ruta = os.path.join("img", "fitDelay_deckAD.png")
+plt.savefig(ruta)
