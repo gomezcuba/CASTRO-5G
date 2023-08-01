@@ -9,7 +9,7 @@ import time
 
 plt.close('all')
 
-import MultipathLocationEstimator
+from CASTRO5G import MultipathLocationEstimator
 
 Npath=20
 Nsims=100

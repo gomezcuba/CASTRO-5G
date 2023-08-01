@@ -31,8 +31,6 @@ clustersAD, subpathsAD = [clustersNAD.copy(), subpathsNAD.copy()]
 clustersAD = modelA.fitAOA(tx,rx,clustersAD)
 subpathsAD = modelA.fitAOA(tx,rx,subpathsAD)
 
-
-
 #%%
 plinfoA,macroA,clustersA,subpathsA = modelA.create_channel(tx,rx)
 
