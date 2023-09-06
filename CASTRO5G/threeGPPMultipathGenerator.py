@@ -4,11 +4,12 @@ import pandas as pd
 class ThreeGPPMultipathChannelModel:
     
     tableFunLOSprob = {
-        "RMa": lambda d2D,hut : 1 if d2D<10 else np.exp(-(d2D-10.0)/1000.0),
-        "UMi": lambda d2D,hut : 1 if d2D<18 else 18.0/d2D + np.exp(-d2D/36.0)*(1-18.0/d2D),
-        "UMa": lambda d2D,hut : 1 if d2D<18 else (18.0/d2D + np.exp(-d2D/63.0)*(1-18.0/d2D))*(1 + (0 if hut<=23 else ((hut-13.0)/10.0)**1.5)*1.25*((d2D/100.0)**3.0)*np.exp(-d2D/150.0)),
-        "InH-Office-Mixed": lambda d2D,hut : 1 if d2D<1.2 else ( np.exp(-(d2D-1.2)/4.7) if 1.2<d2D<6.5 else (np.exp(-(d2D-6.5)/32.6))*0.32),
-        "InH-Office-Open": lambda d2D,hut : 1 if d2D<=5 else ( np.exp(-(d2D-5.0)/70.8)  if 5<d2D<49 else (np.exp(-(d2D-49.0)/211.7))*0.54)
+        #functions admit np.array inputs |if   ,then, else    
+        "RMa": lambda d2D,hut : np.where(d2D<10, 1  , np.exp(-(d2D-10.0)/1000.0) ),
+        "UMi": lambda d2D,hut : np.where(d2D<18, 1  , 18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/36.0)*(1-18.0/np.where(d2D>0,d2D,1)) ),
+        "UMa": lambda d2D,hut : np.where(d2D<18, 1  , (18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/63.0)*(1-18.0/np.where(d2D>0,d2D,1)))*(1 + np.where(hut<=23, 0, ((hut-13.0)/10.0)**1.5)*1.25*((d2D/100.0)**3.0)*np.exp(-d2D/150.0)) ),
+        "InH-Office-Mixed": lambda d2D,hut : np.where( d2D<1.2, 1  , np.where( d2D<6.5, np.exp(-(d2D-1.2)/4.7) , (np.exp(-(d2D-6.5)/32.6))*0.32) ),
+        "InH-Office-Open": lambda d2D,hut : np.where(  d2D<=5, 1, np.where( d2D<49, np.exp(-(d2D-5.0)/70.8)  , (np.exp(-(d2D-49.0)/211.7))*0.54) )
     }
     
     def dfTS38900Table756(self,fc):
@@ -482,7 +483,7 @@ class ThreeGPPMultipathChannelModel:
         TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         if not key in self.dLOSGenerated:
-           self.dLOSGenerated[key] = np.random.rand(1)           
+           self.dLOSGenerated[key] = np.random.rand(1)[0]       
         return(self.dLOSGenerated[key])
         
     #macro => Large Scale Correlated parameters
@@ -775,7 +776,7 @@ class ThreeGPPMultipathChannelModel:
         LOSangles = (losAoD,losAoA,losZoD,losZoA)
                 
         pLos=self.scenarioLosProb(d2D,hut)
-        los = ( self.get_LOSUnif_from_location(txPos, rxPos) <= pLos)[0]#TODO: make this memorized
+        los = ( self.get_LOSUnif_from_location(txPos, rxPos) <= pLos)#TODO: make this memorized
         
         if los:
             param = self.scenarioParams.LOS            
