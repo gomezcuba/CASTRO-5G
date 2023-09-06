@@ -48,21 +48,43 @@ zod_offset_mu = model.scenarioParams.LOS.funZODoffset(d2D,hut)
 czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD    
 smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
 
-listaTau = []
-for i in range(1000):
+losAoD=np.mod( np.arctan( rxPos[1] / rxPos[0] ) + (0 if rxPos[0]<0 else 0) , 2*np.pi )
+losAoA=np.mod(np.pi+losAoD, 2*np.pi ) * 180/np.pi
+losAoD=losAoD * 180/np.pi
+
+Nchannels = 1000
+Ncluster = model.scenarioParams.NLOS.N
+Cphi=model.CphiNLOStable[Ncluster]
+listaTau = [] #sometimes fewer clusters are generated
+listaAoA = [] #sometimes fewer clusters are generated
+
+for i in range(Nchannels):
     clusters, subpaths =model.create_small_param(angles,smallStatistics,d2D,hut)
     tau,powC,AOA,AOD,ZOA,ZOD =clusters.T.to_numpy()
-    listaTau.append(tau[1:])
+    listaTau.append(tau[1:])#first cluster always has delay 0
     
-
-tau_doubled = np.concatenate(listaTau)
-plt.hist(tau_doubled, bins=20, density=True)
+    AOAprima = 2*(asa/1.4)*np.sqrt(-np.log(powC/np.max(powC)))/Cphi
+    listaAoA.append(np.mod( AOA - losAoA - AOAprima*(2*(AOA>losAoA)-1) +180 ,360) -180 )#in NLOS case the first cluster is not centered in LOS angle    
+plt.figure(1)
+tau_all = np.concatenate(listaTau)
+plt.hist(tau_all, bins=20, density=True,label='Histogram')
 aux_x = np.linspace(0,np.max(tau_doubled),101)
 lambda_tau = 1/(macro.ds*model.scenarioParams.NLOS.rt)
 plt.plot(aux_x,lambda_tau*np.exp(-aux_x*lambda_tau),'r:', label = "PDF")
 plt.legend()
-plt.title("Histogram of delays")
+plt.title("Histogram of cluster delays vs p.d.f.")
 plt.xlabel("Time (s)")
 plt.show()
 print("delay spread", macro.ds)
 print("lambda", lambda_tau)
+
+plt.figure(2)
+aoa_all=np.concatenate(listaAoA)
+plt.hist(aoa_all, bins=20, density=True,label='Histogram')
+aux_x = np.linspace(np.min(aoa_all),np.max(aoa_all),101)
+pdfAoA = np.exp(-(aux_x / (np.sqrt(2)*(asa/7)) ) ** 2)/(np.sqrt(2*np.pi)*asa/7)
+plt.plot(aux_x,pdfAoA,'r:', label = "PDF")
+plt.legend()
+plt.title("Histogram of cluster AoA random part vs p.d.f.")
+plt.xlabel("AoA - LOS-AoA - \mu_{AoA}(cluster) (º)")
+plt.show()

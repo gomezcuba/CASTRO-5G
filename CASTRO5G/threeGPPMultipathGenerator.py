@@ -560,7 +560,7 @@ class ThreeGPPMultipathChannelModel:
         Xaoa = np.random.choice((-1,1),size=powC.shape)
         Xaod = np.random.choice((-1,1),size=powC.shape)
         Yaoa = np.random.normal(0,ASA/7,size=powC.shape)
-        Yaod = np.random.normal(0,ASA/7,size=powC.shape)
+        Yaod = np.random.normal(0,ASD/7,size=powC.shape)
         AOA = Xaoa*phiAOAprima + Yaoa + losAoA - (Xaoa[0]*phiAOAprima[0] + Yaoa[0] if los==1 else 0)
         AOD = Xaod*phiAODprima + Yaod + losAoD - (Xaod[0]*phiAODprima[0] + Yaod[0] if los==1 else 0)
         
