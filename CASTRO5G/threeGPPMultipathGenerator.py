@@ -471,10 +471,10 @@ class ThreeGPPMultipathChannelModel:
        
     #macro => Large Scale Correlated parameters
     def calculateGridCoeffs(self,txPos, rxPos,Dcorr):
-        TgridXIndex= txPos[0] // Dcorr
-        TgridYIndex= txPos[1] // Dcorr
-        RgridXIndex= (rxPos[0]-txPos[0]) // Dcorr
-        RgridYIndex= (rxPos[1]-txPos[1]) // Dcorr
+        TgridXIndex= (txPos[0] + Dcorr/2) // Dcorr
+        TgridYIndex= (txPos[1] + Dcorr/2) // Dcorr
+        RgridXIndex= (rxPos[0]-txPos[0] + Dcorr/2) // Dcorr
+        RgridYIndex= (rxPos[1]-txPos[1] + Dcorr/2) // Dcorr
         return(TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
         
     #hidden uniform variable to compare with pLOS(distabce)
