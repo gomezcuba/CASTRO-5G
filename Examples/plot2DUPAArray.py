@@ -3,9 +3,6 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-# from matplotlib import animation, rc
-# # equivalent to rcParams['animation.html'] = 'html5'
-# rc('animation', html='html5')
 from matplotlib import cm
 import os
 
@@ -59,8 +56,8 @@ Aang,Zang = np.meshgrid(azimut_plot,zenit_plot)
 plt.pcolor(Aang,Zang, arrayResponseOnePathdBtrunc30, cmap=cm.jet)
 plt.gca().invert_yaxis()#this is so ZoA=0 is seen 'up' in the plot
 plt.colorbar(label = 'Analog Beam Gain dB')
-plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
-plt.yticks(ticks=np.pi*np.array([0,.25,.5,.75,1]),labels=['0','$\\frac{\\pi}{4}$','$\\frac{\\pi}{2}$','$\\frac{3\\pi}{4}$','$\pi$',])
+plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$2\\pi$'])
+plt.yticks(ticks=np.pi*np.array([0,.25,.5,.75,1]),labels=['0','$\\frac{\\pi}{4}$','$\\frac{\\pi}{2}$','$\\frac{3\\pi}{4}$','$\\pi$',])
 plt.xlabel('AoA')
 plt.ylabel('ZoA')
 plt.title('%dx%d UPA directivity for 1st subpath AoA=%.1fº ZoA=%.1fº'%(Nant,Nant,subpaths.loc[0,0].AOA,subpaths.loc[0,0].ZOA))
@@ -110,13 +107,17 @@ fig_ctr+=1
 fig = plt.figure(fig_ctr)
 Aang,Zang = np.meshgrid(azimut_plot,zenit_plot)
 plt.pcolor(Aang,Zang, channelResponseCombineddB, cmap=cm.jet)
+plt.gca().invert_yaxis()#this is so ZoA=0 is seen 'up' in the plot
 plt.colorbar(label = 'Analog Beam Gain dB')
-plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$\\pi$'])
-plt.yticks(ticks=np.pi*np.array([0,.25,.5,.75,1]),labels=['0','$\\frac{\\pi}{4}$','$\\frac{\\pi}{2}$','$\\frac{3\\pi}{4}$','$\pi$',])
+plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$2\\pi$'])
+plt.yticks(ticks=np.pi*np.array([0,.25,.5,.75,1]),labels=['0','$\\frac{\\pi}{4}$','$\\frac{\\pi}{2}$','$\\frac{3\\pi}{4}$','$\\pi$',])
 plt.xlabel('AoA')
 plt.ylabel('ZoA')
 plt.title('sum of %dx%d UPA directivity times all chan coefs'%(Nant,Nant))
 
+for n in range(nClusters):   
+    Nsp=subpaths.loc[n,:].shape[0]
+    plt.scatter(np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),subpaths.loc[n,:].ZOA*np.pi/180,color=cm.jet(n/(nClusters-1)),marker='^',edgecolor='black', linewidth=1)
 
 
 fig_ctr+=1
