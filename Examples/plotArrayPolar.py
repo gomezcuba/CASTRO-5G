@@ -2,12 +2,7 @@
 import numpy as np
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import animation, rc
-# equivalent to rcParams['animation.html'] = 'html5'
-rc('animation', html='html5')
 from matplotlib import cm
-import os
 
 import sys
 sys.path.append('../')

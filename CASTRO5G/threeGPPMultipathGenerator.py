@@ -424,23 +424,27 @@ class ThreeGPPMultipathChannelModel:
     #UMi Path Loss Functions    
     def scenarioPlossUMiLOS(self,d3D,d2D,hbs=10,hut=1.5):     
         prima_dBP = (4*(hbs-1)*(hut-1)*self.frecRefGHz) / self.clight
-        if(d2D<prima_dBP):
-            ploss = 32.4 + 21.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
-        else:
-            ploss = 32.4 + 40*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.5*np.log10(np.power(prima_dBP,2)+np.power(hbs-hut,2))
-        return(ploss)
+        ploss = np.where( d2D<prima_dBP,#if
+        #then
+            32.4 + 21.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz),
+        #else
+            32.4 + 40*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.5*np.log10(np.power(prima_dBP,2)+np.power(hbs-hut,2))
+            )
+        return( ploss )
     def scenarioPlossUMiNLOS(self,d3D,d2D,hbs=10,hut=1.5):
         PL1 = 35.3*np.log10(d3D) + 22.4 + 21.3*np.log10(self.frecRefGHz)-0.3*(hut - 1.5)
-        PL2 = self.scenarioPlossUMiLOS(d3D,d2D,hut) #PLUMi-LOS = Pathloss of UMi-Street Canyon LOS outdoor scenario
+        PL2 = self.scenarioPlossUMiLOS(d3D,d2D,hbs,hut) #PLUMi-LOS = Pathloss of UMi-Street Canyon LOS outdoor scenario
         ploss = np.maximum(PL1,PL2)
         return( ploss )
     #UMa Path Loss Functions
     def scenarioPlossUMaLOS(self,d3D,d2D,hbs=25,hut=1.5):
         prima_dBP = (4*(hbs-1)*(hut-1)*self.frecRefGHz) / self.clight
-        if(d2D<prima_dBP):
-            ploss = 28.0 + 22.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)
-        else:
-            ploss = 28.0 + 40.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.0*np.log10(np.power(prima_dBP,2)+np.power(hbs-hut,2))
+        ploss = np.where( d2D<prima_dBP,#if
+        #then
+            28.0 + 22.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz),
+        #else
+            28.0 + 40.0*np.log10(d3D)+20.0*np.log10(self.frecRefGHz)-9.0*np.log10(np.power(prima_dBP,2)+np.power(hbs-hut,2))
+            )
         return(ploss)
     def scenarioPlossUMaNLOS(self,d3D,d2D,hbs=25,hut=1.5):
         PL1 = 13.54 + 39.08*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz) - 0.6*(hut - 1.5)
@@ -448,23 +452,25 @@ class ThreeGPPMultipathChannelModel:
         ploss = np.maximum(PL1,PL2)
         return(ploss) 
     #RMa Path Loss Functions
-    def scenarioPlossRMaLOS(self,d3D,d2D=5000,hbs=35,hut=1.5):
+    def scenarioPlossRMaLOS(self,d3D,d2D,hbs=35,hut=1.5):
         dBp = (2*np.pi*hbs*hut)*(self.frecRefGHz*1e9/self.clight) #Break point distance
-        if(d2D<dBp):
-            ploss = 20*np.log10(40.0*np.pi*d3D*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.h,1.72),10)*np.log10(d3D)-np.minimum(0.044*np.power(self.h,1.72),14.77)+0.002*np.log10(self.h)*d3D
-        else:
-            ploss = 20*np.log10(40.0*np.pi*dBp*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.h,1.72),10)*np.log10(dBp)-np.minimum(0.044*np.power(self.h,1.72),14.77)+0.002*np.log10(self.h)*dBp + 40.0*np.log10(d3D/dBp)
+        ploss = np.where( d2D<dBp,#if
+        #then
+             20*np.log10(40.0*np.pi*d3D*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.h,1.72),10)*np.log10(d3D)-np.minimum(0.044*np.power(self.h,1.72),14.77)+0.002*np.log10(self.h)*d3D,
+        #else
+            20*np.log10(40.0*np.pi*dBp*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.h,1.72),10)*np.log10(dBp)-np.minimum(0.044*np.power(self.h,1.72),14.77)+0.002*np.log10(self.h)*dBp + 40.0*np.log10(d3D/dBp)
+            )
         return(ploss)
-    def scenarioPlossRMaNLOS(self,d3D,d2D=5000,hbs=25,hut=1.5):
+    def scenarioPlossRMaNLOS(self,d3D,d2D,hbs=25,hut=1.5):
         PL1= 161.04 - (7.1*np.log10(self.W)) + 7.5*(np.log10(self.h)) - (24.37 - 3.7*(np.power((self.h/hbs),2)))*np.log10(hbs) + (43.42 - 3.1*(np.log10(hbs)))*(np.log10(d3D)-3) + 20*np.log10(3.55) - (3.2*np.power(np.log10(11.75*hut),2)) - 4.97
-        PL2= self.scenarioPlossRMaLOS(d3D,d2D)
+        PL2= self.scenarioPlossRMaLOS(d3D,d2D,hbs,hut)
         ploss = np.maximum(PL1,PL2)
         return(ploss)
     #Inh Path Loss Functions
-    def scenarioPlossInLOS(self,d3D,d2D,hbs,hut):
+    def scenarioPlossInLOS(self,d3D,d2D,hbs=None,hut=None):
         ploss= 32.4 + 17.3*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
         return(ploss)
-    def scenarioPlossInNLOS(self,d3D,d2D,hbs,hut):
+    def scenarioPlossInNLOS(self,d3D,d2D,hbs=None,hut=None):
         PL1= 38.3*np.log10(d3D) + 17.30 + 24.9*np.log10(self.frecRefGHz)
         PL2= self.scenarioPlossInLOS(d3D,d2D,hbs,hut)
         ploss= np.maximum(PL1,PL2)
@@ -782,7 +788,9 @@ class ThreeGPPMultipathChannelModel:
             param = self.scenarioParams.LOS            
         else:
             param = self.scenarioParams.NLOS
-        PLconst = param.funPathLoss(d3D,d2D,hbs,hut)
+        PLconst = param.funPathLoss(d3D,d2D,hbs,hut)        
+        if isinstance(PLconst, np.ndarray): #for safety remove numpy array properties of scalar pathloss return value
+            PLconst = float(PLconst)
         # PL = PLconst + sf
         
         macro = self.get_macro_from_location(txPos, rxPos,los)
