@@ -7,6 +7,8 @@ Created on Wed Nov 30 16:28:39 2022
 import numpy as np
 import matplotlib.pyplot as plt
 
+import sys
+sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as pg
 
 plt.close('all')
@@ -49,7 +51,8 @@ key=[]
 
 posX = np.random.uniform(-cellRadius/2, cellRadius/2, size=(Nusers))
 posY = np.random.uniform(-cellRadius/2, cellRadius/2, size=(Nusers))
-posZ = 1.5*np.ones(Nusers)
+hut = 1.5
+posZ = hut*np.ones(Nusers)
 users=np.vstack([posX,posY,posZ]).T
 macroIndex = (users[:,0:-1]-txPos[0:-1]+corrDist/2)//corrDist
 

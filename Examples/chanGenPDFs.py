@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math as mt
 
+import sys
+sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as pg
 
 plt.close('all')
@@ -33,7 +35,7 @@ losAoA=(180.0/np.pi)*losAoA #angle of arrival
 losZoA=(180.0/np.pi)*losZoA
 angles = (losAoD,losAoA,losZoD,losZoA)
 
-hut=bPos[2]
+hut=rxPos[2]
 los=False
 macro = model.create_macro((txPos[0],txPos[1],rxPos[0],rxPos[1],los))
 sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
@@ -70,7 +72,7 @@ for i in range(Nchannels):
 plt.figure(1)
 tau_all = np.concatenate(listaTau)
 plt.hist(tau_all, bins=20, density=True,label='Histogram')
-aux_x = np.linspace(0,np.max(tau_doubled),101)
+aux_x = np.linspace(0,np.max(tau_all),101)
 lambda_tau = 1/(macro.ds*model.scenarioParams.NLOS.rt)
 plt.plot(aux_x,lambda_tau*np.exp(-aux_x*lambda_tau),'r:', label = "PDF")
 plt.legend()

@@ -9,6 +9,8 @@ rc('animation', html='html5')
 from matplotlib import cm
 import os
 
+import sys
+sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as pg
 from CASTRO5G import multipathChannel as mc
 
@@ -45,10 +47,11 @@ fig = plt.figure(fig_ctr)
 for n in range(nClusters):   
     pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10( subpaths.loc[n,:].P ),-45)
     Nsp=subpaths.loc[n,:].shape[0]
-    plt.polar(np.tile(subpaths.loc[n,:].AOA*np.pi/180,(2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)) )
+    plt.polar(np.tile(subpaths.loc[n,:].AOA*np.pi/180,(2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)))
     plt.scatter(subpaths.loc[n,:].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
 plt.title("AoAs and normalized Power for all clusters and subpaths")
+plt.legend()
 
 # compute the response of the antenna array with Nant antennas
 Nant = 16
@@ -56,15 +59,15 @@ Npointsplot=1001
 # compute the "beamforming vector". This vector is multiplied by the "response" when we want to receive from the desired angle
 angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
-topcl = np.argmax(np.max(pow_sp,axis=1))
-topso = np.argmax(pow_sp[topcl,:])
 
-#plot of receive array and chanel gain of top five paths
+#plot of receive array and chanel gain of top N paths
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-top5spaths = subpaths.sort_values(by=['P'],ascending=False).index[0:5]
-for p in range(5):
-    n,m = top5spaths[p]
+# plt.subplot(2,1,1, projection='polar')
+Ntop = 3
+topNpaths = subpaths.sort_values(by=['P'],ascending=False).index[0:Ntop]
+for p in range(Ntop):
+    n,m = topNpaths[p]
     
     AntennaResponse1Path =mc.fULA(subpaths.loc[n,m].AOA *np.pi/180 ,Nant)
     
@@ -78,38 +81,30 @@ for p in range(5):
 
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 plt.legend()
-plt.title("%d ULA angular response and channel gain for 5 strongest subpaths"%(Nant))
+plt.title("%d ULA angular response and channel gain for %d strongest subpaths"%(Nant,Ntop))
 
-
-#plot of receive array response of ALL paths in SEPARATE LINES, WITHOUT the effect of power
+#plot of receive array response of top N paths COMBINEDfig_ctr+=1
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-if los:
-    AntennaResponseLOS =mc.fULA(np.array(losAoA) *np.pi/180 ,Nant)
-    arrayGainLOS = (AntennaResponseLOS.T.conj()@BeamformingVectors).reshape((Npointsplot))
-    arrayGainLOSdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGainLOS)**2),-25)
-    plt.polar(angles_plot,arrayGainLOSdBtrunc25,color=cm.jet(0))
-for n in range(nClusters):       
-    AntennaResponseCluster =mc.fULA(AOA_sp[n,:] *np.pi/180 ,Nant)
-    arrayGainCluster=(AntennaResponseCluster.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,nNLOSsp))
-    arrayGainClusterdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGainCluster)**2),-25)
-    plt.polar(angles_plot,arrayGainClusterdBtrunc25,color=cm.jet(n/(nClusters-1)))
-plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+# plt.subplot(2,1,2, projection='polar')
+AntennaResponseNPaths = mc.fULA(subpaths.loc[topNpaths].AOA *np.pi/180 ,Nant)
+arrayGainNPaths=(AntennaResponseNPaths.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Ntop))
+chanCoefNPaths=np.sqrt( subpaths.loc[topNpaths].P ) * np.exp( 1j* subpaths.loc[topNpaths].phase00 )
+arrayResponseCombined = np.sum( arrayGainNPaths*chanCoefNPaths.to_numpy() , axis=1)
+arrayResCondBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayResponseCombined)**2),-25)
 
+plt.polar(angles_plot,arrayResCondBtrunc25)
+plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+plt.title("%d ULA angular response times channel gain summed over %d strongest subpaths"%(Nant,Ntop))
 
 #plot of receive array response of ALL paths in SEPARATE LINES, WITH the effect of power
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-if los:
-    AntennaResponseLOS =mc.fULA(np.array(losAoA) *np.pi/180 ,Nant)
-    arrayGainLOS = (AntennaResponseLOS.T.conj()@BeamformingVectors).reshape((Npointsplot))
-    chanGainLOSdBtrunc25 = np.maximum(10*np.log10(pow_los*Nant*np.abs(arrayGainLOS)**2),-25)
-    plt.polar(angles_plot,chanGainLOSdBtrunc25,color=cm.jet(0))
 for n in range(nClusters):       
-    AntennaResponseCluster =mc.fULA(AOA_sp[n,:] *np.pi/180 ,Nant)
-    arrayGainCluster=(AntennaResponseCluster.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,nNLOSsp))
-    chanGainClusterdBtrunc25 = np.maximum(10*np.log10(pow_sp[n,:]*Nant*np.abs(arrayGainCluster)**2),-25)
-    plt.polar(angles_plot,chanGainClusterdBtrunc25,color=cm.jet(n/(nClusters-1)))
+    AntennaResponseCluster =mc.fULA(subpaths.loc[n,:].AOA *np.pi/180 ,Nant)
+    arrayGainCluster=(AntennaResponseCluster.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
+    chanGainClusterdBtrunc25 = np.maximum(10*np.log10(subpaths.loc[n,:].P.to_numpy()*Nant*np.abs(arrayGainCluster)**2),-25)
+    plt.polar(angles_plot,chanGainClusterdBtrunc25,color=cm.jet(n/(nClusters-1)),label='Cluster %d'%(n))
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 
 
@@ -117,16 +112,10 @@ plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
-AoAs = AOA_sp.reshape(-1)*np.pi/180#radians
-Npath=np.size(AoAs)
-AntennaResponseAll =mc.fULA( AoAs ,Nant)
-arrayGainAllPaths=(AntennaResponseAll.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
-chanCoef_sp=np.sqrt(pow_sp)*np.exp(-1j*phase00)
-arrayResponseCombined = np.sum( arrayGainAllPaths*chanCoef_sp.reshape(-1) , axis=1)
-if los:
-    AntennaResponseLOS =mc.fULA(np.array(losAoA) *np.pi/180 ,Nant)
-    arrayGainLOS = (AntennaResponseLOS.T.conj()@BeamformingVectors).reshape((Npointsplot))
-    arrayResponseCombined = np.sqrt(pow_los)*arrayGainLOS + arrayResponseCombined
+AntennaResponseAll =mc.fULA( subpaths.AOA *np.pi/180 ,Nant)
+arrayGainAllPaths=(AntennaResponseAll.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
+chanCoefAllPaths=np.sqrt( subpaths.P )*np.exp(-1j* subpaths.phase00)
+arrayResponseCombined = np.sum( arrayGainAllPaths*chanCoefAllPaths.to_numpy() , axis=1)
 
 arrayResCondBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayResponseCombined)**2),-25)
 
