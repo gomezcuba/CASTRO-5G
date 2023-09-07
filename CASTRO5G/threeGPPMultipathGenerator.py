@@ -760,18 +760,16 @@ class ThreeGPPMultipathChannelModel:
     
         
     def create_channel(self, txPos, rxPos):
-        aPos = np.array(txPos)
-        bPos = np.array(rxPos)        
+        aPos = np.array(txPos)#in case tuples are given
+        bPos = np.array(rxPos)#in case tuples are given      
         vLOS = bPos-aPos
-        d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
-        d3D = np.linalg.norm(bPos-aPos)
+        d2D = np.linalg.norm(vLOS[0:-1])
+        d3D = np.linalg.norm(vLOS)
         hbs = aPos[2]
         hut = bPos[2]
-        
         losAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
         losAoA=np.mod(np.pi+losAoD, 2*np.pi ) # revise
-        vaux = (np.linalg.norm(vLOS[0:2]), vLOS[2] )
-        losZoD=np.pi/2-np.arctan( vaux[1] / vaux[0] ) + np.pi*(vaux[1]<0)
+        losZoD=np.pi/2-np.arctan( vLOS[2] / np.linalg.norm(vLOS[0:2]) )
         losZoA=np.pi-losZoD # revise
         
         #3GPP model is in degrees but numpy uses radians
