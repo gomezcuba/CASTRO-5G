@@ -51,7 +51,6 @@ for n in range(nClusters):
     plt.scatter(subpaths.loc[n,:].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
 plt.title("AoAs and normalized Power for all clusters and subpaths")
-plt.legend()
 
 # compute the response of the antenna array with Nant antennas
 Nant = 16
@@ -76,7 +75,7 @@ for p in range(Ntop):
 
     plt.polar(angles_plot,arrayGain1PathdBtrunc25,':',label="ULA G_{%d,%d}"%(n,m),color=cm.jet(p/4))
     pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10( subpaths.loc[n,m].P ),-45)
-    plt.polar(np.tile(subpaths.loc[n,m].AOA *np.pi/180,(2,1)),[-40,pathAmplitudesdBtrunc25_sp],'-',color=cm.jet(p/4))
+    plt.polar(np.tile(subpaths.loc[n,m].AOA *np.pi/180,(2,1)),[-40,pathAmplitudesdBtrunc25_sp],'-',color=cm.jet(p//(Ntop-1)))
     plt.scatter(subpaths.loc[n,m].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(p/4),marker='<')
 
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
@@ -106,6 +105,7 @@ for n in range(nClusters):
     chanGainClusterdBtrunc25 = np.maximum(10*np.log10(subpaths.loc[n,:].P.to_numpy()*Nant*np.abs(arrayGainCluster)**2),-25)
     plt.polar(angles_plot,chanGainClusterdBtrunc25,color=cm.jet(n/(nClusters-1)),label='Cluster %d'%(n))
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+plt.title("%d ULA angular response times channel gain for all subpaths"%(Nant))
 
 
 #plot of receive array response of ALL paths COMBINED
@@ -121,4 +121,5 @@ arrayResCondBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayResponseCombined)
 
 plt.polar(angles_plot,arrayResCondBtrunc25)
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
+plt.title("%d ULA angular response times channel gain summed for all subpaths"%(Nant))
 
