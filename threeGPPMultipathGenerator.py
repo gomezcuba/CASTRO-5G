@@ -823,9 +823,6 @@ class ThreeGPPMultipathChannelModel:
         print("dimension tau antigua",tau.shape)
         print("tau_nueva",tau_nueva)
         print("Dimensiones de tau_nueva:", tau_nueva.shape)
-       
-
-    
     
        
         clusters =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoa,aod,zoa,zod]).T) 
