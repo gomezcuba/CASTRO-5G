@@ -515,7 +515,6 @@ class ThreeGPPMultipathChannelModel:
         else:
             dCorr = self.scenarioParams.NLOS.corrLOS
 
-        #statictis y 021???
         TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, dCorr) #ray corr distance
         macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
         if not macrokey in self.dMacrosGenerated.index:
@@ -543,7 +542,6 @@ class ThreeGPPMultipathChannelModel:
         self.dMacrosGenerated.loc[macrokey,:]=(sfdB,ds,asa,asd,zsa,zsd_lslog,K)
         return(self.dMacrosGenerated.loc[macrokey,:])
     
-    #una funcion como create_macro pero con la key sacada en get_LOSUnif_from_location?
 
     #clusters => small scale groups of pahts
     def create_clusters(self,smallStatistics,LOSangles):
@@ -743,6 +741,7 @@ class ThreeGPPMultipathChannelModel:
         
         return(subpaths)
     
+
     
     def create_small_param(self,LOSangles,smallStatistics,d2D,hut):
         los,DS,ASA,ASD,ZSA,ZSD,K,cZSD,muZOD = smallStatistics
@@ -773,39 +772,72 @@ class ThreeGPPMultipathChannelModel:
     
     #Parte de consistencia espacial
 
-    def displaceMultipathChannel(self, clusters, subpaths, deltaPos):
+    
+    def displaceMultipathChannel(self, clusters, subpaths, deltaTxPos, deltaRxPos, deltaPos):
+        # Código que cumple con el procedimiento A del apartado de consistencia espacial 
+
+        #Parámetros para actualizar tau
+        c = 3e8
+        tau = clusters['tau'].T.to_numpy()
+        zoa = clusters['ZOA'].T.to_numpy()
+        aoa = clusters['AOA'].T.to_numpy()
+        zod = clusters['ZOD'].T.to_numpy()
+        aod = clusters['AOD'].T.to_numpy()
+        powc = clusters['powC'].T.to_numpy()
         
 
-        #Codigo que cumpla con el procedimiento A del apartado de consistencia espacial 
+        Rrx = np.array([[np.sin(zoa) * np.cos(aoa)],
+                        [np.sin(zoa) * np.sin(aoa)],
+                        [np.cos(zoa)]])
+        Rtx = np.array([[np.sin(zod) * np.cos(aod)],
+                        [np.sin(zod) * np.sin(aod)],
+                        [np.cos(zod)]])
 
-        c= 3e8
-        aod = clusters['AOD']
-        zoa = clusters['ZOA']
-        zod = clusters['ZOD']
-        aoa = clusters['AOA']
-        tau = clusters['tau']
-        powc = clusters['powC']
-        deltaentrec= (deltaPos/c)
-        Rrx = np.array([[np.sin(zoa)* np.cos(aoa)], [np.sin(zoa)* np.sin(aoa)], [np.cos(zoa)]])
-        
-        Rrx = np.multiply(Rrx, deltaentrec)
+        print("tau", tau)
+        print("zoa", zoa)
+        print("aoa", aoa)
+        print("zod", zod)
+        print("aod", aod)
+        print("powc", powc)
 
+    
+        Rrx_array = np.array(Rrx)
+        Rtx_array = np.array(Rtx)
+        vr_tx = np.linalg.norm(deltaTxPos)
+        vr_rx = np.linalg.norm(deltaRxPos)
+        print("rrx_array",Rrx_array)
+        print("rtx_array",Rtx_array)
+        print("deltaTXPos", deltaTxPos)
+        print("deltarxpos", deltaRxPos)
+        print("vr_tx", vr_tx)
+        print("vr_rx", vr_rx)
+
+        deltaentrec = deltaPos / c
+        print("deltaPos",deltaPos)
+        print("delta/c",deltaentrec)   
+        aux= Rrx_array.T * vr_rx + Rtx_array.T * vr_tx
+        aux2= np.multiply(aux, deltaentrec[:, np.newaxis])
+    
+        tau_nueva = tau[:, np.newaxis,np.newaxis] - aux2
+        print("tau",tau)
+        print("dimension tau antigua",tau.shape)
+        print("tau_nueva",tau_nueva)
+        print("Dimensiones de tau_nueva:", tau_nueva.shape)
        
-        Rtx = np.array([[np.sin(zod)*np.cos(aod)], [np.sin(zod)* np.sin(aod)], [np.cos(zod)]])
-        Rtx = np.multiply(Rtx, deltaentrec)
-       
-        #newtauprima= tau - Rrx -Rtx
-        #newtau = np.sort( newtauprima-np.min(newtauprima) )
 
-        clusters= pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau,powc,aoa,aod,zoa,zod]).T)
-        return (clusters,subpaths)
+    
+    
+       
+        clusters =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoa,aod,zoa,zod]).T) 
+    
+        return (clusters, subpaths)
             
-
+        
 
     def create_channel(self, txPos, rxPos):
+
         aPos = np.array(txPos)
         bPos = np.array(rxPos)        
-        vLOS = bPos-aPos
         d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
         d3D = np.linalg.norm(bPos-aPos)
         hbs = aPos[2]
@@ -824,65 +856,83 @@ class ThreeGPPMultipathChannelModel:
         macro = self.get_macro_from_location(txPos, rxPos,los)
         
         sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
-        zsd_mu = param.funZSD_mu(d2D,hut)#unlike other statistics, ZSD changes with hut and d2D             
-        zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
-        zod_offset_mu = param.funZODoffset(d2D,hut)        
-        czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
-        smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
-        clusters,subpaths = self.get_small_from_location(txPos,rxPos,smallStatistics)
-        
-        keyChannel = (tuple(txPos),tuple(rxPos))
+      
         plinfo = (los,PLconst,sfdB)
-        self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
+
+        clusters,subpaths = self.get_small_from_location(txPos,rxPos,plinfo,macro)
+        
         return(plinfo,macro,clusters,subpaths)
 
 
 
-    def get_small_from_location(self, txPos, rxPos, smallStatistics):
+    def get_small_from_location(self, txPos, rxPos, plinfo, macro):
 
         aPos = np.array(txPos)
-        bPos = np.array(rxPos)        
-        vLOS = bPos-aPos
-        d2D = np.linalg.norm(bPos[0:-1]-aPos[0:-1])
-        d3D = np.linalg.norm(bPos-aPos)
-        hbs = aPos[2]
-        hut = bPos[2]
-    
-        losAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
-        losAoA=np.mod(np.pi+losAoD, 2*np.pi ) # revise
-        vaux = (np.linalg.norm(vLOS[0:2]), vLOS[2] )
-        losZoD=np.pi/2-np.arctan( vaux[1] / vaux[0] ) + np.pi*(vaux[1]<0)
-        losZoA=np.pi-losZoD # revise
-        
-        #3GPP model is in degrees but numpy uses radians
-        losAoD=(180.0/np.pi)*losAoD #angle of departure 
-        losZoD=(180.0/np.pi)*losZoD 
-        losAoA=(180.0/np.pi)*losAoA #angle of aperture
-        losZoA=(180.0/np.pi)*losZoA
-        LOSangles = (losAoD,losAoA,losZoD,losZoA)
+        bPos = np.array(rxPos)
 
-        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, 1)
-        casilla = TgridXIndex + TgridYIndex + RgridXIndex + RgridYIndex 
-        key= casilla - 1
-        key2 = (tuple(txPos),tuple(rxPos))
+        self.smallCorrDist = 1 
+        key = self.calculateGridCoeffs(txPos,rxPos,self.smallCorrDist)
+
+            
+        txPosGrid = aPos
+        txPosGrid[0:2] = key[0:2] * self.smallCorrDist
+        print("txPos", txPos)
+        print("rxPos", rxPos)
+        print("txPosgrid", txPosGrid)
+
+        rxPosGrid = bPos
+        rxPosGrid[0:2] = key[3:4] * self.smallCorrDist
+
+        print("rxPosgrid", rxPosGrid)
+
+        deltaTxPos = txPos - txPosGrid
+
+        print("deltaTxPos", deltaTxPos)
+
+        deltaRxPos = rxPos -rxPosGrid
+
+        print("deltaRxPos", deltaRxPos)
+
+        deltaPos = deltaRxPos - deltaTxPos
+        print("deltaPos", deltaPos)
 
 
-        deltaPos = (RgridXIndex ** 2 + RgridYIndex ** 2) ** 0.5
-
-
-        if key in self.miscasillas:
-            print("Canal a menos de 1 metro")
-            key3 = self.miscasillas[key]
-
-            clusters, subpaths = self.dChansGenerated[key3][1], self.dChansGenerated[key3][2]
-        
-            clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaPos)
-            return clusters,subpaths
-
+        if key in self.dChansGenerated:
+            print ("Canal a menos de 1 metro")
+            clusters, subpaths = self.dChansGenerated[key]
         else:
-            print("Canal a más de 1 metro")
-            self.miscasillas[key] = key2
-            clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2D, hut)  # Crear canal desde cero
-        
+            print ("Canal a mas de 1 metro")
+            d2Dgrid = np.linalg.norm(rxPosGrid[0:-1]-txPosGrid[0:-1])
+            vLOSgrid = rxPosGrid - txPosGrid
+            losAoD=np.mod( np.arctan( vLOSgrid[1] / vLOSgrid[0] )+np.pi*(vLOSgrid[0]<0), 2*np.pi )
+            losAoA=np.mod(np.pi+losAoD, 2*np.pi )
+            vaux = (np.linalg.norm(vLOSgrid[0:2]), vLOSgrid[2] )
+            losZoD=np.pi/2-np.arctan( vaux[1] / vaux[0] ) + np.pi*(vaux[1]<0)
+            losZoA=np.pi-losZoD 
+            losAoD=(180.0/np.pi)*losAoD  
+            losZoD=(180.0/np.pi)*losZoD 
+            losAoA=(180.0/np.pi)*losAoA 
+            losZoA=(180.0/np.pi)*losZoA
+            LOSangles = (losAoD,losAoA,losZoD,losZoA)
+            hbs = txPosGrid[2]
+            hut = rxPosGrid[2]
 
-            return clusters,subpaths
+            los,PLconst,sfdb = plinfo
+            if los:
+                param = self.scenarioParams.LOS            
+            else:
+                param = self.scenarioParams.NLOS
+
+            sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
+            zsd_mu = param.funZSD_mu(d2Dgrid,hut)          
+            zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
+            zod_offset_mu = param.funZODoffset(d2Dgrid,hut)        
+            czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
+            smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)
+
+            clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2Dgrid, hut) 
+            self.dChansGenerated[key] = (clusters,subpaths)
+        
+        clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaTxPos, deltaRxPos, deltaPos)
+        
+        return clusters,subpaths
