@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-import threeGPPMultipathGenerator as pg
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +9,10 @@ from matplotlib import animation, rc
 from IPython.display import HTML, Image
 # equivalent to rcParams['animation.html'] = 'html5'
 rc('animation', html='html5')
+
+import sys
+sys.path.append('../')
+from CASTRO5G import threeGPPMultipathGenerator as pg
 
 model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))

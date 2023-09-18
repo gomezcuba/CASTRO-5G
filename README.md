@@ -74,7 +74,7 @@ the expected result is that this script should run without warnings, simulate a 
 
 ## Structure of the Code
 
-![](code_structure.png)
+![](code_structure.svg)
 
 The aim the repo CASTRO-5G is the simulation of the interplays between location and communications in multipath channels. For this, there are four high level functionalities that must be implemented
 
