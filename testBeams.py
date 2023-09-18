@@ -59,51 +59,113 @@ i11=0
 i12=0
 i13=0
 
+tabItoK2L = {
+            "N1>N2=1":[
+                [0,0],
+                [4,0],
+                [8,0],
+                [12,0],
+            ],
+            "N1=N2":[
+                [0,0],
+                [4,0],
+                [0,4],
+                [4,4],
+            ],      
+            "N1>N2>1":[
+                [0,0],
+                [4,0],
+                [0,4],
+                [8,0],
+            ],      
+    }
+tabItoK4L = {
+            "N2=1":[
+                [4,0],
+                [8,0],
+                [12,0],
+                [16,0],
+            ],      
+            "N2>1":[
+                [4,0],
+                [0,4],
+                [4,4],
+                [8,0],
+            ],      
+    }
+
 def vlm(l,m,n,N1,N2,O1=4,O2=4):
     um=np.exp(2j*np.pi*m*np.arange(N2)[:,None]/(N2*O2))
     vl=np.exp(2j*np.pi*l*np.arange(N1)[:,None]/(N1*O1)) 
     phin=np.exp(.5j*np.pi*n)
     return(np.kron(np.vstack([vl,phin*vl]),um))
 
-def cb3GPPtypeImode1(PMI,N1,N2,NL):
+def Wlms(vl,vm,vn,N1,N2,O1=4,O2=4):
+    l=[]
+    for c in range(len(vl)):
+        l.append(vlm(vl[c],vm[c],vn[c],N1,N2,O1,O2))
+    return(np.hstack(l))
+
+def cb3GPPtypeImode1(PMI,N1,N2,NL,mode=1):
     NAP=N1*N2*2
     if len(PMI)==4:
         i11,i12,i13,i2 = PMI
         k1,k2=(4,4)#TODO implement tableK1K2vsi13 Table 5.2.2.2.1-3 and Table 5.2.2.2.1-4
     else:
-        i11,i12,i2 = PMI
-        
-    
+        i11,i12,i2 = PMI        
+    #this hack remaps numbers l m and n of mode 2 to their mode 1 equivalents for NL={1,2}
+    if (mode==2) and (NL < 3):
+        if N2>1:            
+            i11=2*i11 + (i2 & 0b0100 >>2)
+            i11=2*i11 + (i2 & 0b1000 >>3)
+            i2=i2 & 0b0011 #note that mode=2 with N2>1 uses the same beams as mode=1, with different binary index
+        else:  
+            i11=2*i11 + (i2 & 0b1100 >>2) #note that i2+8 and i11+1 are the same beam. THIS IS USELESS
+            i11=2*i11 
+            i2=i2 & 0b0011 
+    #-------end hack-------  
+    DXO= 4 if N2>1 else 8 #i11 3rd neighbor beam 5 6 layers
+    D2O= 0 if N2>1 else 8 #i11 3rd neighbor beam 7 8 layers
+    D3O= 4 if N2>1 else 12#i11 4th neighbor beam 7 8 layers
+    DVO= 4 if N2>1 else 0 #i12 3rd and 4th neighbor beam 5-8 layers
     if NL == 1:
-        return( vlm(i11,i12,i2,N1,N2) )
+        vl=[i11]
+        vm=[i12]
+        vn=[i2] 
     elif NL == 2:
-        return( np.hstack([
-                vlm(i11,i12,i2,N1,N2),
-                vlm(i11+k1,i12+k2,i2+2,N1,N2)
-            ] ) )
-    #TODO elif NL == 3:
-    #TODO elif NL == 4:
+        vl=[i11,i11+k1]
+        vm=[i12,i12+k2]
+        vn=[i2 ,i2+2  ]        
+    elif NL == 3:
+        if NAP<16:            
+            vl=[i11,i11+k1,i11  ]
+            vm=[i12,i12+k2,i12  ]
+            vn=[i2 ,i2    ,i2+2 ]        
+        #TODO else:
+    elif NL == 4:
+        if NAP<16:            
+            vl=[i11,i11+k1,i11  ,i11+k1]
+            vm=[i12,i12+k2,i12  ,i12+k2]
+            vn=[i2 ,i2    ,i2+2 , i2+2 ]        
+        #TODO else:
     elif NL == 5:
-        return( np.hstack([
-                vlm(i11,i12,i2,N1,N2),
-                vlm(i11,i12,i2+2,N1,N2),
-                vlm(i11+4,i12,0,N1,N2),
-                vlm(i11+4,i12,2,N1,N2),
-                vlm(i11+4,i12+4,0,N1,N2)
-            ] ) )
-    elif NL == 6:        
-        return( np.hstack([
-                vlm(i11,i12,i2,N1,N2),
-                vlm(i11,i12,i2+2,N1,N2),
-                vlm(i11+4,i12,i2,N1,N2),
-                vlm(i11+4,i12,i2+2,N1,N2),
-                vlm(i11+4,i12+4,0,N1,N2),
-                vlm(i11+4,i12+4,2,N1,N2)
-            ] ) )
-    #TODO elif NL == 7:                
-    #TODO elif NL == 8:
-    else:
-        return( np.array([]) )
+        vl=[i11,i11  ,i11+4,i11+4,i11+DXO]
+        vm=[i12,i12  ,i12  ,i12  ,i12+DVO]
+        vn=[i2 ,i2+2 ,0    ,2    ,0      ]
+    elif NL == 6:
+        vl=[i11 ,i11 ,i11+4,i11+4,i11+DXO,i11+DXO]
+        vm=[i12 ,i12 ,i12  ,i12  ,i12+DVO,i12+DVO]
+        vn=[i2  ,i2+2,i2   ,i2+2 ,0      ,2      ]
+    elif NL == 7:
+        vl=[i11 ,i11 ,i11+4,i11+D2O,i11+D2O,i11+D3O,i11+D3O]
+        vm=[i12 ,i12 ,i12  ,i12+DVO,i12+DVO,i12+DVO,i12+DVO]
+        vn=[i2  ,i2+2,i2   ,0      ,2      ,0      ,2      ]
+    elif NL == 8:
+        vl=[i11 ,i11 ,i11+4,i11+4,i11+D2O,i11+D2O,i11+D3O,i11+D3O]
+        vm=[i12 ,i12 ,i12  ,i12  ,i12+DVO,i12+DVO,i12+DVO,i12+DVO]
+        vn=[i2  ,i2+2,i2   ,i2+2 ,0      ,2      ,0      ,2      ]
+        
+    return( Wlms(vl,vm,vn,N1,N2)/np.sqrt(NL*NAP) )
 
 plt.legend()
 plt.savefig('beamDiagCompare-%d-%d-%d.eps'%(Nant,Nrf,Nsectors))

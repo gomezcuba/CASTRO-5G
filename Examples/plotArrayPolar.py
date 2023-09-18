@@ -13,23 +13,6 @@ model = pg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=Tr
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 nClusters = clusters.shape[0]
 nNLOSsp=subpaths.loc[1,:].shape[0]
-# tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
-# los, PLfree, SF = plinfo
-# if los:
-#     M=max(subpaths.loc[0,:].index)
-#     (tau_los,pow_los,losAoA,losAoD,losZoA,losZoD,losXPR,losphase00,losphase01,losphase10,losphase11)=subpaths.loc[(0,M),:]
-#     tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.drop((0,M)).T.to_numpy()
-# else:    
-#     M=max(subpaths.loc[0,:].index)+1
-#     tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
-# tau_sp=tau_sp.reshape(nClusters,-1)
-# pow_sp=pow_sp.reshape(nClusters,-1)
-# AOA_sp=AOA_sp.reshape(nClusters,-1)
-# AOD_sp=AOD_sp.reshape(nClusters,-1)
-# ZOA_sp=ZOA_sp.reshape(nClusters,-1)
-# ZOD_sp=ZOD_sp.reshape(nClusters,-1)
-# phase00=phase00.reshape(nClusters,-1)
-
 plt.close('all')
 fig_ctr=0
 
@@ -43,7 +26,7 @@ for n in range(nClusters):
     pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10( subpaths.loc[n,:].P ),-45)
     Nsp=subpaths.loc[n,:].shape[0]
     plt.polar(np.tile(subpaths.loc[n,:].AOA*np.pi/180,(2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)))
-    plt.scatter(subpaths.loc[n,:].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker='<')
+    plt.scatter(subpaths.loc[n,:].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker=(3,0,-90+clusters.loc[n].AOA))
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
 plt.title("AoAs and normalized Power for all clusters and subpaths")
 
@@ -68,10 +51,10 @@ for p in range(Ntop):
     arrayGain1Path=(BeamformingVectors.transpose([0,2,1]).conj()@ AntennaResponse1Path ).reshape(-1)
     arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGain1Path)**2),-25)
 
-    plt.polar(angles_plot,arrayGain1PathdBtrunc25,':',label="ULA G_{%d,%d}"%(n,m),color=cm.jet(p/4))
+    plt.polar(angles_plot,arrayGain1PathdBtrunc25,':',label="ULA G_{%d,%d}"%(n,m),color=cm.jet(p/(Ntop-1)))
     pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10( subpaths.loc[n,m].P ),-45)
-    plt.polar(np.tile(subpaths.loc[n,m].AOA *np.pi/180,(2,1)),[-40,pathAmplitudesdBtrunc25_sp],'-',color=cm.jet(p//(Ntop-1)))
-    plt.scatter(subpaths.loc[n,m].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(p/4),marker='<')
+    plt.polar(np.tile(subpaths.loc[n,m].AOA *np.pi/180,(2,1)),[-40,pathAmplitudesdBtrunc25_sp],'-',color=cm.jet(p/(Ntop-1)))
+    plt.scatter(subpaths.loc[n,m].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(p/(Ntop-1)),marker=(3,0,-90+subpaths.loc[n,m].AOA))
 
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 plt.legend()

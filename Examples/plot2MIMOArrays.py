@@ -37,7 +37,7 @@ arrayGainAllPathsTx=(AntennaResponsesTx.transpose([0,2,1]).conj()@BeamformingVec
 
 channelResponseCombined =  np.sum( arrayGainAllPathsTx[None,:,:]*arrayGainAllPathsRx[:,None,:]*pathAmplitudes , axis=2) 
 
-channelResponseCombineddB = np.maximum(10*np.log10(Nant*Nant*np.abs(channelResponseCombined)**2),-20)
+channelResponseCombineddB = np.maximum(10*np.log10(Nant*Nant*np.abs(channelResponseCombined)**2),-30)
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
@@ -61,6 +61,8 @@ plt.yticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$',
 plt.xlabel('AoD')
 plt.ylabel('AoA')
 plt.title('%d UPA MIMO directivity for sum of all paths'%(Nant))
+maxdB=np.max(10*np.log10(Nant*Nant*np.abs(channelResponseCombined)**2))
+mindB=-30
 for n in range(nClusters):   
     Nsp=subpaths.loc[n,:].shape[0]
-    plt.scatter(np.mod(subpaths.loc[n,:].AOD*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),color=cm.jet(n/(nClusters-1)),marker='^',edgecolor='black', linewidth=1)
+    plt.scatter(np.mod(subpaths.loc[n,:].AOD*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),color=cm.jet((10*np.log10(Nant*Nant*subpaths.loc[n,:].P)-mindB)/((maxdB-mindB))),marker='^',edgecolor=cm.jet(n/(nClusters-1)), linewidth=1)
