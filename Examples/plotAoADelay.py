@@ -13,7 +13,7 @@ plt.close('all')
 fig_ctr=0
 
 model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
-plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(20,0,1.5))
+plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 los, PLfree, SF = plinfo
 nClusters = clusters.shape[0]
 nNLOSsp=subpaths.loc[1,:].shape[0]
@@ -49,7 +49,8 @@ def plot3DPolarCilinder(ax,N,zval,lval,maxv):
     ax.plot3D([0,0],[0,0],[0,maxdelCentenas],color='k')
     ax.text3D(0,0,maxdelCentenas,"delay [ns]",color='k')
 
-plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.tau)*1e9))
+dBat0polar = -40
+plot3DPolarCilinder(ax,101,dBat0polar,[-30,-20,-10,0],np.max(np.max(subpaths.tau)*1e9))
 
 ###############################################################################
 # Plot each path power- AoA - delay profile in analog domain
@@ -95,3 +96,30 @@ for n,m in subpaths.index:#plot3D needs to be called 1 line at a time
     x=radius*np.cos(angles_plot)
     y=radius*np.sin(angles_plot)
     ax.plot3D(x,y,subpaths.loc[n,m].tau*1e9*np.ones_like(x),linestyle=':',color=clr)
+ 
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+ax = fig.add_subplot(111, projection='3d')
+plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.tau)*1e9))   
+#DEC
+Ts=2 #ns
+Ds=np.max(subpaths.tau*1e9)
+Ntaps = int(np.ceil(Ds/Ts))
+n=np.linspace(0,Ntaps-1,Ntaps)
+pulses = np.sinc(n[:,None]-subpaths.tau.to_numpy()*1e9/Ts)
+
+
+AntennaResponsesRx =mc.fULA(subpaths.AOA.to_numpy()*np.pi/180,Nant)
+BeamformingVectors =mc.fULA(angles_plot,Nant)
+arrayGainAllPathsRx=(AntennaResponsesRx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:])[:,:,0,0]
+hnArray = np.sum(pulses[:,None,:]*arrayGainAllPathsRx[None,:,:]*pathAmplitudes[None,None,:],axis=2)
+chanGainsdB=10*np.log10(np.abs(hnArray)**2)
+
+radius=np.maximum(chanGainsdB-dBat0polar,0)
+polarX = radius*np.cos(angles_plot)
+polarY = radius*np.sin(angles_plot)
+manual_colors = (chanGainsdB -dBat0polar )/(np.max(chanGainsdB)-dBat0polar)
+surf=ax.plot_surface(polarX, polarY, np.tile(Ts*n[:,None],(1,Npointsplot)),rstride=1, cstride=1, facecolors=cm.jet(manual_colors), linewidth=0, antialiased=False)
+cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),ax=ax,shrink=0.8,label = 'Analog Beam Gain dB')
+cbar.set_ticks((np.arange(dBat0polar,np.max(chanGainsdB),10) -dBat0polar )/(np.max(chanGainsdB)-dBat0polar))
+cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(dBat0polar,np.max(chanGainsdB),10)])

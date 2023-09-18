@@ -17,41 +17,38 @@ plt.close('all')
 fig_ctr=0
 
 model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
+model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
-tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
+nClusters = clusters.shape[0]
+nNLOSsp=subpaths.loc[1,:].shape[0]#cluster 0 may include the LOS path, 1 and onwards only nlos
+
+#TODO - insert adapted AOA and compare response
 
 #4D  color intensity plots vs delay, AoA and AoD grid
-AoAs = AOA_sp*np.pi/180#radians
-AoDs = AOD_sp*np.pi/180#radians
-delays = tau_sp*1e9#nanoseconds
-Npath=np.size(delays)
-pathAmplitudes = np.sqrt( pow_sp )*np.exp(1j*phase00)
-Npath=np.size(AoAs)
 
+pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy()
+
+#4D  color intensity plots vs delay, AoA and AoD grid
 
 #DEC
-Ts=5 #ns
-Ds=np.max(delays)
-Ntaps = int(np.minimum( np.ceil(Ds/Ts), 100 ) )
+Ts=2 #ns
+Ds=np.max(subpaths.tau*1e9)
+Ntaps = int(np.ceil(Ds/Ts))
 n=np.linspace(0,Ntaps-1,Ntaps)
-pulses = np.sinc(n[:,None]-delays/Ts)
+pulses = np.sinc(n[:,None]-subpaths.tau.to_numpy()*1e9/Ts)
 
 # array responses
 Nant = 16
-AntennaResponsesRx =mc.fULA(AoAs,Nant)
-AntennaResponsesTx =mc.fULA(AoDs,Nant)
-Npointsplot=11 #in this case we use only a few beamforming vectors
+AntennaResponsesRx =mc.fULA(subpaths.AOA.to_numpy()*np.pi/180,Nant)
+AntennaResponsesTx =mc.fULA(subpaths.AOD.to_numpy()*np.pi/180,Nant)
+Npointsplot=2*Nant #in this case we use only a few beamforming vectors
 angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
-arrayGainAllPathsRx=(AntennaResponsesRx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
-arrayGainAllPathsTx=(AntennaResponsesTx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Npath))
+arrayGainAllPathsRx=(AntennaResponsesRx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:])[:,:,0,0]
+arrayGainAllPathsTx=(AntennaResponsesTx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:])[:,:,0,0]
 
-arrayGainAllPathsTx = arrayGainAllPathsTx.reshape(Npointsplot,1,Npath)#move the txAngle to a new axis
-pulses = pulses.reshape(Ntaps,1,1,Npath)#move the delay to a new axis
-
-hnArray = np.sum(pulses*arrayGainAllPathsTx[None,:,:,:]*arrayGainAllPathsRx[None,None,:,:]*pathAmplitudes[None,None,None,:],axis=3)
+hnArray = np.sum(pulses[:,None,None,:]*arrayGainAllPathsTx[None,:,None,:]*arrayGainAllPathsRx[None,None,:,:]*pathAmplitudes[None,None,None,:],axis=3)
 
 NtapsPerFigure = 10
 
