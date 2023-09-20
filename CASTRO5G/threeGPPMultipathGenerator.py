@@ -407,10 +407,19 @@ class ThreeGPPMultipathChannelModel:
         self.scenarioParams = self.allParamTable[self.scenario]
         
         self.dMacrosGenerated = pd.DataFrame(columns=[
-            'TGridx','TGridy','RGridx','RGridy','LOS',
+            'Xgridt','Ygridt','Xgridr','Ygridr','LOS',
             'sfdB','ds','asa','asd','zsa','zsd_lslog','K'
-         ]).set_index(['TGridx','TGridy','RGridx','RGridy','LOS'])
+         ]).set_index(['Xgridt','Ygridt','Xgridr','Ygridr','LOS'])
         self.dChansGenerated = {}
+        #TODO modify channels generated dictionary to native pandas dataframe
+        # self.dClustersGenerated = pd.DataFrame(columns=[
+        #     'Xt','Yt','Zt','Xr','Yr','Zr','n',
+        #       'tau','powC','AOA','AOD','ZOA','ZOD'
+        # ]).set_index(['Xt','Yt','Zt','Xr','Yr','Zr','n'])
+        # self.dSubpathsGenerated = pd.DataFrame(columns=[
+        #     'Xt','Yt','Zt','Xr','Yr','Zr','n','m',
+        #       'tau','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'
+        # ]).set_index(['Xt','Yt','Zt','Xr','Yr','Zr','n','m'])
         self.dLOSGenerated = {}
 
     # TODO introduce code for multi-floor hut in UMi & UMa
@@ -478,24 +487,24 @@ class ThreeGPPMultipathChannelModel:
        
     #macro => Large Scale Correlated parameters
     def calculateGridCoeffs(self,txPos, rxPos,Dcorr):
-        TgridXIndex= (txPos[0] + Dcorr/2) // Dcorr
-        TgridYIndex= (txPos[1] + Dcorr/2) // Dcorr
-        RgridXIndex= (rxPos[0]-txPos[0] + Dcorr/2) // Dcorr
-        RgridYIndex= (rxPos[1]-txPos[1] + Dcorr/2) // Dcorr
-        return(TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
+        XgridtIndex= (txPos[0] + Dcorr/2) // Dcorr
+        YgridtIndex= (txPos[1] + Dcorr/2) // Dcorr
+        XgridrIndex= (rxPos[0]-txPos[0] + Dcorr/2) // Dcorr
+        YgridrIndex= (rxPos[1]-txPos[1] + Dcorr/2) // Dcorr
+        return(XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex)
         
     #hidden uniform variable to compare with pLOS(distabce)
     def get_LOSUnif_from_location(self,txPos, rxPos):
-        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
-        key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
+        XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
+        key = (XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex)
         if not key in self.dLOSGenerated:
            self.dLOSGenerated[key] = np.random.rand(1)[0]       
         return(self.dLOSGenerated[key])
         
     #macro => Large Scale Correlated parameters
     def get_macro_from_location(self,txPos, rxPos,los):
-        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
-        macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
+        XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
+        macrokey = (XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex,los)
         if not macrokey in self.dMacrosGenerated.index:
             return(self.create_macro(macrokey))#saves result to memory
         else:
@@ -587,7 +596,9 @@ class ThreeGPPMultipathChannelModel:
         ZOA = Xzoa*tetaZOAprima + Yzoa + losZoA - (Xzoa[0]*tetaZOAprima[0] + Yzoa[0] if (los==1) else 0)
         ZOD = Xzod*tetaZODprima + Yzod + losZoD + muZOD - (Xzod[0]*tetaZODprima[0] + Yzod[0] if (los==0) else 0)
           
-        return( pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau,powC,AOA,AOD,ZOA,ZOD]).T) )
+        return( pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],
+                             data=np.array([tau,powC,AOA,AOD,ZOA,ZOD]).T,
+                             index=pd.Index(np.arange(nClusters),name='n')) )
        
     def create_subpaths_basics(self,smallStatistics,clusters,LOSangles):
         los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
@@ -800,33 +811,58 @@ class ThreeGPPMultipathChannelModel:
         czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
         smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
         clusters,subpaths = self.create_small_param(LOSangles,smallStatistics,d2D,hut)
+        plinfo = (los,PLconst,sfdB)
         
         if self.funPostprocess:
-            plinfo,clusters,subpaths = self.funPostprocess(plinfo,clusters,subpaths)
-            #prob = np.array([0.5,0.5,0])
-            ##TODO - introducir tanto clusters como subpaths para procesar no mesmo porque así os datos non teñen relación
-            #clusters = self.randomFitParameters(txPos,rxPos,clusters,prob)
-            #subpaths = self.randomFitParameters(txPos,rxPos,subpaths,prob)
-        
-        
-        keyChannel = (tuple(txPos),tuple(rxPos))
-        plinfo = (los,PLconst,sfdB)
+            plinfo,clusters,subpaths = self.funPostprocess(txPos,rxPos,plinfo,clusters,subpaths)
+                
+        keyChannel = tuple(txPos)+tuple(rxPos)
         self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
+        
+        # self.dClustersGenerated = self.dClustersGenerated.append(pd.concat({ keyChannel: clusters },names=['Xt','Yt','Zt','Xr','Yr','Zr']))
+        # self.dSubpathsGenerated = self.dSubpathsGenerated.append(pd.concat({ keyChannel: subpaths },names=['Xt','Yt','Zt','Xr','Yr','Zr']))
         return(plinfo,macro,clusters,subpaths)
-
-    def fitAOA(self, txPos, rxPos, df):
-
-        aod = df['AOD'].T.to_numpy()
-        tau = df['tau'].T.to_numpy()
+    
+    ###########################################################################
+    # premade post-processing functions
+    # they always must receive (txPos,rxPos,plinfo,clusters,subpaths) as input 
+    # and return the same as output, enabling their infinite pipelining
+    ###########################################################################    
+       
+    def fullFitAOA(self,txPos,rxPos,plinfo,clusters,subpaths):
+        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,clusters.AOD.to_numpy()*np.pi/180,clusters.tau.to_numpy()*np.pi/180)
+        clusters.AOA=aoa_new*180/np.pi
+        clusters['Xs']=xloc
+        clusters['Ys']=yloc
+        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,subpaths.AOD.to_numpy()*np.pi/180,subpaths.tau.to_numpy()*np.pi/180)
+        subpaths.AOA=aoa_new*180/np.pi
+        subpaths['Xs']=xloc
+        subpaths['Ys']=yloc
+        return (txPos,rxPos,plinfo,clusters,subpaths)
+    
+    def fullFitAOD(self,txPos,rxPos,plinfo,clusters,subpaths):
+        aod_new,xloc,yloc = self.fitAOD(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.tau.to_numpy()*np.pi/180)
+        clusters.AOD=aod_new*180/np.pi
+        clusters['Xs']=xloc
+        clusters['Ys']=yloc
+        aod_new,xloc,yloc = self.fitAOD(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.tau.to_numpy()*np.pi/180)
+        subpaths.AOD=aod_new*180/np.pi
+        subpaths['Xs']=xloc
+        subpaths['Ys']=yloc
+        return (txPos,rxPos,plinfo,clusters,subpaths)
+    
+    ###########################################################################
+    # auxiliary functions. Contain actual post-processing logic and algorithms
+    ###########################################################################
+    def fitAOA(self, txPos, rxPos, aod, tau):
         
         # Datos iniciais - l0, tau0 e aod0
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
-        aod[0] = losAOD*180.0/np.pi #necesario para consistencia do primeiro rebote
                                      
         li = l0 + tau * 3e8
-        dAOD = (aod*np.pi/180-losAOD)
+        dAOD = (aod-losAOD)
         
         cosdAOD = np.cos(dAOD)
         sindAOD = np.sin(dAOD)
@@ -836,7 +872,6 @@ class ThreeGPPMultipathChannelModel:
         sol1= -sindAOD # xust.matematica overleaf
         sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
         sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
-
         #Posibles solucions:
         sols = np.zeros((4,aod.size)) 
         sols[0,:] = np.arcsin(sol1)
@@ -845,33 +880,23 @@ class ThreeGPPMultipathChannelModel:
         sols[3,:] = np.pi - np.arcsin(sol2)
 
         #Ubicacion dos rebotes 
-        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan(aod *(np.pi/180) )-np.tan(losAOD+np.pi-sols))
+        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan(aod )-np.tan(losAOD+np.pi-sols))
         x[1,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
         x[3,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
-        y=x*np.tan(aod *(np.pi/180) ) 
+        y=x*np.tan(aod) 
 
         #Mellor solucion - a mais semellante á distancia do path evaluado
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aoaAux =sols[solIndx,range(li.size)]
-        aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi) * (180.0/np.pi)
+        aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi)
         xLoc = x[solIndx,range(li.size)]
         yLoc = y[solIndx,range(li.size)]
-        
-        
-        df['xloc'] = xLoc[0:li.size]
-        df['yloc'] = yLoc[0:li.size]
-        
-        df['AOA'] = aoaFix
-        
-        return df
+               
+        return (aoaFix,xLoc,yLoc)
 
-    def fitAOD(self, txPos, rxPos, df):
-        
-        tau = df['tau'].T.to_numpy()
-        aoa = df['AOA'].T.to_numpy()
-
-        
+    def fitAOD(self, txPos, rxPos, aoa, tau):
+                
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         li = l0+tau*3e8
@@ -879,16 +904,15 @@ class ThreeGPPMultipathChannelModel:
         losAOA = np.mod(np.pi+losAOD,2*np.pi)
         #aoa[0] = losAOA*(180.0/np.pi) #necesario para consistencia do primeiro rebote
 
-        aoaR = aoa*(np.pi/180.0)
-
-        aoaAux = np.mod(-aoaR+losAOA*(vLOS[0]>0),2*np.pi)
+        aoaAux = np.mod(-aoa+losAOA*(vLOS[0]>0),2*np.pi)
         cosdAOA = np.cos(aoaAux)
         sindAOA = np.sin(aoaAux)
         nu = li/l0
 
-        A=nu**2+1+2*cosdAOA*nu
-        B=2*sindAOA*(1-nu*cosdAOA)
-        C=(sindAOA**2)*(1-nu**2)
+        # A=nu**2+1+2*cosdAOA*nu
+        # B=2*sindAOA*(1-nu*cosdAOA)
+        # C=(sindAOA**2)*(1-nu**2)
+        #Ax**2+Bx+C=0^
 
         sol1= -sindAOA
         sol2= sindAOA*(nu**2-1) /  ( nu**2+1-2*cosdAOA*nu )
@@ -904,9 +928,9 @@ class ThreeGPPMultipathChannelModel:
 
         #Ubicacion dos rebotes 
         
-        #x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(aoaR )-np.tan(losAOD+np.pi-aoaAux))
+        #x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(aoa )-np.tan(losAOD+np.pi-aoaAux))
 
-        x=(vLOS[1]-vLOS[0]*np.tan(aoaR))/(np.tan(losAOD+sols)-np.tan(aoaR))
+        x=(vLOS[1]-vLOS[0]*np.tan(aoa))/(np.tan(losAOD+sols)-np.tan(aoa))
         x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
         y=x*np.tan(losAOD + sols) 
@@ -914,22 +938,14 @@ class ThreeGPPMultipathChannelModel:
         dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
         solIndx=np.argmin(np.abs(dist-li),axis=0)
         aodAux =sols[solIndx,range(li.size)]
-        aodFix = np.mod(aodAux+losAOD,2*np.pi) * (180.0/np.pi)
-
-        xPathLoc = x[solIndx,range(li.size)]
-        yPathLoc = y[solIndx,range(li.size)]
+        aodFix = np.mod(aodAux+losAOD,2*np.pi) 
         
-        df['xloc'] = xPathLoc
-        df['yloc'] = yPathLoc
-        
-        df['AOD'] = aodFix
-        
-        return df
+        xLoc = x[solIndx,range(li.size)]
+        yLoc = y[solIndx,range(li.size)]
+                        
+        return (aodFix,xLoc,yLoc)
     
-    def fitDelay(self, txPos, rxPos, df):
-        
-        aoa = df['AOA'].T.to_numpy() * (np.pi/180.0)
-        aod = df['AOD'].T.to_numpy() * (np.pi/180.0)
+    def fitDelay(self, txPos, rxPos, aoa, aod):
         
         vLOS = np.array(rxPos) - np.array(txPos)
         aod0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
@@ -970,19 +986,13 @@ class ThreeGPPMultipathChannelModel:
         l=np.sqrt(x**2+y**2)+np.sqrt((x-rxPos[0])**2+(y-rxPos[1])**2)
         l0=np.sqrt(rxPos[0]**2+rxPos[1]**2)
 
-        tau = (l-l0)/3e8
+        tauFix = (l-l0)/3e8
         
         aoaD = aoa* (180.0/np.pi)
-        
-        df['xloc'] = x[0:l.size]
-        df['yloc'] = y[0:l.size]
-
-        df['tau'] = tau[0:l.size]
-        df['AOA'] = aoaD[0:l.size]
         #Límite superior de un TDoA de 1.0e-6 para non introducir valores extremos
         dfFix = df[df['tau'] <= 1.0e-06]
         
-        return dfFix
+        return (tauFix,xLoc,yLoc)
     
     def randomFitParameters(self, txPos, rxPos, dataset, prob):
 

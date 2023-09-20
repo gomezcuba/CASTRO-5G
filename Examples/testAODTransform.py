@@ -2,16 +2,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
-import pandas as pd
-import os
+import pandas as pd 
 
+import sys
+sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as mpg
-from CASTRO5G import multipathChannel as mc
 plt.close('all')
 
 fig_ctr = 0
 
-""" Banco de gráficas e tests exclusivo da función fitAOD (e correción de backlobes se corresponde)"""
+###############################################################################
+# Banco de gráficas e tests exclusivo da función fitAOD (e correción de backlobes se corresponde)
 
 # Posicións transmisor e receptor
 
@@ -30,17 +31,12 @@ sce = "UMa"
 modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
 plinfoA,macroA,clustersA,subpathsA = modelA.create_channel(tx,rx)
 
-#AODs non correxidos
-AOD_cA = clustersA['AOD'].T.to_numpy() * (np.pi/(180.0))
-AOD_sA = subpathsA['AOD'].T.to_numpy() * (np.pi/(180.0))
-
 clustersAD = clustersA.copy()
 subpathsAD = subpathsA.copy()
 
 # Adaptación canle 1:
 
-clustersAD  = modelA.fitAOD(tx,rx,clustersAD)
-subpathsAD = modelA.fitAOD(tx,rx,subpathsAD)
+(tx,rx,plinfoA,clustersAD,subpathsAD)  = modelA.fullFitAOD(tx,rx,plinfoA,clustersAD,subpathsAD)
 
 # OPCIONAL -- Se queremos ademais correxir backlobes:
 #-------
@@ -48,9 +44,13 @@ subpathsAD = modelA.fitAOD(tx,rx,subpathsAD)
 #subpathsAD = modelA.deleteBacklobes(subpathsAD,phi0)
 #-------
 
+#AODs non correxidos
+AOD_cA = clustersA['AOD'].T.to_numpy() * (np.pi/(180.0))
+AOD_sA = subpathsA['AOD'].T.to_numpy() * (np.pi/(180.0))
+
 #Posición dos rebotes:
-xc_A,yc_A = [clustersAD['xloc'].T.to_numpy(),clustersAD['yloc'].T.to_numpy()]
-xs_A,ys_A = [subpathsAD['xloc'].T.to_numpy(),subpathsAD['yloc'].T.to_numpy()]
+xc_A,yc_A = [clustersAD['Xs'].T.to_numpy(),clustersAD['Ys'].T.to_numpy()]
+xs_A,ys_A = [subpathsAD['Xs'].T.to_numpy(),subpathsAD['Ys'].T.to_numpy()]
 
 #Distancia entre receptor e posición do rebote
 liRX_cA = np.sqrt((xc_A-rx[0])**2+(yc_A - rx[1])**2)
@@ -93,8 +93,7 @@ for i in range(0,AOD_cA.size):
     plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(AOA_cA[i])],[rx[1],rx[1]+liRX_cA[i]*np.sin(AOA_cA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-ruta = os.path.join("img", "fitAOD_clusNAD.png")
-plt.savefig(ruta)
+plt.savefig("../Figures/fitAOD_clusNAD.png")
 
 
 # Gráfica 2 - Camiños clusters adaptados 
@@ -116,8 +115,7 @@ for i in range(0,AOD_cA.size):
     plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(AOA_cA[i])],[rx[1],rx[1]+liRX_cA[i]*np.sin(AOA_cA[i])],color=cm.jet(i/(nClus-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-ruta = os.path.join("img", "fitAOD_clusAD.png")
-plt.savefig(ruta)
+plt.savefig("../Figures/fitAOD_clusAD.png")
 
 
 # Gráfica 3 - Subpaths non adaptados
@@ -137,8 +135,7 @@ for i in range(0,AOD_sA.size):
     plt.plot([rx[0],rx[0]+liRX_sA[i]*np.cos(AOA_sA[i])],[rx[1],rx[1]+liRX_sA[i]*np.sin(AOA_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-ruta = os.path.join("img", "fitAOD_subpNAD.png")
-plt.savefig(ruta)
+plt.savefig("../Figures/fitAOD_subpNAD.png")
 
 
 # Gráfica 4 - Subpaths adaptados
@@ -158,8 +155,7 @@ for i in range(0,AOD_sA.size):
     plt.plot([rx[0],rx[0]+liRX_sA[i]*np.cos(AOA_sA[i])],[rx[1],rx[1]+liRX_sA[i]*np.sin(AOA_sA[i])],color=cm.jet(i/(nSubp-1)),linewidth = '0.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-ruta = os.path.join("img", "fitAOD_subpAD.png")
-plt.savefig(ruta)
+plt.savefig("../Figures/fitAOD_subpAD.png")
 
 
 
@@ -194,8 +190,7 @@ for n in range(nClus):
     plt.setp(markerline, color=cm.jet(n/(nClus-1))) 
 plt.grid()
 
-ruta = os.path.join("img", "fitAOD_deckNAD.png")
-plt.savefig(ruta)
+plt.savefig("../Figures/fitAOD_deckNAD.png")
 
 
 # Gráfica 6: Deck de subpaths AOD, AOA e delay correxido
@@ -228,5 +223,4 @@ for n in range(nClus):
     plt.setp(markerline, color=cm.jet(n/(nClus-1))) 
 plt.grid()
 
-ruta = os.path.join("img", "fitAOD_deckAD.png")
-plt.savefig(ruta)
+plt.savefig("../Figures/fitAOD_deckAD.png")

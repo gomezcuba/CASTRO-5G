@@ -3,7 +3,7 @@
 
 from CASTRO5G import threeGPPMultipathGenerator as mp3g
 import MIMOPilotChannel as pil
-import OMPCachedRunner as oc
+from CASTRO5G import OMPCachedRunner as oc
 import numpy as np
 import pandas as pd
 
