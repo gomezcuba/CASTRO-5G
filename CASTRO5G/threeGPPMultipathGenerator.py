@@ -830,25 +830,38 @@ class ThreeGPPMultipathChannelModel:
     ###########################################################################    
        
     def fullFitAOA(self,txPos,rxPos,plinfo,clusters,subpaths):
-        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,clusters.AOD.to_numpy()*np.pi/180,clusters.tau.to_numpy()*np.pi/180)
+        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,clusters.AOD.to_numpy()*np.pi/180,clusters.tau.to_numpy())
         clusters.AOA=aoa_new*180/np.pi
         clusters['Xs']=xloc
         clusters['Ys']=yloc
-        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,subpaths.AOD.to_numpy()*np.pi/180,subpaths.tau.to_numpy()*np.pi/180)
+        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,subpaths.AOD.to_numpy()*np.pi/180,subpaths.tau.to_numpy())
         subpaths.AOA=aoa_new*180/np.pi
         subpaths['Xs']=xloc
         subpaths['Ys']=yloc
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
     def fullFitAOD(self,txPos,rxPos,plinfo,clusters,subpaths):
-        aod_new,xloc,yloc = self.fitAOD(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.tau.to_numpy()*np.pi/180)
+        aod_new,xloc,yloc = self.fitAOD(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.tau.to_numpy())
         clusters.AOD=aod_new*180/np.pi
         clusters['Xs']=xloc
         clusters['Ys']=yloc
-        aod_new,xloc,yloc = self.fitAOD(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.tau.to_numpy()*np.pi/180)
+        aod_new,xloc,yloc = self.fitAOD(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.tau.to_numpy())
         subpaths.AOD=aod_new*180/np.pi
         subpaths['Xs']=xloc
         subpaths['Ys']=yloc
+        return (txPos,rxPos,plinfo,clusters,subpaths)
+    
+    def attemptFullFitDelay(self,txPos,rxPos,plinfo,clusters,subpaths,fallbackFun=None):
+        tau_new,xloc,yloc,valid = self.fitDelay(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.AOD.to_numpy()*np.pi/180)
+        clusters.tau[valid]=tau_new[valid]
+        clusters['Xs']=xloc#non valids are inf
+        clusters['Ys']=yloc#non valids are inf
+        tau_new,xloc,yloc,valid = self.fitDelay(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.AOD.to_numpy()*np.pi/180)
+        subpaths.tau[valid]=tau_new
+        subpaths['Xs']=xloc#non valids are inf
+        subpaths['Ys']=yloc#non valids are inf
+        #TODO if fallbackFun:
+            
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
     ###########################################################################
@@ -948,52 +961,33 @@ class ThreeGPPMultipathChannelModel:
     def fitDelay(self, txPos, rxPos, aoa, aod):
         
         vLOS = np.array(rxPos) - np.array(txPos)
-        aod0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
+        aod0 = np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi)
         aoa0 = np.mod(aod0+np.pi,2*np.pi)
 
-        dAOA = np.mod((aoa0-aoa)*(vLOS[0]>0 & (aoa0>aoa)) + (aoa-aoa0)*(vLOS[0]>0 & (aoa0<aoa)) + np.pi*(aod>aoa),2*np.pi)
-        dAOD = np.mod((aod-aod0)*(vLOS[0]>0 & (aod>aod0)) + (aod0-aod)*(vLOS[0]<0 & (aod0>aod)),2*np.pi)
-
-        angleSum = dAOA + dAOD
+        dAOD = np.mod(aod - aod0,2*np.pi)
+        dAOA = np.mod(aoa - aod0,2*np.pi)
+        validIntersectionU = (dAOD<=np.pi)&(dAOA<=np.pi)&(dAOA>dAOD)
+        validIntersectionL = (dAOD>np.pi)&(dAOA>np.pi)&(dAOA<dAOD)
         
-        aodmin = (aod>aod0)
-        aoalim = np.mod(aod0+np.pi,2*np.pi)
-
-        if vLOS[0] > 0:
-            for n in range(aoa.size):
-                if (aod[n] < aoa[n] < aoalim) and aodmin[n]:
-                    aoa[n] = aoa[n]
-                else:
-                    if(aodmin[n]):
-                        aoa[n] = np.random.uniform(aod[n],aoalim)+np.pi*(vLOS[1]<0)
-                    else:
-                        aoa[n] = np.random.uniform(aoalim, aod[n])-np.pi*(vLOS[1]>0)
-        else:
-            for n in range(aoa.size):
-                if (aoalim < aoa[n] < aod[n]) and (not aodmin[n]):
-                    aoa[n] = aoa[n]
-                else:
-                    if(aodmin[n]):
-                        aoa[n] = np.random.uniform(aoalim,aod[n])
-                    else:
-                        aoa[n] = np.mod(aoa[n]+np.pi,2*np.pi)-np.pi*(vLOS[1]>0)
+        validIntersection = validIntersectionU|validIntersectionL
 
         l0 = np.linalg.norm(vLOS[0:-1])
-        TA=np.tan(np.pi-aoa)
-        TD=np.tan(aod)
+        TA=np.tan(np.pi-aoa[validIntersection])
+        TD=np.tan(aod[validIntersection])
         x=((rxPos[1]+rxPos[0]*TA)/(TD+TA))
         y=x*TD
         l=np.sqrt(x**2+y**2)+np.sqrt((x-rxPos[0])**2+(y-rxPos[1])**2)
         l0=np.sqrt(rxPos[0]**2+rxPos[1]**2)
 
-        tauFix = (l-l0)/3e8
-        
-        aoaD = aoa* (180.0/np.pi)
-        #Límite superior de un TDoA de 1.0e-6 para non introducir valores extremos
-        dfFix = df[df['tau'] <= 1.0e-06]
-        
-        return (tauFix,xLoc,yLoc)
-    
+        tauFix = np.full_like(aoa,fill_value=np.inf)
+        tauFix[validIntersection] = (l-l0)/3e8
+      
+        xLoc = np.full_like(aoa,fill_value=np.inf)
+        xLoc[validIntersection] = x
+        yLoc = np.full_like(aoa,fill_value=np.inf)
+        yLoc[validIntersection] = y
+        return (tauFix,xLoc,yLoc,validIntersection)
+           
     def randomFitParameters(self, txPos, rxPos, dataset, prob):
 
         totalSize = dataset.shape[0]
