@@ -864,6 +864,40 @@ class ThreeGPPMultipathChannelModel:
             
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
+    def fullDeleteBacklobes(self,txPos,rxPos,plinfo,clusters,subpaths,tAOD=0,rAOA=180):
+        tAODmin=np.mod(tAOD-90,360.0)
+        tAODmax=np.mod(tAOD+90,360.0)
+        rAOAmin=np.mod(rAOA-90,360.0)
+        rAOAmax=np.mod(rAOA+90,360.0)        
+        
+        cAOD = np.mod(clusters.AOD,360.0)
+        cAOA = np.mod(clusters.AOA,360.0)
+        # cAODValid=(np.mod(cAOD-tAODmin,360)<np.mod(tAODmax-tAODmin,360))
+        if tAODmin<tAODmax:
+            cAODValid = (cAOD>tAODmin)&(cAOD<tAODmax)
+        else:
+            cAODValid = (cAOD<tAODmax)|(cAOD>tAODmin)
+        if rAOAmin<rAOAmax:
+            cAOAValid = (cAOA>rAOAmin)&(cAOA<rAOAmax)
+        else:
+            cAOAValid = (cAOA<rAOAmax)|(cAOA>rAOAmin)
+        cValid = cAODValid & cAOAValid
+        clusters = clusters[cValid]       
+        
+        sAOD = np.mod(subpaths.AOD,360.0)
+        sAOA = np.mod(subpaths.AOA,360.0)
+        if tAODmin<tAODmax:
+            sAODValid = (sAOD>tAODmin)&(sAOD<tAODmax)
+        else:
+            sAODValid = (sAOD<tAODmax)|(sAOD>tAODmin)
+        if rAOAmin<rAOAmax:
+            sAOAValid = (sAOA>rAOAmin)&(sAOA<rAOAmax)
+        else:
+            sAOAValid = (sAOA<rAOAmax)|(sAOA>rAOAmin)
+        sValid = sAODValid & sAOAValid
+        subpaths = subpaths[sValid]
+        return (txPos,rxPos,plinfo,clusters,subpaths)
+    
     ###########################################################################
     # auxiliary functions. Contain actual post-processing logic and algorithms
     ###########################################################################
@@ -958,19 +992,20 @@ class ThreeGPPMultipathChannelModel:
                         
         return (aodFix,xLoc,yLoc)
     
-    def fitDelay(self, txPos, rxPos, aoa, aod):
-        
+    def checkValidIntersection(self, txPos, rxPos, aoa, aod):
         vLOS = np.array(rxPos) - np.array(txPos)
         aod0 = np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi)
-        aoa0 = np.mod(aod0+np.pi,2*np.pi)
-
         dAOD = np.mod(aod - aod0,2*np.pi)
         dAOA = np.mod(aoa - aod0,2*np.pi)
-        validIntersectionU = (dAOD<=np.pi)&(dAOA<=np.pi)&(dAOA>dAOD)
-        validIntersectionL = (dAOD>np.pi)&(dAOA>np.pi)&(dAOA<dAOD)
         
-        validIntersection = validIntersectionU|validIntersectionL
-
+        validIntersectionU = (dAOD<=np.pi)&(dAOA<=np.pi)&(dAOA>dAOD)
+        validIntersectionL = (dAOD>np.pi)&(dAOA>np.pi)&(dAOA<dAOD)        
+        return( validIntersectionU | validIntersectionL )
+        
+    
+    def fitDelay(self, txPos, rxPos, aoa, aod):
+        validIntersection = self.checkValidIntersection(txPos, rxPos, aoa, aod)
+        vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])
         TA=np.tan(np.pi-aoa[validIntersection])
         TD=np.tan(aod[validIntersection])
@@ -980,15 +1015,14 @@ class ThreeGPPMultipathChannelModel:
         l0=np.sqrt(rxPos[0]**2+rxPos[1]**2)
 
         tauFix = np.full_like(aoa,fill_value=np.inf)
-        tauFix[validIntersection] = (l-l0)/3e8
-      
+        tauFix[validIntersection] = (l-l0)/3e8      
         xLoc = np.full_like(aoa,fill_value=np.inf)
         xLoc[validIntersection] = x
         yLoc = np.full_like(aoa,fill_value=np.inf)
         yLoc[validIntersection] = y
         return (tauFix,xLoc,yLoc,validIntersection)
            
-    def randomFitParameters(self, txPos, rxPos, dataset, prob):
+    def randomFitFrame(self, txPos, rxPos, dataset, Ps=np.full(4,.25)):
 
         totalSize = dataset.shape[0]
         splitSizes = np.floor(prob * totalSize).astype(int)
@@ -1007,19 +1041,4 @@ class ThreeGPPMultipathChannelModel:
            
         return datasetFix
     
-    def deleteBacklobes(self,tx,rx,df,phi0):
-        
-        vLOS = np.array(rx) - np.array(tx)
-        aoa0 =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0)+np.pi,2*np.pi))*180.0/np.pi
-        
-        aoalim1 = np.mod(aoa0+90+phi0,360.0)
-        aoalim2 = np.mod(aoalim1+180,360.0)
-        
-        df['AOA'] = np.mod(df['AOA'] + phi0, 360.0)        
-        
-        if(aoalim2>aoalim1):
-            dfFix = df[(df['AOA'] >= aoalim1) & (df['AOA'] <= aoalim2)]
-        else:
-            dfFix = df[(df['AOA'] >= aoalim2) & (df['AOA'] <= aoalim1)]
-
-        return dfFix
+    
