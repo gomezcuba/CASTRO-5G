@@ -193,7 +193,7 @@ class ThreeGPPMultipathChannelModel:
                     3.8,
                     11,
                     20,
-                    0,
+                    3.91,
                     2,
                     3,
                     3,
@@ -228,7 +228,7 @@ class ThreeGPPMultipathChannelModel:
                     1.7,
                     10,
                     20,
-                    0,
+                    3.91,
                     2,
                     3,
                     3,
@@ -263,7 +263,7 @@ class ThreeGPPMultipathChannelModel:
                     3.6,
                     15,
                     20,
-                    0,
+                    3.91,
                     5,
                     8,
                     9,
@@ -298,7 +298,7 @@ class ThreeGPPMultipathChannelModel:
                     3,
                     19,
                     20,
-                    0,
+                    3.91,
                     5,
                     11,
                     9,
@@ -333,7 +333,7 @@ class ThreeGPPMultipathChannelModel:
                     3.6,
                     15,
                     20,
-                    0,
+                    3.91,
                     5,
                     8,
                     9,
@@ -368,7 +368,7 @@ class ThreeGPPMultipathChannelModel:
                     3,
                     19,
                     20,
-                    0,
+                    3.91,
                     5,
                     11,
                     9,
@@ -785,48 +785,84 @@ class ThreeGPPMultipathChannelModel:
         aod = clusters['AOD'].T.to_numpy()
         powc = clusters['powC'].T.to_numpy()
         
+        ###############################TAU#########################
 
         Rrx = np.array([[np.sin(zoa) * np.cos(aoa)],
                         [np.sin(zoa) * np.sin(aoa)],
-                        [np.cos(zoa)]])
+                        [np.cos(zoa)]]).transpose(2,1,0)
         Rtx = np.array([[np.sin(zod) * np.cos(aod)],
                         [np.sin(zod) * np.sin(aod)],
-                        [np.cos(zod)]])
-
-        print("tau", tau)
-        print("zoa", zoa)
-        print("aoa", aoa)
-        print("zod", zod)
-        print("aod", aod)
-        print("powc", powc)
+                        [np.cos(zod)]]).transpose(2,1,0)
 
     
+        deltaRxPos = np.reshape(deltaRxPos, (3, 1)) 
+        deltaTxPos = np.reshape(deltaTxPos, (3, 1)) 
         Rrx_array = np.array(Rrx)
         Rtx_array = np.array(Rtx)
-        vr_tx = np.linalg.norm(deltaTxPos)
-        vr_rx = np.linalg.norm(deltaRxPos)
-        print("rrx_array",Rrx_array)
-        print("rtx_array",Rtx_array)
-        print("deltaTXPos", deltaTxPos)
-        print("deltarxpos", deltaRxPos)
-        print("vr_tx", vr_tx)
-        print("vr_rx", vr_rx)
 
+        deltaPos= np.linalg.norm(deltaPos)
         deltaentrec = deltaPos / c
-        print("deltaPos",deltaPos)
-        print("delta/c",deltaentrec)   
-        aux= Rrx_array.T * vr_rx + Rtx_array.T * vr_tx
-        aux2= np.multiply(aux, deltaentrec[:, np.newaxis])
-    
-        tau_nueva = tau[:, np.newaxis,np.newaxis] - aux2
-        print("tau",tau)
-        print("dimension tau antigua",tau.shape)
-        print("tau_nueva",tau_nueva)
-        print("Dimensiones de tau_nueva:", tau_nueva.shape)
-    
+        auxtau= Rrx_array @ deltaRxPos + Rtx_array @ deltaTxPos
+        auxtau2= auxtau * deltaentrec
+        auxtau2 = np.squeeze(auxtau2)
+        tau_nueva = tau - auxtau2
+
+
+        tau_nueva = np.sort( tau_nueva-np.min(tau_nueva) )
+      
+
+
+        ############################AOD#####################3
+        deltaNRxPos = deltaRxPos - deltaTxPos
+        deltaNTxPos = deltaTxPos - deltaRxPos
+
+        phiAoD = np.array([[-np.sin(aod)],
+                        [np.cos(aod)],
+                        [np.zeros_like(aod)]]).transpose(2,0,1)
+        
        
-        clusters =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoa,aod,zoa,zod]).T) 
-    
+        auxAoD1 = deltaNRxPos.T @ phiAoD
+        auxAoD2 = auxAoD1 * deltaentrec
+        auxAoD2 = auxAoD2.squeeze()
+        auxAoD3 = auxAoD2 /(tau_nueva @ np.sin(zod))
+        aodnueva= auxAoD3 + aod
+
+        ###############################ZOD######################3
+        tetaZoD = np.array([[np.cos(zod) * np.cos(aod)],
+                        [np.cos(zod) * np.sin(aod)],
+                        [-np.sin(aod)]]).transpose(2,0,1)
+        
+        auxZoD1 = deltaNRxPos.T @ tetaZoD
+        auxZoD2= auxZoD1 * deltaentrec
+        auxZoD2 = auxZoD2.squeeze()
+        auxZoD3= auxZoD2 / tau_nueva
+        zodnueva = zod + auxZoD3
+
+        ##########################AOA###################3333
+        phiAoA = np.array([[-np.sin(zoa)],
+                        [np.cos(aoa)],
+                        [np.zeros_like(aoa)]]).transpose(2,0,1)
+
+        auxAoA1 = deltaNTxPos.T @ phiAoA
+        auxAoA1 = auxAoA1.squeeze()
+        auxAoA2 = deltaentrec /(tau_nueva @ np.sin(zoa))
+        aoanueva = aoa + auxAoA1 * auxAoA2
+
+        ##################################ZOA#########################
+        tetaZoA = np.array([[np.cos(zoa) * np.cos(aoa)],
+                        [np.cos(zoa) * np.sin(aoa)],
+                        [-np.sin(aoa)]]).transpose(2,0,1)
+      
+        auxZoA1 = deltaNTxPos.T @ tetaZoA
+        auxZoA1= auxZoA1.squeeze()
+        auxZoA2 = auxZoA1 * deltaentrec
+        auxZoA2 = auxZoA2.squeeze()
+        auxZoA3= auxZoA2 / tau_nueva
+        zoanueva = zoa + auxZoA3
+        
+        print("clusters_antes", clusters)
+        clusters =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva,aodnueva,zoanueva,zodnueva]).T) 
+        print("cluster_nuevos", clusters)
         return (clusters, subpaths)
             
         
@@ -873,27 +909,14 @@ class ThreeGPPMultipathChannelModel:
             
         txPosGrid = aPos
         txPosGrid[0:2] = key[0:2] * self.smallCorrDist
-        print("txPos", txPos)
-        print("rxPos", rxPos)
-        print("txPosgrid", txPosGrid)
-
         rxPosGrid = bPos
-        rxPosGrid[0:2] = key[3:4] * self.smallCorrDist
-
-        print("rxPosgrid", rxPosGrid)
+        rxPosGrid[0:2] = key[2:4] * self.smallCorrDist
 
         deltaTxPos = txPos - txPosGrid
-
-        print("deltaTxPos", deltaTxPos)
-
         deltaRxPos = rxPos -rxPosGrid
-
-        print("deltaRxPos", deltaRxPos)
-
         deltaPos = deltaRxPos - deltaTxPos
-        print("deltaPos", deltaPos)
 
-
+    
         if key in self.dChansGenerated:
             print ("Canal a menos de 1 metro")
             clusters, subpaths = self.dChansGenerated[key]
@@ -931,5 +954,7 @@ class ThreeGPPMultipathChannelModel:
             self.dChansGenerated[key] = (clusters,subpaths)
         
         clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaTxPos, deltaRxPos, deltaPos)
+       
+        print(self.dChansGenerated)
         
         return clusters,subpaths
