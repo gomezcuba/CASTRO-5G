@@ -830,11 +830,30 @@ class ThreeGPPMultipathChannelModel:
     ###########################################################################    
        
     def fullFitAOA(self,txPos,rxPos,plinfo,clusters,subpaths):
-        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,clusters.AOD.to_numpy()*np.pi/180,clusters.tau.to_numpy())
+        los,PLconst,sfdB = plinfo
+        if not los and (np.min(clusters.tau)==0):# attempt to rebuild the initial delay of first  NLOStau observation
+            n=np.argmin(clusters.tau)
+            aod=clusters.AOD[n]*np.pi/180
+            aoa=clusters.AOA[n]*np.pi/180
+            if ( self.checkValidIntersection(txPos, rxPos, aoa, aod) ):
+                vLOS = np.array(rxPos) - np.array(txPos)
+                l0 = np.linalg.norm(vLOS[0:-1])
+                TA=np.tan(np.pi-aoa)
+                TD=np.tan(aod)
+                x=((vLOS[1]+vLOS[0]*TA)/(TD+TA))
+                y=x*TD
+                l=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+                tauFix = np.full_like(aoa,fill_value=np.inf)            
+                tauExcess = (l-l0)/3e8         
+            else:
+                tauExcess = 0
+        else:
+            tauExcess = 0
+        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,clusters.AOD.to_numpy()*np.pi/180,clusters.tau.to_numpy()+tauExcess)
         clusters.AOA=aoa_new*180/np.pi
         clusters['Xs']=xloc
         clusters['Ys']=yloc
-        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,subpaths.AOD.to_numpy()*np.pi/180,subpaths.tau.to_numpy())
+        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,subpaths.AOD.to_numpy()*np.pi/180,subpaths.tau.to_numpy()+tauExcess)
         subpaths.AOA=aoa_new*180/np.pi
         subpaths['Xs']=xloc
         subpaths['Ys']=yloc
@@ -905,41 +924,56 @@ class ThreeGPPMultipathChannelModel:
         
         # Datos iniciais - l0, tau0 e aod0
         vLOS = np.array(rxPos) - np.array(txPos)
-        l0 = np.linalg.norm(vLOS[0:-1])
+        l0 = np.linalg.norm(vLOS[0:-1])#TODO introduce d3D to extend to 3D
         losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
                                      
         li = l0 + tau * 3e8
-        dAOD = (aod-losAOD)
+        # dAOD = (aod-losAOD)
         
-        cosdAOD = np.cos(dAOD)
-        sindAOD = np.sin(dAOD)
-        nu = li/l0
+        # cosdAOD = np.cos(dAOD)
+        # sindAOD = np.sin(dAOD)
+        # nu = li/l0
         
-        # Resolvemos:
-        sol1= -sindAOD # xust.matematica overleaf
-        sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
-        sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
-        #Posibles solucions:
-        sols = np.zeros((4,aod.size)) 
-        sols[0,:] = np.arcsin(sol1)
-        sols[1,:] = np.arcsin(sol2)
-        sols[2,:] = np.pi - np.arcsin(sol1)
-        sols[3,:] = np.pi - np.arcsin(sol2)
+        # # Resolvemos:
+        # sol1= -sindAOD # xust.matematica overleaf
+        # sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
+        # sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
+        # #Posibles solucions:
+        # sols = np.zeros((4,aod.size)) 
+        # sols[0,:] = np.arcsin(sol1)
+        # sols[1,:] = np.arcsin(sol2)
+        # sols[2,:] = np.pi - np.arcsin(sol1)
+        # sols[3,:] = np.pi - np.arcsin(sol2)
 
-        #Ubicacion dos rebotes 
-        x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan(aod )-np.tan(losAOD+np.pi-sols))
-        x[1,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
-        x[3,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
-        y=x*np.tan(aod) 
+        # #Ubicacion dos rebotes 
+        # x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan(aod )-np.tan(losAOD+np.pi-sols))
+        # x[1,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
+        # x[3,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
+        # y=x*np.tan(aod) 
 
-        #Mellor solucion - a mais semellante á distancia do path evaluado
-        dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
-        solIndx=np.argmin(np.abs(dist-li),axis=0)
-        aoaAux =sols[solIndx,range(li.size)]
-        aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi)
-        xLoc = x[solIndx,range(li.size)]
-        yLoc = y[solIndx,range(li.size)]
-               
+        # #Mellor solucion - a mais semellante á distancia do path evaluado
+        # dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
+        # solIndx=np.argmin(np.abs(dist-li),axis=0)
+        # aoaAux =sols[solIndx,range(li.size)]
+        # aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi)
+        # xLoc = x[solIndx,range(li.size)]
+        # yLoc = y[solIndx,range(li.size)]
+        
+        # return (aoaFix,xLoc,yLoc)
+        
+        ui = np.column_stack([np.cos(aod),np.sin(aod),np.zeros_like(aod)])#TODO introduce zod to extend to 3D
+        eta =np.where(tau>0,
+                      .5*(li**2-l0**2)/(li-(ui[None,:]@vLOS[:,None]).reshape(-1)),
+                      1e-6)#div0 safeward for LOS case
+        posLoc = eta*ui.T
+        vLOS2 = vLOS
+        vLOS2[2] = 0
+        dOA = posLoc-vLOS2[:,None]
+        aoaFix = np.mod(np.arctan2(dOA[1,:],dOA[0,:]),2*np.pi)
+        xLoc = posLoc[0,:]
+        yLoc = posLoc[1,:]
+        # print(np.max(np.sqrt((posLoc[0,:]-xLoc)**2+(posLoc[1,:]-yLoc)**2)))
+        # print(np.max(np.abs(aoaFix2-aoaFix)))
         return (aoaFix,xLoc,yLoc)
 
     def fitAOD(self, txPos, rxPos, aoa, tau):

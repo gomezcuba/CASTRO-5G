@@ -5,13 +5,14 @@ from matplotlib import cm
 import pandas as pd
 import os
 
-from CASTRO5G import threeGPPMultipathGenerator as mpg
-from CASTRO5G import multipathChannel as mc
+import sys
+sys.path.append('../')
+from CASTRO5G import threeGPPMultipathGenerator as pg
 plt.close('all')
 
 
 txPos=np.array((0,0,10))
-rxPos=np.array((1,0,1.5))
+rxPos=np.array((-10,3,1.5))
 
 vLOS=rxPos-txPos
 l0 = np.linalg.norm(vLOS[0:-1])
@@ -19,7 +20,7 @@ tau0 = l0 / 3e8
 losAOD =np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0),2*np.pi)
 
 
-refPos=np.array((1,1,0))+txPos
+refPos=np.array((-5,1.5,0))+txPos
 AOD=np.mod( np.arctan( refPos[1] / refPos[0] )+np.pi*(refPos[0]<0),2*np.pi)
 
 difPos=refPos-rxPos
@@ -58,3 +59,20 @@ y=x*np.tan( AOD )
 solPos=np.hstack([x,y])
 
 print("Diferencia sols posicion (m):\n %s"%( np.linalg.norm(refPos[0:-1] - solPos,axis=1,keepdims=True) ))
+
+###############################################################################
+# IMPROVED ALGORITHM WITH 3d SUPPORT
+###############################################################################
+d0=vLOS
+#only for the 2D case
+d0[2]=0
+ZOD=0
+#____________
+ui=np.array([np.cos(AOD)*np.cos(ZOD),np.sin(AOD)*np.cos(ZOD),np.sin(ZOD)])
+eta=.5*(li**2-l0**2)/(li-ui[None,:]@vLOS[:,None])
+solPos2=(eta*ui)[0,:]
+print("Diferencia sols2 posicion (m):\n %s"%( np.linalg.norm(refPos[0:-1] - solPos2[0:-1],axis=0,keepdims=True) ))
+
+dOA=solPos2-d0
+solAOA2=np.arctan2(dOA[1],dOA[0])
+print("Diferencia sols2 AOA (º):\n %s"%( ( np.mod(solAOA2,2*np.pi)-AOA )*180/np.pi ))
