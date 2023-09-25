@@ -42,7 +42,7 @@ nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 clustersAD = clustersNAD.copy()
 subpathsAD = subpathsNAD.copy()
 
-(tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.attemptFullFitDelay(tx,rx,plinfo,clustersAD,subpathsAD)
+(tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitClusters(tx,rx,plinfo,clustersAD,subpathsAD,P=[0,.5,.5,0])
 
 #Distancia entre receptor e posición do rebote
 liRX_cA = np.where(clustersAD.Xs<np.inf,np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2),d2D/2)

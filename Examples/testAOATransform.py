@@ -22,6 +22,8 @@ sce = "UMi"
 # Posicións transmisor e receptor
 tx = (0,0,10)
 rx = (45,45,1.5)
+vLOS=np.array(rx)-np.array(tx)
+d2D=np.linalg.norm(vLOS[0:2])
 #Creación de canle- con largeBW e scenario UMi
 modelA = mpg.ThreeGPPMultipathChannelModel(scenario = "UMi", bLargeBandwidthOption=True)
 #Xeramos clusters e subpaths non adaptados:

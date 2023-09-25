@@ -21,10 +21,14 @@ phi0 = 0
 sce = "RMa"
 # Posicións transmisor e receptor
 tx = (0,0,10)
-rx = (45,45,1.5)
+rx = (300,700,1.5)
+txArrayAngle = 45
+rxArrayAngle = -180
+vLOS=np.array(rx)-np.array(tx)
+d2D=np.linalg.norm(vLOS[0:2])
 #Creación de canle- con largeBW e scenario UMi
-modelA = mpg.ThreeGPPMultipathChannelModel(scenario = "UMi", bLargeBandwidthOption=True)
-plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
+# modelA = mpg.ThreeGPPMultipathChannelModel(scenario = "UMi", bLargeBandwidthOption=True)
+# plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
 los, PLfree, SF = plinfo
 nClusters = clustersNAD.shape[0]
 nNLOSsp=subpathsNAD.loc[1,:].shape[0]
@@ -33,14 +37,14 @@ nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 #Creamos unha copia dos clusters e subpaths, e adaptámola:
 clustersAD = clustersNAD.copy()
 subpathsAD = subpathsNAD.copy()
-(tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullDeleteBacklobes(tx,rx,plinfo,clustersAD,subpathsAD,tAOD=45,rAOA=-90)
+(tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullDeleteBacklobes(tx,rx,plinfo,clustersAD,subpathsAD,tAOD=txArrayAngle,rAOA=rxArrayAngle)
 
 #Distancia entre receptor e posición do rebote
-liRX_cA = np.full_like(clustersNAD.AOD,fill_value=25)
-liRX_sA = np.full_like(subpathsNAD.AOD,fill_value=25)
+liRX_cA = np.full_like(clustersNAD.AOD,fill_value=d2D/2)
+liRX_sA = np.full_like(subpathsNAD.AOD,fill_value=d2D/2)
 #Distancia entre transmisor e posicion do rebote
-liTX_cA = np.full_like(clustersNAD.AOD,fill_value=25)
-liTX_sA = np.full_like(subpathsNAD.AOD,fill_value=25)
+liTX_cA = np.full_like(clustersNAD.AOD,fill_value=d2D/2)
+liTX_sA = np.full_like(subpathsNAD.AOD,fill_value=d2D/2)
 
 # ---- Gráfica 1, camiños non adaptados:
 
@@ -109,7 +113,7 @@ plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
-for i in range(0,clustersAD.shape[0]): 
+for ctr in range(0,clustersAD.shape[0]): 
     i=clustersAD.index[ctr]
     Nsp=subpathsAD.AOD[i].size
     plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sA[i]*np.cos(subpathsAD.AOD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sA[i]*np.sin(subpathsAD.AOD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
@@ -132,6 +136,7 @@ for n in range(nClusters):
     plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
     plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize = 7)
+plt.fill_between(np.linspace(np.pi/2,3*np.pi/2)+txArrayAngle*np.pi/180,-45,-10,alpha=0.2, color='k')
 plt.subplot(2,2,2, projection='polar')
 for n in range(nClusters):  
     AOA_1cf = subpathsNAD.loc[n,:].AOA.to_numpy() *np.pi/180
@@ -140,6 +145,7 @@ for n in range(nClusters):
     plt.polar(AOA_1cf*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
     plt.scatter(AOA_1cf,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='+')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize=7)
+plt.fill_between(np.linspace(np.pi/2,3*np.pi/2)+rxArrayAngle*np.pi/180,-45,-10,alpha=0.2, color='k')
 plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
 plt.xlabel("TDoA (s)")
@@ -165,18 +171,22 @@ for ct in range(clustersAD.shape[0]):
     plt.polar(AOD_1c*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
     plt.scatter(AOD_1c,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='<')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize = 7)
+plt.fill_between(np.linspace(np.pi/2,3*np.pi/2)+txArrayAngle*np.pi/180,-45,-10,alpha=0.2, color='k')
 plt.subplot(2,2,2, projection='polar')
-for n in range(nClusters):  
+for ct in range(clustersAD.shape[0]):
+    n=clustersAD.index[ct]
     AOA_1cf = subpathsAD.loc[n,:].AOA.to_numpy() *np.pi/180
     pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathsAD.loc[n,:].P.to_numpy()  ),-45)
     Nsp=len(AOA_1cf)
     plt.polar(AOA_1cf*np.ones((2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_1c]),':',color=cm.jet(n/(nClusters-1)) )
     plt.scatter(AOA_1cf,pathAmplitudesdBtrunc25_1c,color=cm.jet(n/(nClusters-1)),marker='+')
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize=7)
+plt.fill_between(np.linspace(np.pi/2,3*np.pi/2)+rxArrayAngle*np.pi/180,-45,-10,alpha=0.2, color='k')
 plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
 plt.xlabel("TDoA (s)")
-for n in range(nClusters):   
+for ct in range(clustersAD.shape[0]):
+    n=clustersAD.index[ct]
     markerline, stemlines, baseline = plt.stem( subpathsAD.loc[n,:].tau.to_numpy() ,10*np.log10( subpathsAD.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpathsAD.P.to_numpy())))
     plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 

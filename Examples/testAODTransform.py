@@ -17,7 +17,9 @@ fig_ctr = 0
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
-rx = (30,40,1.5)
+rx = (80,60,1.5)
+vLOS=np.array(rx)-np.array(tx)
+d2D=np.linalg.norm(vLOS[0:2])
 phi0 = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
@@ -31,6 +33,7 @@ sce = "UMa"
 modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
 plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
 los, PLfree, SF = plinfo
+print("LOS ",los)
 nClusters = clustersNAD.shape[0]
 nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 
