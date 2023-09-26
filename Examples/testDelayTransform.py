@@ -44,12 +44,13 @@ subpathsAD = subpathsNAD.copy()
 
 (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.attemptFullFitDelay(tx,rx,plinfo,clustersAD,subpathsAD)
 
+
 #Distancia entre receptor e posición do rebote
-liRX_cA = np.where(clustersAD.Xs<np.inf,np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2),d2D/2)
-liRX_sA = np.where(subpathsAD.Xs<np.inf,np.sqrt((subpathsAD.Xs-rx[0])**2+(subpathsAD.Ys - rx[1])**2),d2D/2)
+liRX_cA = np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2).where(clustersAD.Xs<np.inf,d2D/2)
+liRX_sA = np.sqrt((subpathsAD.Xs-rx[0])**2+(subpathsAD.Ys - rx[1])**2).where(subpathsAD.Xs<np.inf,d2D/2)
 #Distancia entre transmisor e posicion do rebote
-liTX_cA = np.where(clustersAD.Xs<np.inf,np.sqrt((clustersAD.Xs)**2+(clustersAD.Ys)**2),d2D/2)
-liTX_sA = np.where(subpathsAD.Xs<np.inf,np.sqrt((subpathsAD.Xs)**2+(subpathsAD.Ys)**2),d2D/2)
+liTX_cA = np.sqrt((clustersAD.Xs)**2+(clustersAD.Ys)**2).where(clustersAD.Xs<np.inf,d2D/2)
+liTX_sA = np.sqrt((subpathsAD.Xs)**2+(subpathsAD.Ys)**2).where(subpathsAD.Xs<np.inf,d2D/2)
 
 
 # ---- Gráfica 1, camiños non adaptados:

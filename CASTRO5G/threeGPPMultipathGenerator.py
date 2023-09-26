@@ -866,6 +866,36 @@ class ThreeGPPMultipathChannelModel:
             
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
+    def randomFitAllSubpaths(self, txPos, rxPos,plinfo,clusters,subpaths,P=np.full(4,.25)):
+        #P=[Pnot,Paoa,Paod,Ptau]  
+        P=np.array(P)#safety to permit tuple, list and dataframe as input
+        transformIndex=self.chooseRandomTransform(txPos, rxPos, clusters, P)        
+        (indexNot,indexAoA,indexAoD,indexTau)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
+        tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
+        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexTau)
+        
+        transformIndex=self.chooseRandomTransform(txPos, rxPos, subpaths, P)        
+        (indexNot,indexAoA,indexAoD,indexTau)= self.getIndicesSubgroups(subpaths,transformIndex,maxG=4)
+        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexTau)
+        
+        return(txPos,rxPos,plinfo,clusters,subpaths)    
+            
+    def randomFitEpctClusters(self, txPos, rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=np.full(4,.25)):
+        #P=[Pnot,Paoa,Paod,Ptau]        
+        P=np.array(P)#safety to permit tuple, list and dataframe as input
+        transformRandom=self.chooseRandomTransform(txPos, rxPos, clusters, P)   
+        transformEnergy=self.chooseEnergyPctileGlobal(clusters, Ec)
+        transformIndex=transformEnergy*transformRandom
+        (indexNot,indexAoA,indexAoD,indexTau)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
+        tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
+        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexTau)
+        transformEnergySubpaths=self.chooseEnergyPctileGlobal(clusters, Ec)
+        transformBroadcastClusters=transformIndex.reindex(index=transformEnergySubpaths,level=0)
+        transformIndexSubpaths=transformEnergySubpaths*transformBroadcastClusters
+        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexTau)
+        return(txPos,rxPos,plinfo,clusters,subpaths)
+        
+    
     def fullDeleteBacklobes(self,txPos,rxPos,plinfo,clusters,subpaths,tAOD=0,rAOA=180):
         tAODmin=np.mod(tAOD-90,360.0)
         tAODmax=np.mod(tAOD+90,360.0)
@@ -899,47 +929,37 @@ class ThreeGPPMultipathChannelModel:
         sValid = sAODValid & sAOAValid
         subpaths = subpaths[sValid]
         return (txPos,rxPos,plinfo,clusters,subpaths)
-    
-    def randomFitClusters(self, txPos, rxPos,plinfo,clusters,subpaths,P=np.full(4,.25)):
-        #P=[Pnot,Paoa,Paod,Ptau]        
-        P=np.array(P)#safety to permit tuple, list and dataframe as input
-        transformIndex=self.chooseRandomTransform(txPos, rxPos, clusters, P)        
-        # indexNot=clusters.index[transformIndex==0]
-        indexAoA=clusters.index[transformIndex==1]
-        indexAoD=clusters.index[transformIndex==2]
-        indexTau=clusters.index[transformIndex==3]
-        tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
-        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexTau)
-        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexTau)
-        return(txPos,rxPos,plinfo,clusters,subpaths)
-    def randomFitSubpaths(self, txPos, rxPos,plinfo,clusters,subpaths,P=np.full(4,.25)):
-        #P=[Pnot,Paoa,Paod,Ptau]  
-        P=np.array(P)#safety to permit tuple, list and dataframe as input
-        transformIndex=self.chooseRandomTransform(txPos, rxPos, clusters, P)        
-        # indexNot=clusters.index[transformIndex==0]
-        indexAoA=clusters.index[transformIndex==1]
-        indexAoD=clusters.index[transformIndex==2]
-        indexTau=clusters.index[transformIndex==3]
-        tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
-        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexTau)
         
-        transformIndex=self.chooseRandomTransform(txPos, rxPos, subpaths, P)        
-        # indexNot=subpaths.index[transformIndex==0]
-        indexAoA=subpaths.index[transformIndex==1]
-        indexAoD=subpaths.index[transformIndex==2]
-        indexTau=subpaths.index[transformIndex==3]
-        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexTau)
-        
-        return(txPos,rxPos,plinfo,clusters,subpaths)
-            
     ###########################################################################
     # auxiliary functions. Contain actual post-processing logic and algorithms
     ###########################################################################
     
-    def chooseRandomTransform(self,txPos,rxPos,data,P):        
+    def getIndicesSubgroups(self,data,vGroupIndex,maxG=None):
+        # Forms Ng non-overlapping groups with dataframe Data,
+        # returns only indices of each group so storage is fast (in place no copy)
+        # vGroupIndex is a vector of integers from 0 to Ng-1
+        # example: vector [0 1 2 0 2 2 1 0] returns
+        # Indices of data elements 0, 2 and 7 for group 0
+        # Indices of data elements 1, and 6 for group 1
+        # Indices of data elements 2, 4 and 5 for group 
+        # if maxG is None, implied group sets. otherwise range(maxG)
+        lResult = []
+        if maxG:
+            groups=range(maxG)
+        else:
+            groups = np.unique(vGroupIndex)
+        for g in groups:
+            lResult.append(data.index[vGroupIndex==g])
+        return(tuple(lResult))   
+    
+    def chooseRandomTransform(self,txPos,rxPos,data,P):
+        # Forms a group index vector with random probability P such that
+        # P(group n) = P[n]
+        # The last group, with P[-1], only admits paths with a valid intersection
+        # for delay adaptation. Bayes is applied to guarantee global probability
         validIntersection = self.checkValidIntersection(txPos,rxPos,data.AOA*np.pi/180,data.AOD*np.pi/180).to_numpy()
         PV = np.sum(validIntersection)/data.shape[0]#prob adapt tau is valid
-        PtauCV=P[3]/PV# P (adapt tau | valid)
+        PtauCV=np.minimum(P[3]/PV,1)# P (adapt tau | valid)
         PothersCV=(1-PtauCV) * P[0:3] /(np.sum(P[0:3]))# P ( others | valid)
         PCV=np.concatenate([PothersCV,[PtauCV]])
         PtauCN=0# P (adapt tau | not valid) = 0
@@ -954,14 +974,24 @@ class ThreeGPPMultipathChannelModel:
         #else
             np.digitize(r,np.cumsum(PCN)),
             )
-        return(transformIndex)
-    def chooseEnergyPctileTransform(self,data,E):
-        srtdP = data.P.sort_values(ascending=False)
-        lastN = np.digitize(.7,np.cumsum(srtdP))
-        indOnes=srtdP.index.iloc[0:lastN+1]
-        transformIndex=np.zeros_like(data.P)
-        transformInex[indOnes]=1
-        return(transformIndex)
+        return(pd.Series(transformIndex,index=data.index))     
+        
+    def chooseEnergyPctileGlobal(self,data,E):
+        # Forms a group index vector such that the strongest paths with sum
+        # power sum_n(P[n])>E are in group 1 and the rest in group 0.
+        # Thus enabling a boolean mask on other vectors.
+        srtdP = data.P.sort_values(ascending=True)
+        transformIndex = (srtdP.cumsum()/srtdP.sum())>(1-E)
+        return(transformIndex.sort_index())
+    def chooseEnergyPctileGroups(self,data,E):
+        # Forms a group index vector such that the strongest paths with sum
+        # power sum_m(P[n,m])>E for each n are in group 1 and the rest in 0
+        # Applies separately to each value of level 0 of the data index,
+        # thus enabling a boolean mask on other vectors.
+        srtdP = data.P.sort_values(ascending=True)
+        grpdP = srtdP.groupby(level=0)
+        transformIndex = (grpdP.cumsum()/grpdP.sum())>(1-E)
+        return(transformIndex.sort_index())
     
     def applyMultiTransform(self,txPos,rxPos,data,tauOffset,indexAoA,indexAoD,indexTau):        
         data['Xs']=np.full_like(data.tau,fill_value=np.inf)
@@ -1015,7 +1045,7 @@ class ThreeGPPMultipathChannelModel:
         # Datos iniciais - l0, tau0 e aod0
         vLOS = np.array(rxPos) - np.array(txPos)
         l0 = np.linalg.norm(vLOS[0:-1])#TODO introduce d3D to extend to 3D
-        losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
+        # losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
                                      
         li = l0 + tau * 3e8
         # dAOD = (aod-losAOD)

@@ -14,6 +14,11 @@ fig_ctr = 0
 
 """ Banco de gráficas e tests exclusivo da función fitAOD (e correción de backlobes se corresponde)"""
 
+# Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
+
+sce = "UMi"
+transform = "CERandom"
+
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
@@ -21,10 +26,6 @@ rx = (45,45,1.5)
 vLOS=np.array(rx)-np.array(tx)
 d2D=np.linalg.norm(vLOS[0:2])
 phi0 = 0
-
-# Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
-
-sce = "UMi"
 
 # ----------------------------
 # ---- Canle A, largeBW = true
@@ -42,15 +43,33 @@ nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 clustersAD = clustersNAD.copy()
 subpathsAD = subpathsNAD.copy()
 
-(tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitClusters(tx,rx,plinfo,clustersAD,subpathsAD,P=[0,.5,.5,0])
+if transform == "AOA":
+    (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOA(tx,rx,plinfo,clustersAD,subpathsAD)
+elif transform == "AOD":
+    (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOD(tx,rx,plinfo,clustersAD,subpathsAD)
+elif transform == "Delay":
+    (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.attemptFullFitDelay(tx,rx,plinfo,clustersAD,subpathsAD)
+elif transform == "Random":
+    (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,E=1,P=[0,1/3,1/3,1/3])
+elif transform == "SRandom":
+    (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitAllSubpaths(tx,rx,plinfo,clustersAD,subpathsAD,P=[0,1/3,1/3,1/3])
+elif transform == "CERandom":
+    (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.5,Es=1,P=[0,.5,.5,0])
+elif transform == "SERandom":
+    (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=1,Es=.5,P=[0,.5,.5,0])
+# elif transform == "SP75":
+# elif transform == "proposed":
+else:
+    print("Transform '",transform,"' not supported")
+    
+    
 
 #Distancia entre receptor e posición do rebote
-liRX_cA = np.where(clustersAD.Xs<np.inf,np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2),d2D/2)
-liRX_sA = np.where(subpathsAD.Xs<np.inf,np.sqrt((subpathsAD.Xs-rx[0])**2+(subpathsAD.Ys - rx[1])**2),d2D/2)
+liRX_cA = np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2).where(clustersAD.Xs<np.inf,d2D/2)
+liRX_sA = np.sqrt((subpathsAD.Xs-rx[0])**2+(subpathsAD.Ys - rx[1])**2).where(subpathsAD.Xs<np.inf,d2D/2)
 #Distancia entre transmisor e posicion do rebote
-liTX_cA = np.where(clustersAD.Xs<np.inf,np.sqrt((clustersAD.Xs)**2+(clustersAD.Ys)**2),d2D/2)
-liTX_sA = np.where(subpathsAD.Xs<np.inf,np.sqrt((subpathsAD.Xs)**2+(subpathsAD.Ys)**2),d2D/2)
-
+liTX_cA = np.sqrt((clustersAD.Xs)**2+(clustersAD.Ys)**2).where(clustersAD.Xs<np.inf,d2D/2)
+liTX_sA = np.sqrt((subpathsAD.Xs)**2+(subpathsAD.Ys)**2).where(subpathsAD.Xs<np.inf,d2D/2)
 
 # ---- Gráfica 1, camiños non adaptados:
 
@@ -69,7 +88,7 @@ plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.savefig("../Figures/fitDelay_clusNAD.png")
+plt.savefig("../Figures/fit%s_clusNAD.png"%(transform))
 
 
 #Gráfica 2 - Camiños clusters adaptados 
@@ -90,7 +109,7 @@ plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.savefig("../Figures/fitDelay_clusAD.png")
+plt.savefig("../Figures/fit%s_clusAD.png"%(transform))
 
 # Gráfica 3 - Subpaths non adaptados
 
@@ -109,8 +128,9 @@ for i in range(0,nClusters):
 plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 legend = plt.legend(shadow=True, fontsize='10')
-
-plt.savefig("../Figures/fitDelay_subpNAD.png")
+if transform == "Delay":
+    plt.axis([-d2D+vLOS[0]/2,d2D+vLOS[0]/2,-d2D+vLOS[1]/2,d2D+vLOS[1]/2])
+plt.savefig("../Figures/fit%s_subpNAD.png"%(transform))
 
 # Gráfica 4 - Subpaths adaptados
 
@@ -123,14 +143,14 @@ plt.ylabel('y-location (m)')
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 plt.plot(subpathsAD.Xs,subpathsAD.Ys,'xk',label='S. Scatterers')
 for i in range(0,nClusters): 
-    Nsp=subpathsNAD.AOD[i].size
+    Nsp=subpathsAD.AOD[i].size
     plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sA[i]*np.cos(subpathsAD.AOD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sA[i]*np.sin(subpathsAD.AOD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
     plt.plot(rx[0]+np.vstack([np.zeros(Nsp),liRX_sA[i]*np.cos(subpathsAD.AOA[i]*np.pi/180)]),rx[1]+np.vstack([np.zeros(Nsp),liRX_sA[i]*np.sin(subpathsAD.AOA[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
 plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.savefig("../Figures/fitDelay_subpAD.png")
+plt.savefig("../Figures/fit%s_subpAD.png"%(transform))
 
 # Gráfica 5: Deck de subpaths AOD, AOA e delay non correxido
 
@@ -161,7 +181,7 @@ for n in range(nClusters):
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()
 
-plt.savefig("../Figures/fitDelay_decknoAD.png")
+plt.savefig("../Figures/fit%s_deckNAD.png"%(transform))
 
 
 # Gráfica 6: Deck de subpaths AOD, AOA e delay correxido
@@ -193,4 +213,5 @@ for n in range(nClusters):
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()
 
+plt.savefig("../Figures/fit%s_deckNAD.png"%(transform))
 
