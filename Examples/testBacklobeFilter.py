@@ -27,8 +27,8 @@ rxArrayAngle = -180
 vLOS=np.array(rx)-np.array(tx)
 d2D=np.linalg.norm(vLOS[0:2])
 #Creación de canle- con largeBW e scenario UMi
-# modelA = mpg.ThreeGPPMultipathChannelModel(scenario = "UMi", bLargeBandwidthOption=True)
-# plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
+modelA = mpg.ThreeGPPMultipathChannelModel(scenario = "UMi", bLargeBandwidthOption=True)
+plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
 los, PLfree, SF = plinfo
 nClusters = clustersNAD.shape[0]
 nNLOSsp=subpathsNAD.loc[1,:].shape[0]

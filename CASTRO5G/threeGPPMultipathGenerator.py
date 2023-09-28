@@ -889,8 +889,8 @@ class ThreeGPPMultipathChannelModel:
         (indexNot,indexAoA,indexAoD,indexTau)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
         clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexTau)
-        transformEnergySubpaths=self.chooseEnergyPctileGlobal(clusters, Ec)
-        transformBroadcastClusters=transformIndex.reindex(index=transformEnergySubpaths,level=0)
+        transformEnergySubpaths=self.chooseEnergyPctileGroups(clusters, Es)
+        transformBroadcastClusters=transformIndex.reindex(index=transformEnergySubpaths.index,level=0)
         transformIndexSubpaths=transformEnergySubpaths*transformBroadcastClusters
         subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexTau)
         return(txPos,rxPos,plinfo,clusters,subpaths)
