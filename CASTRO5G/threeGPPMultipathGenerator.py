@@ -902,19 +902,20 @@ class ThreeGPPMultipathChannelModel:
         rAOAmin=np.mod(rAOA-90,360.0)
         rAOAmax=np.mod(rAOA+90,360.0)        
         
-        cAOD = np.mod(clusters.AOD,360.0)
-        cAOA = np.mod(clusters.AOA,360.0)
-        # cAODValid=(np.mod(cAOD-tAODmin,360)<np.mod(tAODmax-tAODmin,360))
-        if tAODmin<tAODmax:
-            cAODValid = (cAOD>tAODmin)&(cAOD<tAODmax)
-        else:
-            cAODValid = (cAOD<tAODmax)|(cAOD>tAODmin)
-        if rAOAmin<rAOAmax:
-            cAOAValid = (cAOA>rAOAmin)&(cAOA<rAOAmax)
-        else:
-            cAOAValid = (cAOA<rAOAmax)|(cAOA>rAOAmin)
-        cValid = cAODValid & cAOAValid
-        clusters = clusters[cValid]       
+        ## DEPRECATED cluster validity independently of subpaths
+        # cAOD = np.mod(clusters.AOD,360.0)
+        # cAOA = np.mod(clusters.AOA,360.0)
+        # # cAODValid=(np.mod(cAOD-tAODmin,360)<np.mod(tAODmax-tAODmin,360))
+        # if tAODmin<tAODmax:
+        #     cAODValid = (cAOD>tAODmin)&(cAOD<tAODmax)
+        # else:
+        #     cAODValid = (cAOD<tAODmax)|(cAOD>tAODmin)
+        # if rAOAmin<rAOAmax:
+        #     cAOAValid = (cAOA>rAOAmin)&(cAOA<rAOAmax)
+        # else:
+        #     cAOAValid = (cAOA<rAOAmax)|(cAOA>rAOAmin)
+        # cValid = cAODValid & cAOAValid
+        # clusters = clusters[cValid]       
         
         sAOD = np.mod(subpaths.AOD,360.0)
         sAOA = np.mod(subpaths.AOA,360.0)
@@ -928,6 +929,9 @@ class ThreeGPPMultipathChannelModel:
             sAOAValid = (sAOA<rAOAmax)|(sAOA>rAOAmin)
         sValid = sAODValid & sAOAValid
         subpaths = subpaths[sValid]
+        #a cluster remains valid if any of its subpaths is valid
+        cValid = [x in subpaths.index.get_level_values(0) for x in clusters.index]
+        clusters = clusters[cValid]       
         return (txPos,rxPos,plinfo,clusters,subpaths)
         
     ###########################################################################
