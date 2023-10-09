@@ -10,11 +10,13 @@ import os
 import sys
 import argparse
 plt.close('all')
-import MultipathLocationEstimator as mploc
-import threeGPPMultipathGenerator as mp3g
-import multipathChannel as ch
-import OMPCachedRunner as oc
-import MIMOPilotChannel as pil
+import sys
+sys.path.append('../')
+from CASTRO5G import  MultipathLocationEstimator as mploc
+from CASTRO5G import  threeGPPMultipathGenerator as mp3g
+from CASTRO5G import multipathChannel as ch
+from CASTRO5G import  OMPCachedRunner as oc
+import  MIMOPilotChannel as pil
 
 def fUPA( incidAngle , Nant = 16, dInterElement = .5):
     return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)

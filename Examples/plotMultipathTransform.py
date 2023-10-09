@@ -7,7 +7,6 @@ import pandas as pd
 import sys
 sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as mpg
-from CASTRO5G import multipathChannel as mc
 plt.close('all')
 
 fig_ctr = 0
