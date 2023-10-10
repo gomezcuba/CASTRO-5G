@@ -56,8 +56,11 @@ parser.add_argument('--print', help='Save plot files in eps to results folder', 
 #parser.add_argument('-ymin',type=int,help='Simulation model y-axis min. size coordinate (meters from the origin)')
 #refine to make it consistent before reestructuring all this code
 
+# args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
+
+
 #args = parser.parse_args("-N 5 -S 7 -D -G 3gpp --noerror --label test --show --print".split(' '))
-args = parser.parse_args("-N 10 -G Geo:20 --noerror -D=32:32:32,64:64:64,128:128:128 --label test --show --print --cdf=no:0:0:0,dic:64:64:64 --pcl=D:80".split(' '))
+args = parser.parse_args("-N 1000 --nompg --noloc -G Geo:20 --noerror -D=inf:64:inf,inf:256:inf,inf:1024:inf --label test --show --print --cdf=no:0:0:0,dic:inf:256:inf --pcl=dic:80".split(' '))
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
 # numero de simulacions
@@ -111,9 +114,9 @@ else:
 NlocAlg =len(lLocAlgs)
 
 if args.label:
-    outfoldername="./MPRayLocresults%s"%(args.label)
+    outfoldername="../Results/MPRayLocresults%s"%(args.label)
 else:
-    outfoldername="./MPRayLocresults-%d-%d-%s"%(NerrMod,Nsims,mpgen)
+    outfoldername="../Results/MPRayLocresults-%d-%d-%s"%(NerrMod,Nsims,mpgen)
 if not os.path.isdir(outfoldername):
     os.mkdir(outfoldername)
 
@@ -183,6 +186,8 @@ else:
         aoa = np.zeros((Npath,Nsims))
         x = np.zeros((Npath,Nsims))
         y = np.zeros((Npath,Nsims))
+        bar = Bar("Generating %d 3GPP multipath channels"%(Nsims), max=Nsims)
+        bar.check_tty = False
         for n in range(Nsims):
             rxPos = (x0[n],y0[n],1.5)
             plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)            
@@ -194,6 +199,8 @@ else:
             aoa[0:nvalid[n],n] = np.mod( subpaths.AOA*np.pi/180 ,2*np.pi)
             x[0:nvalid[n],n] = subpaths.Xs
             y[0:nvalid[n],n] = subpaths.Ys
+            bar.next()
+        bar.finish()
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
     
@@ -342,11 +349,14 @@ if args.cdf:
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
             plt.semilogx(np.percentile(location_error[nc,indErr,~np.isnan(location_error[nc,indErr,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)        
         plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
-        Ts = loc.getTParamToLoc(x0,y0,tauE,aoa0,x,y,['dDAoA'],['dx0','dy0'])
-        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2)))
+        Ts = loc.getTParamToLoc(x0,y0,tau0+tauE,aoa0,x,y,['dDAoA',],['dx0','dy0'])
+        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2))) * (Npath*Nsims)/np.sum(nvalid)
         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-        errorCRLB = np.array([np.sqrt(varaoaDist*np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
-        plt.semilogx(np.percentile(errorCRLB,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
+        errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
+        plt.semilogx(np.percentile(np.sqrt(varaoaDist)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
+        # if lErrMod[indErr][0]=='dic':
+        #     Nrant=float(lErrMod[indErr][2])
+            # plt.semilogx(np.percentile(np.sqrt((np.pi/Nrant)**2/12)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
         plt.xlabel('Location error(m)')
         plt.ylabel('C.D.F.')
         plt.legend()
@@ -356,7 +366,8 @@ if args.cdf:
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
-            plt.semilogx(np.percentile(mapping_error[nc,indErr,~np.isnan(mapping_error[nc,indErr,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
+            mapping_error_data_valid = mapping_error[nc,indErr,(~np.isnan(mapping_error[nc,indErr,:]))&(~np.isinf(mapping_error[nc,indErr,:]))]
+            plt.semilogx(np.percentile(mapping_error_data_valid,np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
         plt.semilogx(np.percentile(map_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
         plt.xlabel('Mapping error(m)')
         plt.ylabel('C.D.F.')
@@ -368,11 +379,11 @@ if args.cdf:
 if args.pcl:
     lPCL =[
         tuple(case.split(':'))
-        for case in args.cdf.split(',')
+        for case in args.pcl.split(',')
     ]
     
     for pcl in lPCL:
-        Pctl = pcl[1]
+        Pctl = float(pcl[1])
         errType = pcl[0]
         errCaseMask=[x[0]==errType for x in lErrMod]
         errLabels=[ "%s:%s:%s"%(x[1:]) for x in lErrMod if x[0]==errType]
@@ -381,13 +392,30 @@ if args.pcl:
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
-            plt.loglog(np.arange(len(errLabels)),np.percentile(location_error[nc,errCaseMask,:],Pctl,axis=1),line+marker+color,label=caseStr)
-        plt.loglog(errTics,np.ones_like(errTics)*np.percentile(error_dumb,80),':k',label="random guess")
+            plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[nc,errCaseMask,:],Pctl,axis=1),line+marker+color,label=caseStr)
+        plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(error_dumb,80),':k',label="random guess")
+        Ts = loc.getTParamToLoc(x0,y0,tauE+tau0,aoa0,x,y,['dDAoA'],['dx0','dy0'])
+        M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
+        errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
+        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2))
+#        plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*varaoaDist,'--k',label="$\\sim$ CRLB")      
+        lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
+        plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
+        plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel('Channel Error')
         plt.ylabel('%.1f\%%tile location error(m)'%(Pctl))
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+'/err_vs_%s.eps'%(errType))
+            
+            
+#         Ts = loc.getTParamToLoc(x0,y0,tauE,aoa0,x,y,['dAoA'],['dx0','dy0'])
+#         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
+#         errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
+#         varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2)),axis=(1,2))
+# #        plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*varaoaDist,'--k',label="$\\sim$ CRLB")       
+#         plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB") 
+            
 #     
 # if args.S:    
 #     fig_ctr=fig_ctr+1

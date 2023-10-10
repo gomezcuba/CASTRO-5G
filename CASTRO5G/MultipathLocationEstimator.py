@@ -651,12 +651,12 @@ class MultipathLocationEstimator:
         
     def getTParamToLoc(self,x0,y0,tauE,AoA0,x,y,dAxes,vAxes):
         dfun={
-            ('dTau','dx0') : lambda x0,y0,x,y: x0/3e-1/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            ('dTau','dy0') : lambda x0,y0,x,y: y0/3e-1/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dTau','dx0') : lambda x0,y0,x,y: x0/3e8/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            ('dTau','dy0') : lambda x0,y0,x,y: y0/3e8/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
             ('dTau','dTauE') : lambda x0,y0,x,y: -np.ones_like(x[:,None,:]),
             ('dTau','dAoA0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dTau','dx') : lambda x0,y0,x,y: ((x[:,None,:]==x)*x)/3e-1*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
-            ('dTau','dy') : lambda x0,y0,x,y: ((y[:,None,:]==y)*y)/3e-1*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
+            ('dTau','dx') : lambda x0,y0,x,y: ((x[:,None,:]==x)*x)/3e8*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
+            ('dTau','dy') : lambda x0,y0,x,y: ((y[:,None,:]==y)*y)/3e8*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
             
             ('dAoD','dx0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
             ('dAoD','dy0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),

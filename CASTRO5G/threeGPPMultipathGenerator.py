@@ -1024,9 +1024,9 @@ class ThreeGPPMultipathChannelModel:
             aoa=sortclt.iloc[ctr].AOA*np.pi/180
             #find the first cluster which can be leveraged to reconstruct clock offset
             while (( not self.checkValidIntersection(txPos, rxPos, aoa , aod ) ) and (ctr < sortclt.shape[0]) ):
-                ctr += 1
                 aod=sortclt.iloc[ctr].AOD*np.pi/180
                 aoa=sortclt.iloc[ctr].AOA*np.pi/180
+                ctr=ctr+1
             if (ctr < sortclt.shape[0]):
                 vLOS = np.array(rxPos) - np.array(txPos)
                 #TODO 3D extension
@@ -1039,7 +1039,7 @@ class ThreeGPPMultipathChannelModel:
                 l=lD+lA+np.linalg.norm(lA*uiA+vLOS2-lD*uiD)
                 l0 = np.linalg.norm(vLOS[0:-1])            
                 #consider the cluster already-reported delay in the clock offset
-                return( (l-l0)/3e8 - sortclt.iloc[ctr].tau )
+                return( (l-l0)/3e8 - sortclt.iloc[ctr].tau )            
             #else
         #else
         return(0)
