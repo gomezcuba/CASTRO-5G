@@ -58,7 +58,6 @@ parser.add_argument('--print', help='Save plot files in eps to results folder', 
 
 # args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
-
 #args = parser.parse_args("-N 5 -S 7 -D -G 3gpp --noerror --label test --show --print".split(' '))
 args = parser.parse_args("-N 1000 --nompg --noloc -G Geo:20 --noerror -D=inf:64:inf,inf:256:inf,inf:1024:inf --label test --show --print --cdf=no:0:0:0,dic:inf:256:inf --pcl=dic:80".split(' '))
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
@@ -140,11 +139,12 @@ if args.nompg:
     aoa=data["aoa"]
     c=3e8
     tau0=y0/np.sin(aod0)/c
-    tau=data["tau"]
+    tdoa=data["tdoa"]
     tauE=data["tauE"]
     aod_est=data["aod_est"]
     aoa_est=data["aoa_est"]
     tau_est=data["tau_est"]
+    nvalid=data["nvalid"]
     (Npath,Nsims)=x.shape
 else:        
     t_start_gen=time.time()
@@ -243,11 +243,12 @@ else:
                  aod=aod,
                  aoa0=aoa0,
                  aoa=aoa,
-                 tau=tau,
+                 tdoa=tdoa,
                  tauE=tauE,
                  aod_est=aod_est,
                  aoa_est=aoa_est,
-                 tau_est=tau_est)
+                 tau_est=tau_est,
+                 nvalid=nvalid)
     print("Total Multipath Estimation Time:%s seconds"%(time.time()-t_start_gen))
 
 if args.noloc: 
@@ -311,7 +312,7 @@ else:
 location_error=np.sqrt(np.abs(x0-x0_est)**2+np.abs(y0-y0_est)**2)
 mapping_error=np.sqrt(np.abs(x-x_est)**2+np.abs(y-y_est)**2) 
 mapping_error[:,:,x==0]=np.inf#fix better
-tauE_err = np.abs(tauE_est+(tauE-tau0))
+tauE_err = np.abs(tauE_est+tauE)
 aoa0_err=np.abs(aoa0-aoa0_est)*180/np.pi
 x0_dumb=np.random.rand(Nsims)*(Xmax-Xmin)+Xmin
 y0_dumb=np.random.rand(Nsims)*(Ymax-Ymin)+Ymin
@@ -343,6 +344,7 @@ if args.cdf:
     ]
     for cdf in lCDF:
         indErr = lErrMod.index(cdf)
+        
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
@@ -362,6 +364,7 @@ if args.cdf:
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+('/cdflocerr_%s-%s-%s-%s.eps'%tuple(cdf)))
+            
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
@@ -398,15 +401,45 @@ if args.pcl:
         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
         errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
         varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2))
-#        plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*varaoaDist,'--k',label="$\\sim$ CRLB")      
-        lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
-        plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
+        plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt(varaoaDist),'--k',label="$\\sim$ CRLB")      
+        # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
+        # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel('Channel Error')
         plt.ylabel('%.1f\%%tile location error(m)'%(Pctl))
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+'/err_vs_%s.eps'%(errType))
+        fig_ctr=fig_ctr+1
+        plt.figure(fig_ctr)
+        for nc in range(NlocAlg):
+            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            plt.semilogy(np.arange(len(errLabels)),np.percentile(mapping_error[nc,errCaseMask,:,:],Pctl,axis=(1,2)),line+marker+color,label=caseStr)
+        plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(map_dumb,80),':k',label="random guess")
+        Ts = loc.getTParamToLoc(x0,y0,tauE+tau0,aoa0,x,y,['dDAoA'],['dx','dy'])
+        M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
+        errorCRLBnormalized = np.array([np.sqrt((1/Npath)*np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2*Npath),rcond=None)[0])) for n in range(M.shape[0])])
+        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2))
+        plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt(varaoaDist),'--k',label="$\\sim$ CRLB")      
+        # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
+        # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
+        plt.xticks(ticks=errTics,labels=errLabels)
+        plt.xlabel('Channel Error')
+        plt.ylabel('%.1f\%%tile mapping error(m)'%(Pctl))
+        plt.legend()
+        if args.print:
+            plt.savefig(outfoldername+'/map_vs_%s.eps'%(errType))
+        fig_ctr=fig_ctr+1
+        plt.figure(fig_ctr)
+        for nc in range(NlocAlg):
+            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            plt.semilogy(np.arange(len(errLabels)),np.percentile(1e9*tauE_err[nc,errCaseMask,:],Pctl,axis=(1)),line+marker+color,label=caseStr)
+        plt.xticks(ticks=errTics,labels=errLabels)
+        plt.xlabel('Channel Error')
+        plt.ylabel('%.1f\%%tile clock error(ns)'%(Pctl))
+        plt.legend()
+        if args.print:
+            plt.savefig(outfoldername+'/tau_vs_%s.eps'%(errType))
             
             
 #         Ts = loc.getTParamToLoc(x0,y0,tauE,aoa0,x,y,['dAoA'],['dx0','dy0'])
@@ -418,44 +451,12 @@ if args.pcl:
             
 #     
 # if args.S:    
-#     fig_ctr=fig_ctr+1
-#     plt.figure(fig_ctr)
-#     stdCaseMask=[x[0]=='std' for x in lErrMod]
-#     for nc in range(NlocAlg):
-#         (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#         if aoa0Apriori:
-#             caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#             color='r'
-#             marker='*' if aoa0Quant else 'o'
-#             line=':'
-#         else:
-#             caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#             marker='x' if aoa0Quant else 's'
-#             color='b' if optimMthd=='brute' else 'g'
-#         plt.loglog(lSTD,np.percentile(location_error[nc,stdCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
-#     plt.loglog(lSTD,np.ones_like(lSTD)*np.percentile(error_dumb,80),':k',label="random guess")
-#     plt.xlabel('Error std.')
-#     plt.ylabel('80\%tile location error(m)')
-#     plt.legend()
-#     if args.print:
-#         plt.savefig(outfoldername+'/err_vs_std.eps')
         
 #     fig_ctr=fig_ctr+1
 #     plt.figure(fig_ctr)
 #     stdCaseMask=[x[0]=='std' for x in lErrMod]
 #     for nc in range(NlocAlg):
-#         (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#         if aoa0Apriori:
-#             caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#             color='r'
-#             marker='*' if aoa0Quant else 'o'
-#             line=':'
-#         else:
-#             caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#             line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#             marker='x' if aoa0Quant else 's'
-#             color='b' if optimMthd=='brute' else 'g'
+#      
 #         plt.loglog(lSTD,np.percentile(mapping_error[nc,stdCaseMask,:,:],80,axis=(1,2)),line+marker+color,label=caseStr)
 #     plt.loglog(lSTD,np.ones_like(lSTD)*np.percentile(map_dumb,80),':k',label="random guess")
 #     plt.xlabel('Error std.')
@@ -581,7 +582,7 @@ if args.pcl:
 #         plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(error_dumb,80),':k',label="random guess")
 #         plt.xlabel('$K_{\\aod}$')
 #         plt.ylabel('80\%tile location error(m)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
+#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])varaoaDist
 #         plt.legend()
 #         if args.print:
 #             plt.savefig(outfoldername+'/err_vs_ntant.eps')
