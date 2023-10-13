@@ -4,11 +4,11 @@ import pandas as pd
 class ThreeGPPMultipathChannelModel:
     
     tableFunLOSprob = {
-        "RMa": lambda d2D,hut : 1 if d2D<10 else np.exp(-(d2D-10.0)/1000.0),
-        "UMi": lambda d2D,hut : 1 if d2D<18 else 18.0/d2D + np.exp(-d2D/36.0)*(1-18.0/d2D),
-        "UMa": lambda d2D,hut : 1 if d2D<18 else (18.0/d2D + np.exp(-d2D/63.0)*(1-18.0/d2D))*(1 + (0 if hut<=23 else ((hut-13.0)/10.0)**1.5)*1.25*((d2D/100.0)**3.0)*np.exp(-d2D/150.0)),
-        "InH-Office-Mixed": lambda d2D,hut : 1 if d2D<1.2 else ( np.exp(-(d2D-1.2)/4.7) if 1.2<d2D<6.5 else (np.exp(-(d2D-6.5)/32.6))*0.32),
-        "InH-Office-Open": lambda d2D,hut : 1 if d2D<=5 else ( np.exp(-(d2D-5.0)/70.8)  if 5<d2D<49 else (np.exp(-(d2D-49.0)/211.7))*0.54)
+        "RMa": lambda d2D, hut: np.where(d2D < 10, 1, np.exp(-(d2D - 10.0) / 1000.0)),
+        "UMi": lambda d2D, hut: np.where(d2D < 18, 1, (18.0 / d2D + np.exp(-d2D / 36.0) * (1 - 18.0 / d2D))),
+        "UMa": lambda d2D, hut: np.where(d2D < 18, 1, (18.0 / d2D + np.exp(-d2D / 63.0) * (1 - 18.0 / d2D)) * (1 + (0 if hut <= 23 else ((hut - 13.0) / 10.0) ** 1.5) * 1.25 * ((d2D / 100.0) ** 3.0) * np.exp(-d2D / 150.0))),
+        "InH-Office-Mixed": lambda d2D, hut: np.where(d2D < 1.2, 1, np.where((1.2 < d2D) & (d2D < 6.5), np.exp(-(d2D - 1.2) / 4.7), np.exp(-(d2D - 6.5) / 32.6) * 0.32)),
+        "InH-Office-Open": lambda d2D, hut: np.where(d2D <= 5, 1, np.where((5 < d2D) & (d2D < 49), np.exp(-(d2D - 5.0) / 70.8), np.exp(-(d2D - 49.0) / 211.7) * 0.54))
     }
     
     def dfTS38900Table756(self,fc):
@@ -860,9 +860,9 @@ class ThreeGPPMultipathChannelModel:
         auxZoA3= auxZoA2 / tau_nueva
         zoanueva = zoa + auxZoA3
         
-        print("clusters_antes", clusters)
+        #print("clusters_antes", clusters)
         clusters =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva,aodnueva,zoanueva,zodnueva]).T) 
-        print("cluster_nuevos", clusters)
+        #print("cluster_nuevos", clusters)
         return (clusters, subpaths)
             
         
@@ -952,9 +952,9 @@ class ThreeGPPMultipathChannelModel:
 
             clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2Dgrid, hut) 
             self.dChansGenerated[key] = (clusters,subpaths)
-        
+        print("clusterantes", clusters)
         clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaTxPos, deltaRxPos, deltaPos)
-       
-        print(self.dChansGenerated)
+        print("clustersnuevos", clusters)
+        #print(self.dChansGenerated)
         
         return clusters,subpaths
