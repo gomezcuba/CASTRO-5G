@@ -39,6 +39,7 @@ parser.add_argument('--algs', type=str,help='comma-separated list of algorithms'
 parser.add_argument('--cdf', type=str,help='plot CDF for a given comma-separated list of errors')
 parser.add_argument('--pcl', type=str,help='comma-separated list of error axis-percentile plots (example "D:80")')
 parser.add_argument('--map', type=str,help='plot map')
+parser.add_argument('--vso', type=str,help='scatter plot of location error vs orientation')
 
 #parameters that affect workflow
 parser.add_argument('--label', type=str,help='str label appended to storage files')
@@ -59,7 +60,7 @@ parser.add_argument('--print', help='Save plot files in eps to results folder', 
 # args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D inf:16:inf,inf:64:inf,inf:256:inf,inf:1024:inf,inf:4096:inf,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
 #args = parser.parse_args("-N 5 -S 7 -D -G 3gpp --noerror --label test --show --print".split(' '))
-args = parser.parse_args("-N 1000 --nompg --noloc -G Geo:20 --noerror -D=inf:64:inf,inf:256:inf,inf:1024:inf --label test --show --print --cdf=no:0:0:0,dic:inf:256:inf --pcl=dic:80".split(' '))
+args = parser.parse_args("-N 1000 --nompg --noloc -G Geo:20 --noerror -D=inf:64:inf,inf:256:inf,inf:1024:inf --label test --show --print --cdf=no:0:0:0,dic:inf:256:inf --pcl=dic:80 --map=no:0:0:0,dic:inf:256:inf --vso=no:0:0:0,dic:inf:256:inf".split(' '))
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
 # numero de simulacions
@@ -107,7 +108,7 @@ else:
 #       (False,np.inf,'D1','brute'),
        # (False,np.inf,'D1','mmse'),
 #       (False,np.inf,'D1','zero'),
-       # (False,64,'D1','mmse'),
+        (False,64,'D1','mmse'),
 #       (False,64,'D1','zero'),
        ]
 NlocAlg =len(lLocAlgs)
@@ -307,7 +308,7 @@ else:
                 x_est=x_est,
                 y_est=y_est,
                 run_time=run_time)
-    print("Total Location Time:%s seconds"%(time.time()-t_start_gen))
+    print("Total Location Time:%s seconds"%(time.time()-t_start_loc))
 
 location_error=np.sqrt(np.abs(x0-x0_est)**2+np.abs(y0-y0_est)**2)
 mapping_error=np.sqrt(np.abs(x-x_est)**2+np.abs(y-y_est)**2) 
@@ -440,431 +441,61 @@ if args.pcl:
         plt.legend()
         if args.print:
             plt.savefig(outfoldername+'/tau_vs_%s.eps'%(errType))
+        fig_ctr=fig_ctr+1
+        plt.figure(fig_ctr)
+        for nc in range(NlocAlg):
+            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            plt.semilogy(np.arange(len(errLabels)),np.percentile(aoa0_err[nc,errCaseMask,:],Pctl,axis=(1)),line+marker+color,label=caseStr)
+        plt.xticks(ticks=errTics,labels=errLabels)
+        plt.xlabel('Channel Error')
+        plt.ylabel('%.1f\%%tile AOA0 error(º)'%(Pctl))
+        plt.legend()
+        if args.print:
+            plt.savefig(outfoldername+'/aoa0_vs_%s.eps'%(errType))
             
-            
-#         Ts = loc.getTParamToLoc(x0,y0,tauE,aoa0,x,y,['dAoA'],['dx0','dy0'])
-#         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-#         errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
-#         varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2)),axis=(1,2))
-# #        plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*varaoaDist,'--k',label="$\\sim$ CRLB")       
-#         plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB") 
-            
-#     
-# if args.S:    
-        
-#     fig_ctr=fig_ctr+1
-#     plt.figure(fig_ctr)
-#     stdCaseMask=[x[0]=='std' for x in lErrMod]
-#     for nc in range(NlocAlg):
-#      
-#         plt.loglog(lSTD,np.percentile(mapping_error[nc,stdCaseMask,:,:],80,axis=(1,2)),line+marker+color,label=caseStr)
-#     plt.loglog(lSTD,np.ones_like(lSTD)*np.percentile(map_dumb,80),':k',label="random guess")
-#     plt.xlabel('Error std.')
-#     plt.ylabel('80\%tile mapping error(m)')
-#     plt.legend()
-#     if args.print:
-#         plt.savefig(outfoldername+'/merr_vs_std.eps')
-        
-#     fig_ctr=fig_ctr+1
-#     plt.figure(fig_ctr)
-#     P1pos=np.argmax([x[1]==1e-3 and x[0]=='std' for x in lErrMod])
-#     for nc in range(NlocAlg):
-#         if nc in [1,2,6]:
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.plot(np.vstack((x0[0,:],x0_est[nc,P1pos,:])),np.vstack((y0[0,:],y0_est[nc,P1pos,:])),line+marker+color,label=caseStr)
-#     plt.plot(x0.T,y0.T,'ok',label='locations')
-#     handles, labels = plt.gca().get_legend_handles_labels()
-#     # labels will be the keys of the dict, handles will be values
-#     temp = {k:v for k,v in zip(labels, handles)}
-#     plt.legend(temp.values(), temp.keys(), loc='best')
-#     plt.xlabel('$d_{ox}$ (m)')
-#     plt.ylabel('$d_{oy}$ (m)')
-#     if args.print:
-#         plt.savefig(outfoldername+'/errormap.eps')
-        
-#     fig_ctr=fig_ctr+1
-#     plt.figure(fig_ctr)
-#     for nc in range(NlocAlg):
-#         if nc in [1,2,6]:
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="$\\sigma=0$ aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="$\\sigma=0$ %s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and aoa0Quant ) else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.loglog(np.abs(aoa0_est[nc,0,:]-aoa0[0,:]),location_error[nc,0,:],marker+color,label=caseStr)
-#     for nc in range(NlocAlg):
-#         if nc in [2,6]:
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="$aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="$\\sigma=.01$ %s - %s %s"%(grouping,optimMthd,'Q. hint' if ( (optimMthd != 'brute') and aoa0Quant ) else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='+' if aoa0Quant else 'd'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.loglog(np.abs(aoa0_est[nc,P1pos,:]-aoa0[0,:]),location_error[nc,P1pos,:],marker+color,label=caseStr)
-#     plt.xlabel('$\hat{\aoa_o}$ error (rad)')
-#     plt.ylabel('Location error (m)')
-#     plt.legend()
-#     if args.print:
-#         plt.savefig(outfoldername+'/err_vs_aoa0.eps')
-        
-# if args.D:        
-#     if np.any([x[2]=='256' and x[0]=='dic' for x in lErrMod]):
-#         Kp2pos=np.argmax([x[2]=='256' and x[0]=='dic' for x in lErrMod]) 
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         for nc in range(NlocAlg):
-#             if nc in [1,2,6]:
-#                 (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#                 if aoa0Apriori:
-#                     caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                     color='r'
-#                     marker='*' if aoa0Quant else 'o'
-#                     line=':'
-#                 else:
-#                     caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                     line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                     marker='x' if aoa0Quant else 's'
-#                     color='b' if optimMthd=='brute' else 'g'
-#                 plt.plot(np.vstack((x0[:],x0_est[nc,Kp2pos,:])),np.vstack((y0[:],y0_est[nc,Kp2pos,:])),line+marker+color,label=caseStr)
-#         plt.plot(x0.T,y0.T,'ok',label='locations')
-#         handles, labels = plt.gca().get_legend_handles_labels()
-#         # labels will be the keys of the dict, handles will be values
-#         temp = {k:v for k,v in zip(labels, handles)}
-#         plt.legend(temp.values(), temp.keys(), loc='best')
-#         plt.xlabel('$d_{ox}$ (m)')
-#         plt.ylabel('$d_{oy}$ (m)')
-#         if args.print:
-#             plt.savefig(outfoldername+'/errormap_kp256.eps')
+
+if args.map:
+    lMAP =[
+        tuple(case.split(':'))
+        for case in args.map.split(',')
+    ]
     
-#     if np.any([x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]):
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='dic' and x[2]=='inf' and x[3]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             aux_err=np.zeros_like(lNant)
-#             subarray=location_error[nc,dicCaseMask,:]
-#             for nsub in range(lNant.size):
-#                 aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
-#             plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
-#         plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(error_dumb,80),':k',label="random guess")
-#         plt.xlabel('$K_{\\aod}$')
-#         plt.ylabel('80\%tile location error(m)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])varaoaDist
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/err_vs_ntant.eps')
-            
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='dic' and x[2]=='inf' and x[3]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             aux_err=np.zeros_like(lNant)
-#             subarray=mapping_error[nc,dicCaseMask,:,:]
-#             for nsub in range(lNant.size):
-#                 aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
-#             plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
-#         plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(map_dumb,80),':k',label="random guess")
-#         plt.xlabel('$K_{\\aod}$')
-#         plt.ylabel('80\%tile mapping error(m)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/loc_vs_ntant.eps')
-            
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='dic' and x[2]=='inf' and x[3]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             aux_err=np.zeros_like(lNant)
-#             subarray=1e9*tauE_err[nc,dicCaseMask,:]
-#             for nsub in range(lNant.size):
-#                 aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
-#             plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
-#         plt.xlabel('$K_{\\aod}$')
-#         plt.ylabel('80\%tile $\\tau_e$ error(ns)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/taue_vs_ntant.eps')
-        
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[2]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='dic' and x[2]=='inf' and x[3]=='inf'])
-#         for nc in range(1,NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             aux_err=np.zeros_like(lNant)
-#             subarray=aoa0_err[nc,dicCaseMask,:]
-#             for nsub in range(lNant.size):
-#                 aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
-#             plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
-#         plt.xlabel('$K_{\\aod}$')
-#         plt.ylabel('80\%tile $\\aoa_o$ error($^o$)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/aoa0e_vs_ntant.eps')
+    for themap in lMAP:
+        indErr = lErrMod.index(themap)         
+        fig_ctr=fig_ctr+1
+        plt.figure(fig_ctr)
+        for nc in range(NlocAlg):
+            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            plt.plot(np.vstack((x0,x0_est[nc,indErr,:])),np.vstack((y0,y0_est[nc,indErr,:])),line+marker+color,label=caseStr)
+        plt.plot(x0.T,y0.T,'ok',label='locations')
+        handles, labels = plt.gca().get_legend_handles_labels()
+        # labels will be the keys of the dict, handles will be values
+        temp = {k:v for k,v in zip(labels, handles)}
+        plt.legend(temp.values(), temp.keys(), loc='best')
+        plt.xlabel('$d_{ox}$ (m)')
+        plt.ylabel('$d_{oy}$ (m)')
+        if args.print:
+            plt.savefig(outfoldername+'/errormap_%s-%s-%s-%s.eps'%tuple(cdf))
+       
+if args.vso:
+    lVSO =[
+        tuple(case.split(':'))
+        for case in args.vso.split(',')
+    ]
     
-#     if np.any([x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]):
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.semilogy(np.log2(lNant),np.percentile(location_error[nc,dicCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
-#         plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(error_dumb,80),':k',label="random guess")
-#         Ts = loc.getTParamToLoc(x0,y0,tauE,aoa0,x,y,['dAoA'],['dx0','dy0'])
-#         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-#         errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
-#         varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2)),axis=(1,2))
-# #        plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*varaoaDist,'--k',label="$\\sim$ CRLB")       
-#         plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
-#         plt.xlabel('$K_{\\aoa}$')
-#         plt.ylabel('80\%tile location error(m)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/err_vs_nrant.eps')    
+    for vso in lVSO:
+        indErr = lErrMod.index(vso)         
+        fig_ctr=fig_ctr+1
+        plt.figure(fig_ctr)  
+        for nc in range(NlocAlg):
+            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            plt.loglog(np.abs(aoa0_est[nc,indErr,:]-aoa0[0,:]),location_error[nc,indErr,:],marker+color,label=caseStr)
+        plt.xlabel('$\hat{\aoa_o}$ error (rad)')
+        plt.ylabel('Location error (m)')
+        plt.legend()
+        if args.print:
+            plt.savefig(outfoldername+'/err_vs_aoa0_%s-%s-%s-%s.eps'%tuple(cdf))
         
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.semilogy(np.log2(lNant),np.percentile(mapping_error[nc,dicCaseMask,:,:],80,axis=(1,2)),line+marker+color,label=caseStr)
-#         plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(map_dumb,80),':k',label="random guess")
-#         Ts = loc.getTParamToLoc(x0,y0,tauE,aoa0,x,y,['dAoA'],['dx','dy'])
-#         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-#         errorCRLBnormalized = np.array([np.sqrt((1/20)*np.trace(np.linalg.lstsq(M[n,:,:],np.eye(40),rcond=None)[0])) for n in range(M.shape[0])])
-#         varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[dicCaseMask,:,:],np.pi*2)),axis=(1,2))
-# #        plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*varaoaDist,'--k',label="$\\sim$ CRLB")       
-#         plt.semilogy(np.log2(lNant),np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
-#         plt.xlabel('$K_{\\aoa}$')
-#         plt.ylabel('80\%tile mapping error(m)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/map_vs_nrant.eps')  
-        
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             aux_err=np.zeros_like(lNant)
-#             subarray=1e9*tauE_err[nc,dicCaseMask,:]
-#             for nsub in range(lNant.size):
-#                 aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
-#             plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
-#         plt.xlabel('$K_{\\aoa}$')
-#         plt.ylabel('80\%tile $\\tau_e$ error(ns)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/taue_vs_nrant.eps')
-            
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[3]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf'])
-#         for nc in range(1,NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             aux_err=np.zeros_like(lNant)
-#             subarray=aoa0_err[nc,dicCaseMask,:]
-#             for nsub in range(lNant.size):
-#                 aux_err[nsub]=np.percentile(subarray[nsub,~np.isnan(subarray[nsub,:])],80)
-#             plt.semilogy(np.log2(lNant),aux_err,line+marker+color,label=caseStr)
-#         plt.xlabel('$K_{\\aoa}$')
-#         plt.ylabel('80\%tile $\\aoa_o$ error($rad$)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/aoa0e_vs_nrant.eps')
-        
-#     if np.any([x[0]=='dic'  and x[1]=='inf' and x[2]=='inf' for x in lErrMod]):
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[2]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[3]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[2]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.semilogy(np.log2(lNant),np.percentile(location_error[nc,dicCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
-#         plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(error_dumb,80),':k',label="random guess")
-#         plt.xlabel('$K_{\\tau}$')
-#         plt.ylabel('80\%tile location error(m)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/err_vs_ntau.eps')
-        
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[2]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[3]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[2]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.semilogy(np.log2(lNant),np.percentile(mapping_error[nc,dicCaseMask,:,:],80,axis=(1,2)),line+marker+color,label=caseStr)
-#         plt.semilogy(np.log2(lNant),np.ones_like(lNant)*np.percentile(map_dumb,80),':k',label="random guess")
-#         plt.xlabel('$K_{\\tau}$')
-#         plt.ylabel('80\%tile mapping error(m)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/map_vs_ntau.eps')
-        
-#         fig_ctr=fig_ctr+1
-#         plt.figure(fig_ctr)
-#         dicCaseMask=[x[0]=='dic'  and x[1]=='inf' and x[2]=='inf' for x in lErrMod]
-#         lNant=np.array([float(x[3]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[2]=='inf'])
-#         for nc in range(NlocAlg):
-#             (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-#             if aoa0Apriori:
-#                 caseStr="aoa0 quantized sensor" if aoa0Quant else "aoa0 known"
-#                 color='r'
-#                 marker='*' if aoa0Quant else 'o'
-#                 line=':'
-#             else:
-#                 caseStr="%s - %s %s"%(grouping,optimMthd,('Q-ini' if aoa0Quant else 'BF-ini') if optimMthd == 'mmse' else '')
-#                 line='-' if grouping=='D1' else ('-.' if optimMthd == 'mmse' else ':')
-#                 marker='x' if aoa0Quant else 's'
-#                 color='b' if optimMthd=='brute' else 'g'
-#             plt.semilogy(np.log2(lNant),np.percentile(1e9*tauE_err[nc,dicCaseMask,:],80,axis=1),line+marker+color,label=caseStr)
-#         plt.xlabel('$K_{\\tau}$')
-#         plt.ylabel('80\%tile $\\tau_e$ error (ns)')
-#         plt.xticks(ticks=np.log2(lNant),labels=['$%d$'%x for x in lNant])
-#         plt.legend()
-#         if args.print:
-#             plt.savefig(outfoldername+'/taue_vs_ntau.eps')
 
 if args.show:
     plt.show()
