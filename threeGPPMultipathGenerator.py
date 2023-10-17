@@ -658,7 +658,7 @@ class ThreeGPPMultipathChannelModel:
         #ZOA_sp[mask] = 360 - ZOA_sp
         
         subpaths = pd.DataFrame(
-            columns=['tau','P','AOA','AOD','ZOA','ZOD'],
+            columns=['tau','powC','AOA','AOD','ZOA','ZOD'],
             data=np.vstack([
                 tau_sp.reshape(-1),
                 pow_sp.reshape(-1),
@@ -670,7 +670,7 @@ class ThreeGPPMultipathChannelModel:
             index=pd.MultiIndex.from_product([np.arange(nClusters),np.arange(M)],names=['n','m'])
             )
         if los:
-            subpaths.P[:]=subpaths.P[:]/(K+1)
+            subpaths.powC[:]=subpaths.powC[:]/(K+1)
             #the LOS ray is the M+1-th subpath of the first cluster
             subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD)
         
@@ -723,7 +723,7 @@ class ThreeGPPMultipathChannelModel:
         
         
         subpaths = pd.DataFrame(
-            columns=['tau','P','AOA','AOD','ZOA','ZOD'],
+            columns=['tau','powC','AOA','AOD','ZOA','ZOD'],
             data=np.vstack([
                 tau_sp.reshape(-1),
                 pow_sp.reshape(-1),
@@ -735,7 +735,7 @@ class ThreeGPPMultipathChannelModel:
             index=pd.MultiIndex.from_product([np.arange(nClusters),np.arange(M)],names=['n','m'])
             )
         if los:
-            subpaths.P[:]=subpaths.P[:]/(K+1)
+            subpaths.powC[:]=subpaths.powC[:]/(K+1)
             #the LOS ray is the M+1-th subpath of the first cluster
             subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD)
         
@@ -773,17 +773,17 @@ class ThreeGPPMultipathChannelModel:
     #Parte de consistencia espacial
 
     
-    def displaceMultipathChannel(self, clusters, subpaths, deltaTxPos, deltaRxPos, deltaPos):
+    def displaceMultipathChannel(self, dataframe, deltaTxPos, deltaRxPos, deltaPos):
         # Código que cumple con el procedimiento A del apartado de consistencia espacial 
 
         #Parámetros para actualizar tau
         c = 3e8
-        tau = clusters['tau'].T.to_numpy()
-        zoa = clusters['ZOA'].T.to_numpy()
-        aoa = clusters['AOA'].T.to_numpy()
-        zod = clusters['ZOD'].T.to_numpy()
-        aod = clusters['AOD'].T.to_numpy()
-        powc = clusters['powC'].T.to_numpy()
+        tau = dataframe['tau'].T.to_numpy()
+        zoa = dataframe['ZOA'].T.to_numpy()
+        aoa = dataframe['AOA'].T.to_numpy()
+        zod = dataframe['ZOD'].T.to_numpy()
+        aod = dataframe['AOD'].T.to_numpy()
+        powc = dataframe['powC'].T.to_numpy()
         
         ###############################TAU#########################
 
@@ -860,10 +860,9 @@ class ThreeGPPMultipathChannelModel:
         auxZoA3= auxZoA2 / tau_nueva
         zoanueva = zoa + auxZoA3
         
-        #print("clusters_antes", clusters)
-        clusters =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva,aodnueva,zoanueva,zodnueva]).T) 
-        #print("cluster_nuevos", clusters)
-        return (clusters, subpaths)
+        dataframe =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva,aodnueva,zoanueva,zodnueva]).T) 
+    
+        return (dataframe)
             
         
 
@@ -952,9 +951,9 @@ class ThreeGPPMultipathChannelModel:
 
             clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2Dgrid, hut) 
             self.dChansGenerated[key] = (clusters,subpaths)
-        print("clusterantes", clusters)
-        clusters, subpaths = self.displaceMultipathChannel(clusters, subpaths, deltaTxPos, deltaRxPos, deltaPos)
-        print("clustersnuevos", clusters)
-        #print(self.dChansGenerated)
+        print("subpathsantes", subpaths)
+        clusters = self.displaceMultipathChannel(clusters, deltaTxPos, deltaRxPos, deltaPos)
+        subpaths = self.displaceMultipathChannel(subpaths, deltaTxPos, deltaRxPos, deltaPos)
+        print("subpathsnuevos", subpaths)
         
         return clusters,subpaths
