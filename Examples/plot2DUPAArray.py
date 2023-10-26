@@ -153,3 +153,4 @@ cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),ax=ax,shrink=0.8,label = 
 cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
 cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
 plt.title('sum of %dx%d UPA directivity times all chan coefs'%(Nant,Nant))
+plt.savefig("../Figures/radiationDoA.eps")

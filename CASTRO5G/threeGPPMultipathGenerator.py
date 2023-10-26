@@ -495,8 +495,7 @@ class ThreeGPPMultipathChannelModel:
         
     #hidden uniform variable to compare with pLOS(distabce)
     def get_LOSUnif_from_location(self,txPos, rxPos):
-        XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
-        key = (XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex)
+        key =  self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
         if not key in self.dLOSGenerated:
            self.dLOSGenerated[key] = np.random.rand(1)[0]       
         return(self.dLOSGenerated[key])
@@ -769,26 +768,23 @@ class ThreeGPPMultipathChannelModel:
     
         return(clusters,subpaths)
     
+    
+    def getLOSmeasurements(self,txPos,rxPos):
+        vLOS = np.array(rxPos)-np.array(txPos)#in case tuples are given      
+        d2D = np.linalg.norm(vLOS[0:2])#works in any space of dim>=2
+        d3D = np.linalg.norm(vLOS)
+        hbs = txPos[2]
+        hut = rxPos[2]
+        losAoD=np.mod( np.arctan2( vLOS[1] , vLOS[0] ), 2*np.pi )
+        losAoA=np.mod( np.pi +losAoD , 2*np.pi ) # reversed angle
+        losZoD=np.pi/2-np.mod(np.arctan2( vLOS[2] , d2D ), 2*np.pi )
+        losZoA=np.pi-losZoD # reversed angle        
+        #3GPP model is in degrees but numpy uses radians
+        LOSangles = ((180.0/np.pi)*losAoD,(180.0/np.pi)*losAoA,(180.0/np.pi)*losZoD,(180.0/np.pi)*losZoA)
+        return(vLOS,d2D,d3D,hbs,hut,LOSangles)
         
     def create_channel(self, txPos, rxPos):
-        aPos = np.array(txPos)#in case tuples are given
-        bPos = np.array(rxPos)#in case tuples are given      
-        vLOS = bPos-aPos
-        d2D = np.linalg.norm(vLOS[0:-1])
-        d3D = np.linalg.norm(vLOS)
-        hbs = aPos[2]
-        hut = bPos[2]
-        losAoD=np.mod( np.arctan( vLOS[1] / vLOS[0] )+np.pi*(vLOS[0]<0), 2*np.pi )
-        losAoA=np.mod(np.pi+losAoD, 2*np.pi ) # revise
-        losZoD=np.pi/2-np.arctan( vLOS[2] / np.linalg.norm(vLOS[0:2]) )
-        losZoA=np.pi-losZoD # revise
-        
-        #3GPP model is in degrees but numpy uses radians
-        losAoD=(180.0/np.pi)*losAoD #angle of departure 
-        losZoD=(180.0/np.pi)*losZoD 
-        losAoA=(180.0/np.pi)*losAoA #angle of aperture
-        losZoA=(180.0/np.pi)*losZoA
-        LOSangles = (losAoD,losAoA,losZoD,losZoA)
+        vLOS,d2D,d3D,hbs,hut,LOSangles = self.getLOSmeasurements(txPos,rxPos)
                 
         pLos=self.scenarioLosProb(d2D,hut)
         los = ( self.get_LOSUnif_from_location(txPos, rxPos) <= pLos)#TODO: make this memorized
@@ -829,16 +825,27 @@ class ThreeGPPMultipathChannelModel:
     # and return the same as output, enabling their infinite pipelining
     ###########################################################################    
        
-    def fullFitAOA(self,txPos,rxPos,plinfo,clusters,subpaths):
-        tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
-        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,clusters.AOD.to_numpy()*np.pi/180,clusters.tau.to_numpy()+tauOffset)
+    def fullFitAOA(self,txPos,rxPos,plinfo,clusters,subpaths,mode3D=True):
+        tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters,mode3D)
+        if mode3D:
+            aoa_new,zoa_new,locs = self.fitAOA(txPos,rxPos,data.loc[indexAoA].tau+ tauOffset,clusters.AOD.to_numpy()*np.pi/180,clusters.ZOD.to_numpy()*np.pi/180)            
+            clusters.ZOA=zoa_new*180/np.pi
+            clusters['Zs']=locs[2,:]
+        else:
+            aoa_new,locs = self.fitAOA(txPos,rxPos,clusters.tau.to_numpy()+tauOffset,clusters.AOD.to_numpy()*np.pi/180)
         clusters.AOA=aoa_new*180/np.pi
-        clusters['Xs']=xloc
-        clusters['Ys']=yloc
-        aoa_new,xloc,yloc = self.fitAOA(txPos,rxPos,subpaths.AOD.to_numpy()*np.pi/180,subpaths.tau.to_numpy()+tauOffset)
+        clusters['Xs']=locs[0,:]
+        clusters['Ys']=locs[1,:]
+        print(tauOffset)
+        if mode3D:
+            aoa_new,zoa_new,locs = self.fitAOA(txPos,rxPos,data.loc[indexAoA].tau+ tauOffset,subpaths.AOD.to_numpy()*np.pi/180,subpaths.ZOD.to_numpy()*np.pi/180)            
+            subpaths.ZOA=zoa_new*180/np.pi
+            subpaths['Zs']=locs[2,:]
+        else:
+            aoa_new,locs = self.fitAOA(txPos,rxPos,subpaths.tau.to_numpy()+tauOffset,subpaths.AOD.to_numpy()*np.pi/180)
         subpaths.AOA=aoa_new*180/np.pi
-        subpaths['Xs']=xloc
-        subpaths['Ys']=yloc
+        subpaths['Xs']=locs[0,:]
+        subpaths['Ys']=locs[1,:]
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
     def fullFitAOD(self,txPos,rxPos,plinfo,clusters,subpaths):
@@ -853,12 +860,12 @@ class ThreeGPPMultipathChannelModel:
         subpaths['Ys']=yloc
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
-    def attemptFullFitDelay(self,txPos,rxPos,plinfo,clusters,subpaths,fallbackFun=None):
-        tau_new,xloc,yloc,valid = self.fitDelay(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.AOD.to_numpy()*np.pi/180)
+    def attemptFullfitTDOA(self,txPos,rxPos,plinfo,clusters,subpaths,fallbackFun=None):
+        tau_new,xloc,yloc,valid = self.fitTDOA(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.AOD.to_numpy()*np.pi/180)
         clusters.tau[valid]=tau_new[valid]
         clusters['Xs']=xloc#non valids are inf
         clusters['Ys']=yloc#non valids are inf
-        tau_new,xloc,yloc,valid = self.fitDelay(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.AOD.to_numpy()*np.pi/180)
+        tau_new,xloc,yloc,valid = self.fitTDOA(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.AOD.to_numpy()*np.pi/180)
         subpaths.tau[valid]=tau_new
         subpaths['Xs']=xloc#non valids are inf
         subpaths['Ys']=yloc#non valids are inf
@@ -867,32 +874,33 @@ class ThreeGPPMultipathChannelModel:
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
     def randomFitAllSubpaths(self, txPos, rxPos,plinfo,clusters,subpaths,P=np.full(4,.25)):
-        #P=[Pnot,Paoa,Paod,Ptau]  
+        #P=[Pnot,Paoa,Paod,Ptoa]  
         P=np.array(P)#safety to permit tuple, list and dataframe as input
         transformIndex=self.chooseRandomTransform(txPos, rxPos, clusters, P)        
-        (indexNot,indexAoA,indexAoD,indexTau)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
-        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexTau)
+        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexToA)
         
         transformIndex=self.chooseRandomTransform(txPos, rxPos, subpaths, P)        
-        (indexNot,indexAoA,indexAoD,indexTau)= self.getIndicesSubgroups(subpaths,transformIndex,maxG=4)
-        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexTau)
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(subpaths,transformIndex,maxG=4)
+        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexToA)
         
         return(txPos,rxPos,plinfo,clusters,subpaths)    
             
     def randomFitEpctClusters(self, txPos, rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=np.full(4,.25)):
-        #P=[Pnot,Paoa,Paod,Ptau]        
+        #P=[Pnot,Paoa,Paod,Ptoa]        
         P=np.array(P)#safety to permit tuple, list and dataframe as input
         transformRandom=self.chooseRandomTransform(txPos, rxPos, clusters, P)   
         transformEnergy=self.chooseEnergyPctileGlobal(clusters, Ec)
         transformIndex=transformEnergy*transformRandom
-        (indexNot,indexAoA,indexAoD,indexTau)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
-        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexTau)
+        clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexToA)
         transformEnergySubpaths=self.chooseEnergyPctileGroups(clusters, Es)
         transformBroadcastClusters=transformIndex.reindex(index=transformEnergySubpaths.index,level=0)
         transformIndexSubpaths=transformEnergySubpaths*transformBroadcastClusters
-        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexTau)
+        subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexToA)
+        #TODO: non fitted subpaths that belong in a transformed cluster should get ther cluster mean values transformed
         return(txPos,rxPos,plinfo,clusters,subpaths)
         
     
@@ -963,12 +971,12 @@ class ThreeGPPMultipathChannelModel:
         # for delay adaptation. Bayes is applied to guarantee global probability
         validIntersection = self.checkValidIntersection(txPos,rxPos,data.AOA*np.pi/180,data.AOD*np.pi/180).to_numpy()
         PV = np.sum(validIntersection)/data.shape[0]#prob adapt tau is valid
-        PtauCV=np.minimum(P[3]/PV,1)# P (adapt tau | valid)
-        PothersCV=(1-PtauCV) * P[0:3] /(np.sum(P[0:3]))# P ( others | valid)
-        PCV=np.concatenate([PothersCV,[PtauCV]])
-        PtauCN=0# P (adapt tau | not valid) = 0
+        PtoaCV=np.minimum(P[3]/PV,1)# P (adapt toa | valid)
+        PothersCV=(1-PtoaCV) * P[0:3] /(np.sum(P[0:3]))# P ( others | valid)
+        PCV=np.concatenate([PothersCV,[PtoaCV]])
+        PtoaCN=0# P (adapt tau | not valid) = 0
         PothersCN=P[0:3] /(np.sum(P[0:3]))# P ( others | not valid)
-        PCN=np.concatenate([PothersCN,[PtauCN]])
+        PCN=np.concatenate([PothersCN,[PtoaCN]])
         r=np.random.rand(data.shape[0])
         transformIndex=np.where(
         #if
@@ -997,198 +1005,152 @@ class ThreeGPPMultipathChannelModel:
         transformIndex = (grpdP.cumsum()/grpdP.sum())>(1-E)
         return(transformIndex.sort_index())
     
-    def applyMultiTransform(self,txPos,rxPos,data,tauOffset,indexAoA,indexAoD,indexTau):        
+    def applyMultiTransform(self,txPos,rxPos,data,tauOffset,indexAoA,indexAoD,indexToA,mode3D=True):
         data['Xs']=np.full_like(data.tau,fill_value=np.inf)
         data['Ys']=np.full_like(data.tau,fill_value=np.inf)
-        aoa_new,x,y = self.fitAOA(txPos,rxPos,data.loc[indexAoA].AOD*np.pi/180,data.loc[indexAoA].tau+ tauOffset)
+        if mode3D:
+            data['Zs']=np.full_like(data.tau,fill_value=np.inf)
+        
+        if mode3D:
+            aoa_new,zoa_new,locs_a = self.fitAOA(txPos,rxPos,data.loc[indexAoA].tau+ tauOffset,data.loc[indexAoA].AOD*np.pi/180,data.loc[indexAoA].ZOD*np.pi/180)
+            aod_new,zod_new,locs_d = self.fitAOD(txPos,rxPos,data.loc[indexAoD].tau+ tauOffset,data.loc[indexAoD].AOA*np.pi/180,data.loc[indexAoD].ZOA*np.pi/180)
+            tau_new,locs_t,valid = self.fitTDOA(txPos,rxPos,data.loc[indexToA].AOA*np.pi/180,data.loc[indexToA].AOD*np.pi/180,data.loc[indexToA].ZOA*np.pi/180,data.loc[indexToA].ZOD*np.pi/180)
+        else:
+            aoa_new,locs_a = self.fitAOA(txPos,rxPos,data.loc[indexAoA].tau+ tauOffset,data.loc[indexAoA].AOD*np.pi/180)
+            aod_new,locs_d = self.fitAOD(txPos,rxPos,data.loc[indexAoD].AOA*np.pi/180,data.loc[indexAoD].tau+ tauOffset)
+            tau_new,loc_t,valid = self.fitTDOA(txPos,rxPos,data.loc[indexToA].AOA*np.pi/180,data.loc[indexToA].AOD*np.pi/180)
+        if not np.all(valid):
+            print("WARNING: Multi Transform was called with DToA option at paths that are not compatible. Some delays have not been transformed.")
+            
         data.AOA.loc[indexAoA]=aoa_new*180/np.pi
-        data.Xs.loc[indexAoA]=x
-        data.Ys.loc[indexAoA]=y
-        aod_new,x,y = self.fitAOD(txPos,rxPos,data.loc[indexAoD].AOA*np.pi/180,data.loc[indexAoD].tau+ tauOffset)
         data.AOD.loc[indexAoD]=aod_new*180/np.pi
-        data.Xs.loc[indexAoD]=x
-        data.Ys.loc[indexAoD]=y
-        tau_new,x,y,valid = self.fitDelay(txPos,rxPos,data.loc[indexTau].AOA*np.pi/180,data.loc[indexTau].AOD*np.pi/180)
-        data.tau.loc[indexTau]=tau_new
-        data.Xs.loc[indexTau]=x
-        data.Ys.loc[indexTau]=y        
+        data.tau.loc[indexToA]=tau_new
+        data.Xs.loc[indexAoA]=locs_a[0,:]
+        data.Ys.loc[indexAoA]=locs_a[1,:]
+        data.Xs.loc[indexAoD]=locs_d[0,:]
+        data.Ys.loc[indexAoD]=locs_d[1,:]
+        data.Xs.loc[indexToA]=locs_t[0,:]
+        data.Ys.loc[indexToA]=locs_t[1,:]
+        if mode3D:
+            data.Zs.loc[indexAoA]=locs_a[2,:]
+            data.Zs.loc[indexAoD]=locs_d[2,:]
+            data.Zs.loc[indexToA]=locs_t[2,:]
         return(data)
     
-    def fixExcessDelayNLOS(self,txPos,rxPos,plinfo,clusters):
+    def fixExcessDelayNLOS(self,txPos,rxPos,plinfo,clusters,mode3D=True):
         los,PLconst,sfdB = plinfo
         if not los and (np.min(clusters.tau)==0):# attempt to rebuild the initial delay of first  NLOStau observation        
             #we will always fix this by clusters, subpaths get the same correction factor
             sortclt = clusters.sort_values("tau")
             ctr = 0
-            aod=sortclt.iloc[ctr].AOD*np.pi/180
-            aoa=sortclt.iloc[ctr].AOA*np.pi/180
+            valid=False
             #find the first cluster which can be leveraged to reconstruct clock offset
-            while (( not self.checkValidIntersection(txPos, rxPos, aoa , aod ) ) and (ctr < sortclt.shape[0]) ):
+            while (( not valid ) and (ctr < sortclt.shape[0]) ):
                 aod=sortclt.iloc[ctr].AOD*np.pi/180
                 aoa=sortclt.iloc[ctr].AOA*np.pi/180
-                ctr=ctr+1
-            if (ctr < sortclt.shape[0]):
-                vLOS = np.array(rxPos) - np.array(txPos)
-                #TODO 3D extension
-                uiD = np.array([np.cos(aod),np.sin(aod),0])
-                uiA = np.array([np.cos(aoa),np.sin(aoa),0])
-                U=np.column_stack([uiD,-uiA])
-                lD,lA = np.linalg.lstsq(U, vLOS, rcond=None)[0]
-                vLOS2 = vLOS
-                vLOS2[2] = 0#TODO remove in 3D case            
-                l=lD+lA+np.linalg.norm(lA*uiA+vLOS2-lD*uiD)
-                l0 = np.linalg.norm(vLOS[0:-1])            
+                if mode3D:
+                    zod=sortclt.iloc[ctr].ZOD*np.pi/180
+                    zoa=sortclt.iloc[ctr].ZOA*np.pi/180        
+                    fitted_tdoa,loc,valid = self.fitTDOA(txPos,rxPos,aoa,aod,zoa,zod,relax3D=True)#for tauE fixing we may accept an approximate LS solution
+                else:
+                    fitted_tdoa,loc,valid = self.fitTDOA(txPos,rxPos,aoa,aod,relax3D=True)#for tauE fixing we may accept an approximate LS solution
+                if valid:
+                    break
+                else:
+                    ctr=ctr+1
+            if (ctr < sortclt.shape[0]):                
                 #consider the cluster already-reported delay in the clock offset
-                return( (l-l0)/3e8 - sortclt.iloc[ctr].tau )            
+                tauE = fitted_tdoa - sortclt.iloc[ctr].tau
+                return( tauE )            
             #else
         #else
         return(0)
     
-    def fitAOA(self, txPos, rxPos, aod, tau):
+    def fitAOA(self, txPos, rxPos, tdoa, aod, zod=None):
         
-        # Datos iniciais - l0, tau0 e aod0
+        # Datos iniciais - l0
         vLOS = np.array(rxPos) - np.array(txPos)
-        l0 = np.linalg.norm(vLOS[0:-1])#TODO introduce d3D to extend to 3D
-        # losAOD =(np.mod( np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
+        if zod:
+            l0 = np.linalg.norm(vLOS)
+        else:
+            l0 = np.linalg.norm(vLOS[0:-1])
                                      
-        li = l0 + tau * 3e8
-        # dAOD = (aod-losAOD)
-        
-        # cosdAOD = np.cos(dAOD)
-        # sindAOD = np.sin(dAOD)
-        # nu = li/l0
-        
-        # # Resolvemos:
-        # sol1= -sindAOD # xust.matematica overleaf
-        # sol2= sindAOD*(nu**2-1) /  ( nu**2+1-2*cosdAOD*nu )
-        # sol2[(nu==1)&(cosdAOD==1)] = 0 #LOS path
-        # #Posibles solucions:
-        # sols = np.zeros((4,aod.size)) 
-        # sols[0,:] = np.arcsin(sol1)
-        # sols[1,:] = np.arcsin(sol2)
-        # sols[2,:] = np.pi - np.arcsin(sol1)
-        # sols[3,:] = np.pi - np.arcsin(sol2)
-
-        # #Ubicacion dos rebotes 
-        # x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan(aod )-np.tan(losAOD+np.pi-sols))
-        # x[1,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
-        # x[3,(nu==1)&(cosdAOD==1)] = vLOS[0]/2
-        # y=x*np.tan(aod) 
-
-        # #Mellor solucion - a mais semellante á distancia do path evaluado
-        # dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
-        # solIndx=np.argmin(np.abs(dist-li),axis=0)
-        # aoaAux =sols[solIndx,range(li.size)]
-        # aoaFix = np.mod(np.pi+losAOD-aoaAux,2*np.pi)
-        # xLoc = x[solIndx,range(li.size)]
-        # yLoc = y[solIndx,range(li.size)]
-        
-        # return (aoaFix,xLoc,yLoc)
-        
-        uDi = np.column_stack([np.cos(aod),np.sin(aod),np.zeros_like(aod)])#TODO introduce zod to extend to 3D
-        lDi =np.where(tau>0,
-                      .5*(li**2-l0**2)/(li-(uDi[None,:]@vLOS[:,None]).reshape(-1)),
+        li = l0 + tdoa * 3e8        
+        if zod:
+            uDi = np.column_stack([np.cos(aod)*np.sin(zod),np.sin(aod)*np.sin(zod),np.cos(zod)])
+            d0 = vLOS
+        else:
+            uDi = np.column_stack([np.cos(aod),np.sin(aod)])
+            d0 = vLOS[0:2]
+        lDi =np.where(tdoa>0,
+                      .5*(li**2-l0**2)/(li-(uDi[None,:]@d0[:,None]).reshape(-1)),
                       1e-6)#div0 safeward for LOS case
-        posLoc = lDi*uDi.T
-        vLOS2 = vLOS
-        vLOS2[2] = 0
-        dOA = posLoc-vLOS2[:,None]
-        aoaFix = np.mod(np.arctan2(dOA[1,:],dOA[0,:]),2*np.pi)
-        xLoc = posLoc[0,:]
-        yLoc = posLoc[1,:]
-        # print(np.max(np.sqrt((posLoc[0,:]-xLoc)**2+(posLoc[1,:]-yLoc)**2)))
-        # print(np.max(np.abs(aoaFix2-aoaFix)))
-        return (aoaFix,xLoc,yLoc)
+        posLocRelative = lDi*uDi.T
+        dAi = posLocRelative-d0[:,None]
+        aoaFix = np.mod(np.arctan2(dAi[1,:],dAi[0,:]),2*np.pi)
+        if zod:            
+            posLoc = posLocRelative + np.array(txPos)[:,None]
+            zoaFix = np.mod(np.pi/2-np.arctan2(dAi[2,:],np.linalg.norm(dAi[0:2,:],axis=0)),2*np.pi)
+            return (aoaFix,zoaFix,posLoc)
+        else:
+            posLoc = posLocRelative + np.array(txPos)[0:2,None]        
+            return (aoaFix,posLoc)
 
-    def fitAOD(self, txPos, rxPos, aoa, tau):
+    def fitAOD(self, txPos, rxPos, tdoa, aoa,  zoa=None):
                 
         vLOS = np.array(rxPos) - np.array(txPos)
-        l0 = np.linalg.norm(vLOS[0:-1])
-        li = l0+tau*3e8
-        # losAOD =(np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi))
-        # losAOA = np.mod(np.pi+losAOD,2*np.pi)
-
-        # aoaAux = np.mod(-aoa+losAOA*(vLOS[0]>0),2*np.pi)
-        # cosdAOA = np.cos(aoaAux)
-        # sindAOA = np.sin(aoaAux)
-        # nu = li/l0
-
-        # # A=nu**2+1+2*cosdAOA*nu
-        # # B=2*sindAOA*(1-nu*cosdAOA)
-        # # C=(sindAOA**2)*(1-nu**2)
-        # #Ax**2+Bx+C=0^
-
-        # sol1= -sindAOA
-        # sol2= sindAOA*(nu**2-1) /  ( nu**2+1-2*cosdAOA*nu )
-        # sol2[(nu==1)&(cosdAOA==1)] = 0 #LOS path
-
-        # #Posibles solucions:
-        # sols = np.zeros((4,aoa.size)) 
-        # # sols[0,:] = np.arcsin(sol1)
-        # sols[0,:] = np.arcsin(sol1)
-        # sols[1,:] = np.arcsin(sol2)
-        # sols[2,:] = np.pi - np.arcsin(sol1)
-        # sols[3,:] = np.pi - np.arcsin(sol2)
-
-        # #Ubicacion dos rebotes 
-        
-        # #x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-aoaAux))/(np.tan(aoa )-np.tan(losAOD+np.pi-aoaAux))
-
-        # x=(vLOS[1]-vLOS[0]*np.tan(aoa))/(np.tan(losAOD+sols)-np.tan(aoa))
-        # x[1,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
-        # x[3,(nu==1)&(cosdAOA==1)] = vLOS[0]/2
-        # y=x*np.tan(losAOD + sols) 
-
-        # dist=np.sqrt(x**2+y**2)+np.sqrt((x-vLOS[0])**2+(y-vLOS[1])**2)
-        # solIndx=np.argmin(np.abs(dist-li),axis=0)
-        # aodAux =sols[solIndx,range(li.size)]
-        # aodFix = np.mod(aodAux+losAOD,2*np.pi) 
-        
-        # xLoc = x[solIndx,range(li.size)]
-        # yLoc = y[solIndx,range(li.size)]
-        
-        uAi = np.column_stack([np.cos(aoa),np.sin(aoa),np.zeros_like(aoa)])#TODO introduce zod to extend to 3D
-        lAi =np.where(tau>0,
-                      .5*(li**2-l0**2)/(li+(uAi[None,:]@vLOS[:,None]).reshape(-1)),
+        if zoa:
+            l0 = np.linalg.norm(vLOS)
+        else:
+            l0 = np.linalg.norm(vLOS[0:-1])
+            
+        li = l0+tdoa*3e8
+        if zoa:
+            uAi = np.column_stack([np.cos(aoa)*np.sin(zoa),np.sin(aoa)*np.sin(zoa),np.cos(zoa)])
+            d0 = vLOS
+        else:
+            uAi = np.column_stack([np.cos(aoa),np.sin(aoa)])
+            d0 = vLOS[0:2]
+        lAi =np.where(tdoa>0,
+                      .5*(li**2-l0**2)/(li+(uAi[None,:]@d0[:,None]).reshape(-1)),
                       1e-6)#div0 safeward for LOS case
-        posLoc = lAi*uAi.T+vLOS[:,None]
-        vLOS2 = vLOS
-        vLOS2[2] = 0
-        aodFix = np.mod(np.arctan2(posLoc[1,:],posLoc[0,:]),2*np.pi)
-        xLoc = posLoc[0,:]
-        yLoc = posLoc[1,:]
-        
-        return (aodFix,xLoc,yLoc)
+        dDi = lAi*uAi.T+d0[:,None]        
+        aodFix = np.mod(np.arctan2(dDi[1,:],dDi[0,:]),2*np.pi)
+        if zoa:            
+            posLoc = dDi + np.array(txPos)[:,None]
+            zodFix = np.mod(np.pi/2-np.arctan2(dDi[2,:],np.linalg.norm(dDi[0:2,:],axis=0)),2*np.pi)
+            return (aodFix,zodFix,posLoc)
+        else:
+            posLoc = dDi + np.array(txPos)[0:2,None]        
+            return (aodFix,posLoc)
     
-    def checkValidIntersection(self, txPos, rxPos, aoa, aod):
+    def fitTDOA(self, txPos, rxPos, aoa, aod, zoa=None, zod=None,relax3D = False):
         vLOS = np.array(rxPos) - np.array(txPos)
-        aod0 = np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi)
-        dAOD = np.mod(aod - aod0,2*np.pi)
-        dAOA = np.mod(aoa - aod0,2*np.pi)
-        
-        validIntersectionU = (dAOD<=np.pi)&(dAOA<=np.pi)&(dAOA>dAOD)
-        validIntersectionL = (dAOD>np.pi)&(dAOA>np.pi)&(dAOA<dAOD)        
-        return( validIntersectionU | validIntersectionL )
-        
-    
-    def fitDelay(self, txPos, rxPos, aoa, aod):
-        validIntersection = self.checkValidIntersection(txPos, rxPos, aoa, aod)
-        vLOS = np.array(rxPos) - np.array(txPos)
-        l0 = np.linalg.norm(vLOS[0:-1])
-        TA=np.tan(np.pi-aoa[validIntersection])
-        TD=np.tan(aod[validIntersection])
-        x=((rxPos[1]+rxPos[0]*TA)/(TD+TA))
-        y=x*TD
-        l=np.sqrt(x**2+y**2)+np.sqrt((x-rxPos[0])**2+(y-rxPos[1])**2)
-        l0=np.sqrt(rxPos[0]**2+rxPos[1]**2)
-
-        tauFix = np.full_like(aoa,fill_value=np.inf)
-        tauFix[validIntersection] = (l-l0)/3e8      
-        xLoc = np.full_like(aoa,fill_value=np.inf)
-        xLoc[validIntersection] = x
-        yLoc = np.full_like(aoa,fill_value=np.inf)
-        yLoc[validIntersection] = y
-        return (tauFix,xLoc,yLoc,validIntersection)
+        if zoa and zod:
+            d0 = vLOS
+            uDi = np.column_stack([np.cos(aod)*np.sin(zod),np.sin(aod)*np.sin(zod),np.cos(zod)])
+            uAi = np.column_stack([np.cos(aoa)*np.sin(zoa),np.sin(aoa)*np.sin(zoa),np.cos(zoa)])
+        else:
+            d0 = vLOS[0:2]
+            uDi = np.column_stack([np.cos(aod),np.sin(aod)])
+            uAi = np.column_stack([np.cos(aoa),np.sin(aoa)])
+        l0=np.linalg.norm(d0)
+        U=np.stack([uDi,-uAi],axis=2)
+        vli=np.stack([np.linalg.lstsq(U[n,:,:],d0,rcond=None)[0] for n in range(U.shape[0])])
+        lAi=vli[:,1]
+        lDi=vli[:,0]
+        dAi = lAi*uAi.T
+        dDi = lDi*uDi.T
+        lDif = np.linalg.norm(d0[:,None]+dAi-dDi,axis=0)    
+        li=lAi+lDi+lDif
+        validIntersection=(lAi>0) & (lDi>0) & ( relax3D | np.isclose(lDif,0) )        
+        tdoaFix = np.full_like(li,fill_value=np.inf)  
+        tdoaFix[validIntersection]=(li-l0)/3e8  
+        if zoa and zod:
+            posLoc = dDi + np.array(txPos)[:,None]
+        else:            
+            posLoc = dDi + np.array(txPos)[0:2,None]
+        return (tdoaFix,posLoc,validIntersection)
            
 
     

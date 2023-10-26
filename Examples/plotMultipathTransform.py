@@ -15,14 +15,15 @@ fig_ctr = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
-sce = "UMi"
-transform = "DERandom" #type None for no transform
-delBacklobe = True
+sce = "UMa"
+transform = "AOA" #type None for no transform
+delBacklobe = False
+bool3D=False
 
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
-rx = (45,45,1.5)
+rx = (5,-90,1.5)
 txArrayAngle = 45
 rxArrayAngle = -180
 vLOS=np.array(rx)-np.array(tx)
@@ -47,7 +48,7 @@ subpathsAD = subpathsNAD.copy()
 
 if transform:
     if transform == "AOA":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOA(tx,rx,plinfo,clustersAD,subpathsAD)
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOA(tx,rx,plinfo,clustersAD,subpathsAD,mode3D=bool3D)
     elif transform == "AOD":
         (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOD(tx,rx,plinfo,clustersAD,subpathsAD)
     elif transform == "Delay":
@@ -95,7 +96,7 @@ plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
-plt.plot(clustersAD.Xs,clustersAD.Ys,'xk',label='C. Scatterers')
+# plt.plot(clustersAD.Xs,clustersAD.Ys,'xk',label='C. Scatterers')
 for i in range(0,nClusters): 
     plt.plot([tx[0],tx[0]+liTX_cNA[i]*np.cos(clustersNAD.AOD[i]*np.pi/180)],[tx[1],tx[1]+liTX_cNA[i]*np.sin(clustersNAD.AOD[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
     plt.plot([rx[0],rx[0]+liRX_cNA[i]*np.cos(clustersNAD.AOA[i]*np.pi/180)],[rx[1],rx[1]+liRX_cNA[i]*np.sin(clustersNAD.AOA[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9')
@@ -118,7 +119,7 @@ if delBacklobe:
 
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.savefig("../Figures/fit%s_clusNAD.png"%(transform))
+plt.savefig("../Figures/fit%s_clusNAD.eps"%(transform))
 
 
 #Gráfica 2 - Camiños clusters adaptados 
@@ -144,7 +145,7 @@ if delBacklobe:
 legend = plt.legend(shadow=True, fontsize='10')
 
 plt.title("%d|%d|%d of %d clusters adapted|kept|deleted"%(nACL,nKCL,nCL-nKCL,nCL))
-plt.savefig("../Figures/fit%s_clusAD.png"%(transform))
+plt.savefig("../Figures/fit%s_clusAD.eps"%(transform))
 
 # Gráfica 3 - Subpaths non adaptados
 
@@ -155,7 +156,7 @@ plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
-plt.plot(subpathsAD.Xs,subpathsAD.Ys,'xk',label='S. Scatterers')
+# plt.plot(subpathsAD.Xs,subpathsAD.Ys,'xk',label='S. Scatterers')
 for i in range(0,nClusters): 
     Nsp=subpathsNAD.AOD[i].size
     plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.cos(subpathsNAD.AOD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.sin(subpathsNAD.AOD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
@@ -168,7 +169,7 @@ if delBacklobe:
 legend = plt.legend(shadow=True, fontsize='10')
 if transform == "Delay":
     plt.axis([-d2D+vLOS[0]/2,d2D+vLOS[0]/2,-d2D+vLOS[1]/2,d2D+vLOS[1]/2])
-plt.savefig("../Figures/fit%s_subpNAD.png"%(transform))
+plt.savefig("../Figures/fit%s_subpNAD.eps"%(transform))
 
 # Gráfica 4 - Subpaths adaptados
 
@@ -193,7 +194,7 @@ if delBacklobe:
 plt.title("%d|%d|%d of %d subpaths adapted|kept|deleted"%(nASP,nKSP,nSP-nKSP,nSP))
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.savefig("../Figures/fit%s_subpAD.png"%(transform))
+plt.savefig("../Figures/fit%s_subpAD.eps"%(transform))
 
 # Gráfica 5: Deck de subpaths AOD, AOA e delay non correxido
 
@@ -228,7 +229,7 @@ for n in range(nClusters):
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()
 
-plt.savefig("../Figures/fit%s_deckNAD.png"%(transform))
+plt.savefig("../Figures/fit%s_deckNAD.eps"%(transform))
 
 
 # Gráfica 6: Deck de subpaths AOD, AOA e delay correxido
@@ -267,5 +268,5 @@ for ctr in range(0,clustersAD.shape[0]):
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()
 
-plt.savefig("../Figures/fit%s_deckNAD.png"%(transform))
+plt.savefig("../Figures/fit%s_deckAD.eps"%(transform))
 

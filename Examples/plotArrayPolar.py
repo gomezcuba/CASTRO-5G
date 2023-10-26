@@ -9,7 +9,7 @@ sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as pg
 from CASTRO5G import multipathChannel as mc
 
-model = pg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=False)
+model = pg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 nClusters = clusters.shape[0]
 nNLOSsp=subpaths.loc[1,:].shape[0]
@@ -100,4 +100,6 @@ arrayResCondBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayResponseCombined)
 plt.polar(angles_plot,arrayResCondBtrunc25)
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 plt.title("%d ULA angular response times channel gain summed for all subpaths"%(Nant))
+plt.savefig("../Figures/radiationAoA.eps")
+
 
