@@ -16,9 +16,9 @@ fig_ctr = 0
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
 sce = "UMa"
-transform = "AOA" #type None for no transform
+transform = "TDOA" #type None for no transform
 delBacklobe = False
-bool3D=False
+bool3D=True
 
 # Posicións transmisor e receptor
 
@@ -50,9 +50,9 @@ if transform:
     if transform == "AOA":
         (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOA(tx,rx,plinfo,clustersAD,subpathsAD,mode3D=bool3D)
     elif transform == "AOD":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOD(tx,rx,plinfo,clustersAD,subpathsAD)
-    elif transform == "Delay":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.attemptFullFitDelay(tx,rx,plinfo,clustersAD,subpathsAD)
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOD(tx,rx,plinfo,clustersAD,subpathsAD,mode3D=bool3D)
+    elif transform == "TDOA":
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.attemptFullFitTDOA(tx,rx,plinfo,clustersAD,subpathsAD,mode3D=bool3D,fallbackFun=("relax3D" if bool3D else None))
     elif transform == "Random":
         (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,E=1,P=[0,1/3,1/3,1/3])
     elif transform == "SRandom":
@@ -167,7 +167,7 @@ if delBacklobe:
     drawShadedArc(plt.gca(),tx,txArrayAngle*np.pi/180-np.pi,d2D/2)
     drawShadedArc(plt.gca(),rx,rxArrayAngle*np.pi/180-np.pi,d2D/2)
 legend = plt.legend(shadow=True, fontsize='10')
-if transform == "Delay":
+if transform == "TDOA":
     plt.axis([-d2D+vLOS[0]/2,d2D+vLOS[0]/2,-d2D+vLOS[1]/2,d2D+vLOS[1]/2])
 plt.savefig("../Figures/fit%s_subpNAD.eps"%(transform))
 
@@ -196,7 +196,7 @@ legend = plt.legend(shadow=True, fontsize='10')
 
 plt.savefig("../Figures/fit%s_subpAD.eps"%(transform))
 
-# Gráfica 5: Deck de subpaths AOD, AOA e delay non correxido
+# Gráfica 5: Deck de subpaths AOD, AOA e TDOA non correxido
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
@@ -232,7 +232,7 @@ plt.grid()
 plt.savefig("../Figures/fit%s_deckNAD.eps"%(transform))
 
 
-# Gráfica 6: Deck de subpaths AOD, AOA e delay correxido
+# Gráfica 6: Deck de subpaths AOD, AOA e TDOA correxido
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
