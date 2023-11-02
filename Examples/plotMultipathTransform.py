@@ -16,7 +16,7 @@ fig_ctr = 0
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
 sce = "UMa"
-transform = "TDOA" #type None for no transform
+transform = "SRandom" #type None for no transform
 delBacklobe = False
 bool3D=True
 
@@ -53,16 +53,16 @@ if transform:
         (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.fullFitAOD(tx,rx,plinfo,clustersAD,subpathsAD,mode3D=bool3D)
     elif transform == "TDOA":
         (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.attemptFullFitTDOA(tx,rx,plinfo,clustersAD,subpathsAD,mode3D=bool3D,fallbackFun=("relax3D" if bool3D else None))
-    elif transform == "Random":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,E=1,P=[0,1/3,1/3,1/3])
     elif transform == "SRandom":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitAllSubpaths(tx,rx,plinfo,clustersAD,subpathsAD,P=[0,1/3,1/3,1/3])
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitAllSubpaths(tx,rx,plinfo,clustersAD,subpathsAD,P=[0,1/3,1/3,1/3],mode3D=bool3D)
+    elif transform == "CRandom":
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=1,Es=1,P=[0,1/3,1/3,1/3],mode3D=bool3D)
     elif transform == "CERandom":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.5,Es=1,P=[0,.5,.5,0])
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.5,Es=1,P=[0,.5,.5,0],mode3D=bool3D)
     elif transform == "SERandom":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=1,Es=.5,P=[0,.5,.5,0])
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=1,Es=.5,P=[0,.5,.5,0],mode3D=bool3D)
     elif transform == "DERandom":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.9,Es=.5,P=[0,.5,.5,0])
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.9,Es=.5,P=[0,.5,.5,0],mode3D=bool3D)
     else:
         print("Transform '",transform,"' not supported")
     
