@@ -501,6 +501,7 @@ class ThreeGPPMultipathChannelModel:
     def get_LOSUnif_from_location(self,txPos, rxPos):
          
         dCorr = 15
+
         TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, dCorr) #los corr distance
     
         key = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex)
@@ -773,16 +774,15 @@ class ThreeGPPMultipathChannelModel:
     #Parte de consistencia espacial
 
     
-    def displaceMultipathChannel(self, dataframe, deltaTxPos, deltaRxPos, deltaPos):
+    def displaceMultipathChannel(self, dataframe, deltaTxPos, deltaRxPos, deltaPos, vLOS):
         # Código que cumple con el procedimiento A del apartado de consistencia espacial 
-
         #Parámetros para actualizar tau
         c = 3e8
         tau = dataframe['tau'].T.to_numpy()
-        zoa = dataframe['ZOA'].T.to_numpy()
-        aoa = dataframe['AOA'].T.to_numpy()
-        zod = dataframe['ZOD'].T.to_numpy()
-        aod = dataframe['AOD'].T.to_numpy()
+        zoa = dataframe['ZOA'].T.to_numpy()*np.pi/180
+        aoa = dataframe['AOA'].T.to_numpy()*np.pi/180
+        zod = dataframe['ZOD'].T.to_numpy()*np.pi/180
+        aod = dataframe['AOD'].T.to_numpy()*np.pi/180
         powc = dataframe['powC'].T.to_numpy()
         
         ###############################TAU#########################
@@ -800,69 +800,69 @@ class ThreeGPPMultipathChannelModel:
         Rrx_array = np.array(Rrx)
         Rtx_array = np.array(Rtx)
 
+        d3D = np.linalg.norm(vLOS)
+        tau_tilde_previo = tau + d3D/c
+
         deltaPos= np.linalg.norm(deltaPos)
         deltaentrec = deltaPos / c
         auxtau= Rrx_array @ deltaRxPos + Rtx_array @ deltaTxPos
         auxtau2= auxtau * deltaentrec
         auxtau2 = np.squeeze(auxtau2)
-        tau_nueva = tau - auxtau2
+        tau_tilde = tau_tilde_previo - auxtau2
 
-
-        tau_nueva = np.sort( tau_nueva-np.min(tau_nueva) )
-      
-
+        tau_nueva = tau_tilde-np.min( tau_tilde) 
+     
 
         ############################AOD#####################3
         deltaNRxPos = deltaRxPos - deltaTxPos
         deltaNTxPos = deltaTxPos - deltaRxPos
 
-        phiAoD = np.array([[-np.sin(aod)],
-                        [np.cos(aod)],
-                        [np.zeros_like(aod)]]).transpose(2,0,1)
-        
+        phiAoD = np.array([[np.cos(zod) * np.cos(aod)],
+                        [np.cos(zod) * np.sin(aod)],
+                        [-np.sin(aod)]]).transpose(2,0,1)
        
         auxAoD1 = deltaNRxPos.T @ phiAoD
         auxAoD2 = auxAoD1 * deltaentrec
         auxAoD2 = auxAoD2.squeeze()
-        auxAoD3 = auxAoD2 /(tau_nueva @ np.sin(zod))
+        auxAoD3 = auxAoD2 /(tau_tilde_previo @ np.sin(zod))
         aodnueva= auxAoD3 + aod
 
         ###############################ZOD######################3
-        tetaZoD = np.array([[np.cos(zod) * np.cos(aod)],
-                        [np.cos(zod) * np.sin(aod)],
-                        [-np.sin(aod)]]).transpose(2,0,1)
+        tetaZoD = np.array([[-np.sin(aod)],
+                        [np.cos(aod)],
+                        [np.zeros_like(aod)]]).transpose(2,0,1)
         
         auxZoD1 = deltaNRxPos.T @ tetaZoD
         auxZoD2= auxZoD1 * deltaentrec
         auxZoD2 = auxZoD2.squeeze()
-        auxZoD3= auxZoD2 / tau_nueva
+        auxZoD3= auxZoD2 / tau_tilde_previo
         zodnueva = zod + auxZoD3
 
-        ##########################AOA###################3333
-        phiAoA = np.array([[-np.sin(zoa)],
-                        [np.cos(aoa)],
-                        [np.zeros_like(aoa)]]).transpose(2,0,1)
+        ##########################AOA###################
+
+        phiAoA = np.array([[np.cos(zoa) * np.cos(aoa)],
+                        [np.cos(zoa) * np.sin(aoa)],
+                        [-np.sin(aoa)]]).transpose(2,0,1)
 
         auxAoA1 = deltaNTxPos.T @ phiAoA
         auxAoA1 = auxAoA1.squeeze()
-        auxAoA2 = deltaentrec /(tau_nueva @ np.sin(zoa))
+        auxAoA2 = deltaentrec /(tau_tilde_previo @ np.sin(zoa))
         aoanueva = aoa + auxAoA1 * auxAoA2
 
         ##################################ZOA#########################
-        tetaZoA = np.array([[np.cos(zoa) * np.cos(aoa)],
-                        [np.cos(zoa) * np.sin(aoa)],
-                        [-np.sin(aoa)]]).transpose(2,0,1)
+        tetaZoA = np.array([[-np.sin(zoa)],
+                        [np.cos(aoa)],
+                        [np.zeros_like(aoa)]]).transpose(2,0,1)
       
         auxZoA1 = deltaNTxPos.T @ tetaZoA
         auxZoA1= auxZoA1.squeeze()
         auxZoA2 = auxZoA1 * deltaentrec
         auxZoA2 = auxZoA2.squeeze()
-        auxZoA3= auxZoA2 / tau_nueva
+        auxZoA3= auxZoA2 / tau_tilde_previo
         zoanueva = zoa + auxZoA3
-        
-        dataframe =pd.DataFrame(columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva,aodnueva,zoanueva,zodnueva]).T) 
-    
-        return (dataframe)
+        dfsalida =pd.DataFrame(index = dataframe.index, columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva*180/np.pi,aodnueva*180/np.pi,zoanueva*180/np.pi,zodnueva*180/np.pi]).T) 
+
+        return (dfsalida)
             
         
 
@@ -902,14 +902,15 @@ class ThreeGPPMultipathChannelModel:
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
 
-        self.smallCorrDist = 1 
+        self.smallCorrDist = 1
         key = self.calculateGridCoeffs(txPos,rxPos,self.smallCorrDist)
-
-            
+        vLOS = bPos - aPos
+        
         txPosGrid = aPos
-        txPosGrid[0:2] = key[0:2] * self.smallCorrDist
+        txPosGrid[0:2] = np.array(key[0:2]) * self.smallCorrDist
         rxPosGrid = bPos
-        rxPosGrid[0:2] = key[2:4] * self.smallCorrDist
+        rxPosGrid[0:2] = np.array(key[2:4]) * self.smallCorrDist
+
 
         deltaTxPos = txPos - txPosGrid
         deltaRxPos = rxPos -rxPosGrid
@@ -951,9 +952,7 @@ class ThreeGPPMultipathChannelModel:
 
             clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2Dgrid, hut) 
             self.dChansGenerated[key] = (clusters,subpaths)
-        print("subpathsantes", subpaths)
-        clusters = self.displaceMultipathChannel(clusters, deltaTxPos, deltaRxPos, deltaPos)
-        subpaths = self.displaceMultipathChannel(subpaths, deltaTxPos, deltaRxPos, deltaPos)
-        print("subpathsnuevos", subpaths)
+        clusters = self.displaceMultipathChannel(clusters, deltaTxPos, deltaRxPos, deltaPos, vLOS)
+        subpaths = self.displaceMultipathChannel(subpaths, deltaTxPos, deltaRxPos, deltaPos, vLOS)
         
         return clusters,subpaths
