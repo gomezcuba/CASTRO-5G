@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -- coding: utf-8 --
 """
 Created on Wed Nov 30 16:28:39 2022
 
@@ -10,14 +10,7 @@ import matplotlib.pyplot as plt
 import random
 import math as m
 
-def generate_new_macro_params():
-    macroDS = random.uniform(0, 10)  # Rango para macroDS
-    macroASD = random.uniform(0, 360)  # Rango para macroASD
-    macroASA = random.uniform(0, 360)  # Rango para macroASA
-    macroZSD = random.uniform(0, 360)  # Rango para macroZSD
-    macroZSA = random.uniform(0, 360)  # Rango para macroZSA
-    
-    return macroDS, macroASD, macroASA, macroZSD, macroZSA
+
 
 plt.close('all')
 
@@ -43,7 +36,7 @@ vals, counts = np.unique(cellIndex, axis=0, return_counts=True)
 mm = np.zeros((numberCellsMap, numberCellsMap))
 mm[vals[:, 0].astype(int), vals[:, 1].astype(int)] = counts
 
-model = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
+model = pg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)
 AOA = np.zeros(Nusers) 
 tau = np.zeros(Nusers)
 AOD = np.zeros(Nusers)
@@ -76,7 +69,7 @@ plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
-
+plt.savefig("1")
 fig +=1
 fig2 = plt.figure(fig)
 ax = plt.gca()
@@ -91,6 +84,7 @@ plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
+plt.savefig("2")
 
 fig +=1
 fig3 = plt.figure(fig)
@@ -106,6 +100,7 @@ plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
+plt.savefig("3")
 
 fig +=1
 fig4 = plt.figure(fig)
@@ -121,6 +116,7 @@ plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
+plt.savefig("4")
 
 fig +=1
 fig5 = plt.figure(fig)
@@ -135,4 +131,5 @@ plt.colorbar(sc, label="ZOD", orientation="vertical")
 plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
+plt.savefig("5")
 plt.show()
