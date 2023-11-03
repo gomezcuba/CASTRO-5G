@@ -803,10 +803,8 @@ class ThreeGPPMultipathChannelModel:
         d3D = np.linalg.norm(vLOS)
         tau_tilde_previo = tau + d3D/c
 
-        deltaPos= np.linalg.norm(deltaPos)
-        deltaentrec = deltaPos / c
         auxtau= Rrx_array @ deltaRxPos + Rtx_array @ deltaTxPos
-        auxtau2= auxtau * deltaentrec
+        auxtau2= auxtau / c
         auxtau2 = np.squeeze(auxtau2)
         tau_tilde = tau_tilde_previo - auxtau2
 
@@ -817,48 +815,44 @@ class ThreeGPPMultipathChannelModel:
         deltaNRxPos = deltaRxPos - deltaTxPos
         deltaNTxPos = deltaTxPos - deltaRxPos
 
-        phiAoD = np.array([[np.cos(zod) * np.cos(aod)],
-                        [np.cos(zod) * np.sin(aod)],
-                        [-np.sin(aod)]]).transpose(2,0,1)
+        phiAoD = np.array([[-np.sin(aod)],
+                        [np.cos(aod)],
+                        [np.zeros_like(aod)]]).transpose(2,0,1)
        
         auxAoD1 = deltaNRxPos.T @ phiAoD
-        auxAoD2 = auxAoD1 * deltaentrec
-        auxAoD2 = auxAoD2.squeeze()
-        auxAoD3 = auxAoD2 /(tau_tilde_previo @ np.sin(zod))
+        auxAoD2 = auxAoD1.squeeze()
+        auxAoD3 = auxAoD2 /(c*tau_tilde_previo * np.sin(zod))
         aodnueva= auxAoD3 + aod
 
         ###############################ZOD######################3
-        tetaZoD = np.array([[-np.sin(aod)],
-                        [np.cos(aod)],
-                        [np.zeros_like(aod)]]).transpose(2,0,1)
-        
+        tetaZoD = np.array([[np.cos(zod) * np.cos(aod)],
+                        [np.cos(zod) * np.sin(aod)],
+                        [-np.sin(aod)]]).transpose(2,0,1)
+       
         auxZoD1 = deltaNRxPos.T @ tetaZoD
-        auxZoD2= auxZoD1 * deltaentrec
-        auxZoD2 = auxZoD2.squeeze()
-        auxZoD3= auxZoD2 / tau_tilde_previo
+        auxZoD2 = auxZoD1.squeeze()
+        auxZoD3= auxZoD2 / (c*tau_tilde_previo)
         zodnueva = zod + auxZoD3
 
         ##########################AOA###################
 
-        phiAoA = np.array([[np.cos(zoa) * np.cos(aoa)],
-                        [np.cos(zoa) * np.sin(aoa)],
-                        [-np.sin(aoa)]]).transpose(2,0,1)
-
-        auxAoA1 = deltaNTxPos.T @ phiAoA
-        auxAoA1 = auxAoA1.squeeze()
-        auxAoA2 = deltaentrec /(tau_tilde_previo @ np.sin(zoa))
-        aoanueva = aoa + auxAoA1 * auxAoA2
-
-        ##################################ZOA#########################
-        tetaZoA = np.array([[-np.sin(zoa)],
+        phiAoA = np.array([[-np.sin(aoa)],
                         [np.cos(aoa)],
                         [np.zeros_like(aoa)]]).transpose(2,0,1)
       
+        auxAoA1 =deltaNTxPos.T @ phiAoA
+        auxAoA1 = auxAoA1.squeeze()
+        auxAoA2 = auxAoA1 /(c*tau_tilde_previo *np.sin(zoa))
+        aoanueva = aoa + auxAoA2
+
+        ##################################ZOA#########################
+        tetaZoA = np.array([[np.cos(zoa) * np.cos(aoa)],
+                        [np.cos(zoa) * np.sin(aoa)],
+                        [-np.sin(aoa)]]).transpose(2,0,1)
+    
         auxZoA1 = deltaNTxPos.T @ tetaZoA
-        auxZoA1= auxZoA1.squeeze()
-        auxZoA2 = auxZoA1 * deltaentrec
-        auxZoA2 = auxZoA2.squeeze()
-        auxZoA3= auxZoA2 / tau_tilde_previo
+        auxZoA2= auxZoA1.squeeze()
+        auxZoA3= auxZoA2 / (c*tau_tilde_previo)
         zoanueva = zoa + auxZoA3
         dfsalida =pd.DataFrame(index = dataframe.index, columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva*180/np.pi,aodnueva*180/np.pi,zoanueva*180/np.pi,zodnueva*180/np.pi]).T) 
 
