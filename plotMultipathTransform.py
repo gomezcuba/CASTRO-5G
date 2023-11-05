@@ -18,7 +18,7 @@ sce = "UMa"
 # Posicións transmisor e receptor
 
 tx = (5, 5, 10)
-rx = (5, 110, 1)
+rx = (5, 85, 1)
 vLOS=np.array(rx)-np.array(tx)
 d2D=np.linalg.norm(vLOS[0:2])
 phi0 = 0
@@ -39,8 +39,8 @@ nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 
 lsubpaths=[subpathsNAD]
 lClusters=[clustersNAD]
-Npos = 5
-despla=(5,0,0)
+Npos = 6
+despla=(10,0,0)
 
 lrxPosNext0=[rx[0]]
 lrxPosNext1=[rx[1]]
@@ -66,7 +66,6 @@ for clustersONE in lClusters:
     fig = plt.figure(fig_ctr)
     nSP=len(subpathsNAD)
     nCL=len(clustersNAD)
-
     #Distancia entre receptor e posición do rebote
     liRX_cNA = pd.Series(d2D/2, index=clustersONE.index)
     liRX_sNA = pd.Series(d2D/2, index=subpathONE.index)
@@ -85,9 +84,9 @@ for clustersONE in lClusters:
   
     for i in clustersONE.index: 
         
-        plt.plot([tx[0],tx[0]+liTX_cNA[i]*np.cos(clustersONE.ZOD[i]*np.pi/180)],[tx[1],tx[1]+liTX_cNA[i]*np.sin(clustersONE.ZOD[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
+        plt.plot([tx[0],tx[0]+liTX_cNA[i]*np.cos(clustersONE.AOD[i]*np.pi/180)],[tx[1],tx[1]+liTX_cNA[i]*np.sin(clustersONE.AOD[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
    
-        plt.plot([lrxPosNext0[z],lrxPosNext0[z]+liRX_cNA[i]*np.cos(clustersONE.ZOA[i]*np.pi/180)],[lrxPosNext1[z],lrxPosNext1[z]+liRX_cNA[i]*np.sin(clustersONE.ZOA[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9')
+        plt.plot([lrxPosNext0[z],lrxPosNext0[z]+liRX_cNA[i]*np.cos(clustersONE.AOA[i]*np.pi/180)],[lrxPosNext1[z],lrxPosNext1[z]+liRX_cNA[i]*np.sin(clustersONE.AOA[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9')
      
     plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
     plt.plot(lrxPosNext0[z],lrxPosNext1[z],'sb',label='UE', linewidth='4.5')
@@ -95,7 +94,7 @@ for clustersONE in lClusters:
     legend = plt.legend(shadow=True, fontsize='10')
         
     filename = f"figura_{fig_ctr}.png"
-    plt.savefig(filename)
+    #plt.savefig(filename)
     z=z+1
     
     
@@ -121,10 +120,11 @@ for subpathONE in lsubpaths:
     plt.plot(lrxPosNext0[z],lrxPosNext1[z],'sb',label='UE', linewidth='4.5')
     legend = plt.legend(shadow=True, fontsize='10')
     filename = f"subpaths{fig_ctr}.png"
-    plt.savefig(filename)
+    #plt.savefig(filename)
     z=z+1
 
 # Gráfica 3
+for subpathONE in lsubpaths:
     fig_ctr+=1
     fig = plt.figure(fig_ctr)
     plt.subplot(2,2,1, projection='polar',title="AoD")
@@ -152,7 +152,11 @@ for subpathONE in lsubpaths:
         markerline, stemlines, baseline = plt.stem( subpathONE.loc[n,:].tau ,10*np.log10( subpathONE.loc[n,:].powC ),bottom=np.min(10*np.log10(subpathONE.powC)))
         plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
         plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
-    plt.grid()
-
-    plt.savefig('Deck:%d'%(Npos))
+filename = f"Gráfica 3:{fig_ctr}.png"
+        
+plt.savefig(filename)
 plt.show()
+plt.grid()
+
+    
+    
