@@ -54,6 +54,15 @@ for i in range(Nusers):
     AOD[i]= clusters.AOD[1]
     ZOA[i]= clusters.ZOA[1]
     ZOD[i]= clusters.ZOD[1]
+
+
+###ENCONTRAR DOS VALORES CERCANOS AOA##########
+valor_referencia = AOA[3]  
+diferentes_valores = [x for x in AOA if x != valor_referencia]
+valor_mas_cercano = min(diferentes_valores, key=lambda x: abs(x - valor_referencia))
+indice= np.where(AOA == valor_mas_cercano)
+indice=int(indice[0])
+
 fig=0
 fig +=1
 fig1 = plt.figure(fig)
@@ -64,12 +73,14 @@ plt.yticks(np.arange(0, distance + 1, corrDist))
 plt.xticks(np.arange(0, distance + 1, corrDist))
 plt.grid(axis='both', color='red')
 sc = plt.scatter(posX, posY, s=15, c=AOA, cmap='RdYlBu_r')  
+plt.text(posX[3],posY[3],round(AOA[3], 2))
+plt.text(posX[indice],posY[indice],round(AOA[indice], 2))
 plt.colorbar(sc, label="AOA", orientation="vertical")
 plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
-plt.savefig("1")
+plt.savefig("AOA")
 fig +=1
 fig2 = plt.figure(fig)
 ax = plt.gca()
@@ -84,7 +95,7 @@ plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
-plt.savefig("2")
+plt.savefig("tau")
 
 fig +=1
 fig3 = plt.figure(fig)
@@ -100,7 +111,7 @@ plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
-plt.savefig("3")
+plt.savefig("AOD")
 
 fig +=1
 fig4 = plt.figure(fig)
@@ -116,7 +127,7 @@ plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
 #plt.show()
-plt.savefig("4")
+plt.savefig("ZOA")
 
 fig +=1
 fig5 = plt.figure(fig)
@@ -131,5 +142,5 @@ plt.colorbar(sc, label="ZOD", orientation="vertical")
 plt.title('User Distribution')
 plt.xlabel('Distance (m)')
 plt.ylabel('Distance (m)')
-plt.savefig("5")
+plt.savefig("ZOD")
 plt.show()
