@@ -896,15 +896,14 @@ class ThreeGPPMultipathChannelModel:
         aPos = np.array(txPos)
         bPos = np.array(rxPos)
 
-        self.smallCorrDist = 1
+        self.smallCorrDist = 100
         key = self.calculateGridCoeffs(txPos,rxPos,self.smallCorrDist)
         vLOS = bPos - aPos
-        
+        print(key)
         txPosGrid = aPos
         txPosGrid[0:2] = np.array(key[0:2]) * self.smallCorrDist
         rxPosGrid = bPos
         rxPosGrid[0:2] = np.array(key[2:4]) * self.smallCorrDist
-
 
         deltaTxPos = txPos - txPosGrid
         deltaRxPos = rxPos -rxPosGrid

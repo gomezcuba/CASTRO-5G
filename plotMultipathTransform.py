@@ -18,7 +18,7 @@ sce = "UMa"
 # Posicións transmisor e receptor
 
 tx = (5, 5, 10)
-rx = (5, 85, 1)
+rx = (5, 105, 1)
 vLOS=np.array(rx)-np.array(tx)
 d2D=np.linalg.norm(vLOS[0:2])
 phi0 = 0
@@ -53,6 +53,7 @@ for ctr in range(1,Npos):
     lClusters.append(clustersSiguiente)
     lsubpaths.append(subpaths1)
     clustersONE = lClusters[ctr]
+    # print(clustersSiguiente)
 
 
 for subpathsCTR in range(Npos-1):
@@ -111,7 +112,7 @@ for subpathONE in lsubpaths:
     plt.ylabel('y-location (m)')
 
     plt.plot([tx[0],lrxPosNext0[z]],[tx[1],lrxPosNext1[z]],'--')
-    
+    print(subpathONE)
     for i in range(0,nClusters): 
         Nsp=subpathONE.AOD[i].size
         plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.cos(subpathONE.AOD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.sin(subpathONE.AOD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
