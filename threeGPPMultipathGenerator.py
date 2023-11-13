@@ -812,8 +812,8 @@ class ThreeGPPMultipathChannelModel:
      
 
         ############################AOD#####################3
-        deltaNRxPos = deltaRxPos - deltaTxPos
-        deltaNTxPos = deltaTxPos - deltaRxPos
+        deltaNTxPos = deltaRxPos - deltaTxPos
+        deltaNRxPos = deltaTxPos - deltaRxPos
 
         phiAoD = np.array([[-np.sin(aod)],
                         [np.cos(aod)],
