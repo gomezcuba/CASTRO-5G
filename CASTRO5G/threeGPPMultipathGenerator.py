@@ -33,7 +33,8 @@ class ThreeGPPMultipathChannelModel:
                     'Cc', #Correlations Matrix Azimut [sSF, sK, sDS, sASD, sASA, sZSD, sZSA]
                     'funPathLoss',
                     'funZODoffset',
-                    'xpr_mu','xpr_sg'
+                    'xpr_mu','xpr_sg',
+                    'corrO21','corrLOS','corrStatics'
                 ],
             data={
                 ('UMi','LOS'): [
@@ -59,6 +60,7 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossUMiLOS,
                     lambda d2D,hut: 0,
                     9, 3 # cross polarization mu sigma
+                    50,50,12
                 ],
                 ('UMi','NLOS'): [
                     -0.24*np.log10(1+fc)-6.83,
@@ -92,7 +94,8 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossUMiNLOS,
                     lambda d2D,hut: -np.power(10.0,-1.5*np.log10(np.maximum(10,d2D)) + 3.3),
                     8,
-                    3
+                    3,
+                    50,50,15
                 ],
                 ('UMa','LOS'): [
                     -6.955 - 0.0963*np.log10(fc),
@@ -126,7 +129,8 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossUMaLOS,
                     lambda d2D,hut: 0,
                     8,
-                    4
+                    4,
+                    50,50,40
                 ],
                 ('UMa','NLOS'): [
                     -6.28 - 0.204*np.log10(fc),
@@ -160,7 +164,8 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossUMaNLOS,
                     lambda d2D,hut: 7.66*np.log10(self.frecRefGHz) - 5.96 - np.power(10, (0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(hut - 1.5)  ),
                     7,
-                    3
+                    3,
+                    50,50,50
                 ],
                 ('RMa','LOS'): [
                     -7.49,
@@ -194,7 +199,8 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossRMaNLOS,
                     lambda d2D,hut: 0,
                     12,
-                    4
+                    4,
+                    50,60,60
                 ],
                 ('RMa','NLOS'): [
                     -7.43,
@@ -228,7 +234,8 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossRMaNLOS,
                     lambda d2D,hut: np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D),
                     7,
-                    3
+                    3,
+                    50,60,60
                 ],                
                 ('InH-Office-Mixed','LOS'): [
                     -0.01*np.log10(1+fc) - 7.692,
@@ -262,7 +269,8 @@ class ThreeGPPMultipathChannelModel:
                    self.scenarioPlossInLOS,
                    lambda d2D,hut: 0,
                    11,
-                   4
+                   4,
+                   0,10,10
                 ],                
                 ('InH-Office-Mixed','NLOS'): [
                     -0.28*np.log10(1+fc) - 7.173,
@@ -296,7 +304,8 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossInNLOS,
                     lambda d2D,hut: 0,
                     10,
-                    4
+                    4,
+                    0,10,10
                 ],                
                 ('InH-Office-Open','LOS'): [
                     -0.01*np.log10(1+fc) - 7.692,
@@ -330,7 +339,8 @@ class ThreeGPPMultipathChannelModel:
                    self.scenarioPlossInLOS,
                    lambda d2D,hut: 0,
                    11,
-                   4
+                   4,
+                   0,10,10
                 ],                
                 ('InH-Office-Open','NLOS'): [
                     -0.28*np.log10(1+fc) - 7.173,
@@ -364,7 +374,8 @@ class ThreeGPPMultipathChannelModel:
                     self.scenarioPlossInNLOS,
                     lambda d2D,hut: 0,
                     10,
-                    4
+                    4,
+                    0,10,10
                 ]
            })
         return(df)
@@ -386,10 +397,10 @@ class ThreeGPPMultipathChannelModel:
         ]
     
     #RMa hasta 7GHz y el resto hasta 100GHz
-    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, corrDistance = 15.0, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, funPostprocess = None):
+    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, funPostprocess = None):
         self.frecRefGHz = fc
         self.scenario = scenario
-        self.corrDistance = corrDistance
+        #self.corrDistance = corrDistance
         self.W=avgStreetWidth
         self.h=avgBuildingHeight
         self.bLargeBandwidthOption = bLargeBandwidthOption
@@ -407,9 +418,9 @@ class ThreeGPPMultipathChannelModel:
         self.scenarioParams = self.allParamTable[self.scenario]
         
         self.dMacrosGenerated = pd.DataFrame(columns=[
-            'Xgridt','Ygridt','Xgridr','Ygridr','LOS',
+            'TGridx','TGridy','RGridx','RGridy','LOS',
             'sfdB','ds','asa','asd','zsa','zsd_lslog','K'
-         ]).set_index(['Xgridt','Ygridt','Xgridr','Ygridr','LOS'])
+         ]).set_index(['TGridx','TGridy','RGridx','RGridy','LOS'])
         self.dChansGenerated = {}
         #TODO modify channels generated dictionary to native pandas dataframe
         # self.dClustersGenerated = pd.DataFrame(columns=[
@@ -421,6 +432,7 @@ class ThreeGPPMultipathChannelModel:
         #       'tau','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'
         # ]).set_index(['Xt','Yt','Zt','Xr','Yr','Zr','n','m'])
         self.dLOSGenerated = {}
+        self.miscasillas = {}
 
     # TODO introduce code for multi-floor hut in UMi & UMa
     #         if not indoor:
@@ -495,15 +507,21 @@ class ThreeGPPMultipathChannelModel:
         
     #hidden uniform variable to compare with pLOS(distabce)
     def get_LOSUnif_from_location(self,txPos, rxPos):
-        key =  self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
+	dCorr = self.scenarioParams.LOS.corrLOS
+        key =  self.calculateGridCoeffs(txPos,rxPos,dCorr)
         if not key in self.dLOSGenerated:
-           self.dLOSGenerated[key] = np.random.rand(1)[0]       
+           self.dLOSGenerated[key] = np.random.rand(1)           
         return(self.dLOSGenerated[key])
         
     #macro => Large Scale Correlated parameters
     def get_macro_from_location(self,txPos, rxPos,los):
-        XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex= self.calculateGridCoeffs(txPos,rxPos,self.corrDistance)
-        macrokey = (XgridtIndex,YgridtIndex,XgridrIndex,YgridrIndex,los)
+        if los:
+            dCorr = self.scenarioParams.LOS.corrLOS
+        else:
+            dCorr = self.scenarioParams.NLOS.corrLOS
+
+        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, dCorr) #ray corr distance
+        macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
         if not macrokey in self.dMacrosGenerated.index:
             return(self.create_macro(macrokey))#saves result to memory
         else:
@@ -611,7 +629,7 @@ class ThreeGPPMultipathChannelModel:
         else:
             param = self.scenarioParams.NLOS
             powC_nlos= powC 
-        M=param.M     
+        M=param.M
         
         indStrongestClusters = np.argsort(-powC)[0:2]
         
@@ -720,7 +738,7 @@ class ThreeGPPMultipathChannelModel:
         AOD_sp = np.tile(AOD[:,None],(1,M)) + casd*alpha_AOD
        
         ZOA_sp = np.tile(ZOA[:,None],(1,M)) + czsa*alpha_ZOA
-        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*alpha_ZOD        
+        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*alpha_ZOD
         
         # Generate the cross polarization power ratios
         xpr_mu = param.xpr_mu
@@ -767,7 +785,95 @@ class ThreeGPPMultipathChannelModel:
             subpaths = self.create_subpaths_basics(smallStatistics,clusters,LOSangles)
     
         return(clusters,subpaths)
+    	
+    ####################################################
+    #Parte de consistencia espacial
+
     
+    def displaceMultipathChannel(self, dataframe, deltaTxPos, deltaRxPos, deltaPos, vLOS):
+        # Código que cumple con el procedimiento A del apartado de consistencia espacial 
+        #Parámetros para actualizar tau
+        c = 3e8
+        tau = dataframe['tau'].T.to_numpy()
+        zoa = dataframe['ZOA'].T.to_numpy()*np.pi/180
+        aoa = dataframe['AOA'].T.to_numpy()*np.pi/180
+        zod = dataframe['ZOD'].T.to_numpy()*np.pi/180
+        aod = dataframe['AOD'].T.to_numpy()*np.pi/180
+        powc = dataframe['powC'].T.to_numpy()
+        
+        ###############################TAU#########################
+
+        Rrx = np.array([[np.sin(zoa) * np.cos(aoa)],
+                        [np.sin(zoa) * np.sin(aoa)],
+                        [np.cos(zoa)]]).transpose(2,1,0)
+        Rtx = np.array([[np.sin(zod) * np.cos(aod)],
+                        [np.sin(zod) * np.sin(aod)],
+                        [np.cos(zod)]]).transpose(2,1,0)
+
+    
+        deltaRxPos = np.reshape(deltaRxPos, (3, 1)) 
+        deltaTxPos = np.reshape(deltaTxPos, (3, 1)) 
+        Rrx_array = np.array(Rrx)
+        Rtx_array = np.array(Rtx)
+
+        d3D = np.linalg.norm(vLOS)
+        tau_tilde_previo = tau + d3D/c
+
+        auxtau= Rrx_array @ deltaRxPos + Rtx_array @ deltaTxPos
+        auxtau2= auxtau / c
+        auxtau2 = np.squeeze(auxtau2)
+        tau_tilde = tau_tilde_previo - auxtau2
+
+        tau_nueva = tau_tilde-np.min( tau_tilde) 
+     
+
+        ############################AOD#####################3
+        deltaNTxPos = deltaRxPos - deltaTxPos
+        deltaNRxPos = deltaTxPos - deltaRxPos
+
+        phiAoD = np.array([[-np.sin(aod)],
+                        [np.cos(aod)],
+                        [np.zeros_like(aod)]]).transpose(2,0,1)
+       
+        auxAoD1 = deltaNRxPos.T @ phiAoD
+        auxAoD2 = auxAoD1.squeeze()
+        auxAoD3 = auxAoD2 /(c*tau_tilde_previo * np.sin(zod))
+        aodnueva= auxAoD3 + aod
+
+        ###############################ZOD######################3
+        tetaZoD = np.array([[np.cos(zod) * np.cos(aod)],
+                        [np.cos(zod) * np.sin(aod)],
+                        [-np.sin(aod)]]).transpose(2,0,1)
+       
+        auxZoD1 = deltaNRxPos.T @ tetaZoD
+        auxZoD2 = auxZoD1.squeeze()
+        auxZoD3= auxZoD2 / (c*tau_tilde_previo)
+        zodnueva = zod + auxZoD3
+
+        ##########################AOA###################
+
+        phiAoA = np.array([[-np.sin(aoa)],
+                        [np.cos(aoa)],
+                        [np.zeros_like(aoa)]]).transpose(2,0,1)
+      
+        auxAoA1 =deltaNTxPos.T @ phiAoA
+        auxAoA1 = auxAoA1.squeeze()
+        auxAoA2 = auxAoA1 /(c*tau_tilde_previo *np.sin(zoa))
+        aoanueva = aoa + auxAoA2
+
+        ##################################ZOA#########################
+        tetaZoA = np.array([[np.cos(zoa) * np.cos(aoa)],
+                        [np.cos(zoa) * np.sin(aoa)],
+                        [-np.sin(aoa)]]).transpose(2,0,1)
+    
+        auxZoA1 = deltaNTxPos.T @ tetaZoA
+        auxZoA2= auxZoA1.squeeze()
+        auxZoA3= auxZoA2 / (c*tau_tilde_previo)
+        zoanueva = zoa + auxZoA3
+        dfsalida =pd.DataFrame(index = dataframe.index, columns=['tau','powC','AOA','AOD','ZOA','ZOD'],data=np.array([tau_nueva,powc,aoanueva*180/np.pi,aodnueva*180/np.pi,zoanueva*180/np.pi,zodnueva*180/np.pi]).T) 
+
+        return (dfsalida)
+            
     
     def getLOSmeasurements(self,txPos,rxPos):
         vLOS = np.array(rxPos)-np.array(txPos)#in case tuples are given      
@@ -801,23 +907,81 @@ class ThreeGPPMultipathChannelModel:
         macro = self.get_macro_from_location(txPos, rxPos,los)
         
         sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
-        zsd_mu = param.funZSD_mu(d2D,hut)#unlike other statistics, ZSD changes with hut and d2D             
-        zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
-        zod_offset_mu = param.funZODoffset(d2D,hut)        
-        czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
-        smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
-        clusters,subpaths = self.create_small_param(LOSangles,smallStatistics,d2D,hut)
+      
         plinfo = (los,PLconst,sfdB)
+
+        clusters,subpaths = self.get_small_from_location(txPos,rxPos,plinfo,macro)
         
-        if self.funPostprocess:
-            plinfo,clusters,subpaths = self.funPostprocess(txPos,rxPos,plinfo,clusters,subpaths)
-                
-        keyChannel = tuple(txPos)+tuple(rxPos)
-        self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
-        
-        # self.dClustersGenerated = self.dClustersGenerated.append(pd.concat({ keyChannel: clusters },names=['Xt','Yt','Zt','Xr','Yr','Zr']))
-        # self.dSubpathsGenerated = self.dSubpathsGenerated.append(pd.concat({ keyChannel: subpaths },names=['Xt','Yt','Zt','Xr','Yr','Zr']))
         return(plinfo,macro,clusters,subpaths)
+
+
+    def get_small_from_location(self, txPos, rxPos, plinfo, macro):
+
+        aPos = np.array(txPos)
+        bPos = np.array(rxPos)
+
+        self.smallCorrDist = 100
+        key = self.calculateGridCoeffs(txPos,rxPos,self.smallCorrDist)
+        vLOS = bPos - aPos
+        print(key)
+        txPosGrid = aPos
+        txPosGrid[0:2] = np.array(key[0:2]) * self.smallCorrDist
+        rxPosGrid = bPos
+        rxPosGrid[0:2] = np.array(key[2:4]) * self.smallCorrDist
+
+        deltaTxPos = txPos - txPosGrid
+        deltaRxPos = rxPos -rxPosGrid
+        deltaPos = deltaRxPos - deltaTxPos
+    
+        if key in self.dChansGenerated:
+            print ("Canal a menos de 1 metro")
+            clusters, subpaths = self.dChansGenerated[key]
+        else:
+            print ("Canal a mas de 1 metro")
+            d2Dgrid = np.linalg.norm(rxPosGrid[0:-1]-txPosGrid[0:-1])
+            vLOSgrid = rxPosGrid - txPosGrid
+            losAoD=np.mod( np.arctan( vLOSgrid[1] / vLOSgrid[0] )+np.pi*(vLOSgrid[0]<0), 2*np.pi )
+            losAoA=np.mod(np.pi+losAoD, 2*np.pi )
+            vaux = (np.linalg.norm(vLOSgrid[0:2]), vLOSgrid[2] )
+            losZoD=np.pi/2-np.arctan( vaux[1] / vaux[0] ) + np.pi*(vaux[1]<0)
+            losZoA=np.pi-losZoD 
+            losAoD=(180.0/np.pi)*losAoD  
+            losZoD=(180.0/np.pi)*losZoD 
+            losAoA=(180.0/np.pi)*losAoA 
+            losZoA=(180.0/np.pi)*losZoA
+            LOSangles = (losAoD,losAoA,losZoD,losZoA)
+            hbs = txPosGrid[2]
+            hut = rxPosGrid[2]
+
+            los,PLconst,sfdb = plinfo
+            if los:
+                param = self.scenarioParams.LOS            
+            else:
+                param = self.scenarioParams.NLOS
+
+            sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
+            zsd_mu = param.funZSD_mu(d2Dgrid,hut)          
+            zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
+            zod_offset_mu = param.funZODoffset(d2Dgrid,hut)        
+            czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
+            smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)
+
+            clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2Dgrid, hut)
+		if self.funPostprocess:
+			    plinfo,clusters,subpaths = self.funPostprocess(txPos,rxPos,plinfo,clusters,subpaths)
+				
+			keyChannel = tuple(txPos)+tuple(rxPos)
+			self.dChansGenerated[keyChannel] = (plinfo,clusters,subpaths)
+			
+			# self.dClustersGenerated = self.dClustersGenerated.append(pd.concat({ keyChannel: clusters },names=['Xt','Yt','Zt','Xr','Yr','Zr']))
+			# self.dSubpathsGenerated = self.dSubpathsGenerated.append(pd.concat({ keyChannel: subpaths },names=['Xt','Yt','Zt','Xr','Yr','Zr']))
+			
+            self.dChansGenerated[key] = (clusters,subpaths)
+        clusters = self.displaceMultipathChannel(clusters, deltaTxPos, deltaRxPos, deltaPos, vLOS)
+        subpaths = self.displaceMultipathChannel(subpaths, deltaTxPos, deltaRxPos, deltaPos, vLOS)
+        
+        return clusters,subpaths
+
     
     ###########################################################################
     # premade post-processing functions
