@@ -224,7 +224,7 @@ plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
 plt.xlabel("TDoA (s)")
 for n in range(nClusters):   
-    markerline, stemlines, baseline = plt.stem( subpathsNAD.loc[n,:].tau.to_numpy() ,10*np.log10( subpathsNAD.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpathsAD.P.to_numpy())))
+    markerline, stemlines, baseline = plt.stem( subpathsNAD.loc[n,:].TDOA.to_numpy() ,10*np.log10( subpathsNAD.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpathsAD.P.to_numpy())))
     plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()
@@ -263,7 +263,7 @@ plt.ylabel("power [dB]")
 plt.xlabel("%d/%d subpaths adapted (%.2f%%)"%(nASP,nSP,100*nASP/nSP))
 for ctr in range(0,clustersAD.shape[0]):
     n=clustersAD.index[ctr]
-    markerline, stemlines, baseline = plt.stem( subpathsAD.loc[n,:].tau.to_numpy() ,10*np.log10( subpathsAD.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpathsAD.P.to_numpy())))
+    markerline, stemlines, baseline = plt.stem( subpathsAD.loc[n,:].TDOA.to_numpy() ,10*np.log10( subpathsAD.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpathsAD.P.to_numpy())))
     plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()

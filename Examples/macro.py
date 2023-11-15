@@ -18,8 +18,7 @@ fig_ctr=0
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
-corrDist = 15 #m
-model = pg.ThreeGPPMultipathChannelModel(scenario="UMi",corrDistance=corrDist)
+model = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
 
 Npoint = 101
 distance=np.arange(0,200,10)

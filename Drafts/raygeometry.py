@@ -8,7 +8,9 @@ import numpy as np
 
 plt.close('all')
 
-import MultipathLocationEstimator
+import sys
+sys.path.append('../')
+from CASTRO5G import MultipathLocationEstimator
 
 Npath=10
 x_true=np.random.rand(Npath)*40-20

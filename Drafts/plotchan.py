@@ -39,7 +39,7 @@ ax.plot3D([0,0],[0,0],[0,np.ceil(maxdel/100)*100],color='k')
 ax.text3D(0,0,np.ceil(maxdel/100)*100,"delay [ns]",color='k')
 
 allAoA=AOA_sp.reshape(-1)
-allDel=tau_sp.reshape(-1)
+allDel=tau_sp.reshape(-1)*1e9
 allGain=pow_sp.reshape(-1)
 
 inds=np.argpartition(-allGain,4,axis=0)[0:50]
