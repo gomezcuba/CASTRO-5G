@@ -6,6 +6,7 @@ Created on Wed Nov 30 16:28:39 2022
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 import sys
 sys.path.append('../')
@@ -72,8 +73,13 @@ plt.grid(axis='both', color='gray')
 #-------------------------PLOTEO MACRO-------------------------------------
 txPos = np.array((0,0,10))
 Nusers = 300
-numberMacrosCell = 9
-cellRadius = numberMacrosCell*corrDist#m
+cellRadius=150#m
+corrLOS=model.scenarioParams.LOS.corrLOS
+corrStatLOS=model.scenarioParams.LOS.corrStatistics
+corrStatNLOS=model.scenarioParams.NLOS.corrStatistics
+numberBinsLOS = np.ceil(cellRadius/corrLOS)
+numberBinsStatLOS = np.ceil(cellRadius/corrStatLOS)
+numberBinsStatNLOS = np.ceil(cellRadius/corrStatNLOS)
 
 contadorY = []
 contadorX = []
@@ -84,24 +90,6 @@ posY = np.random.uniform(-cellRadius/2, cellRadius/2, size=(Nusers))
 hut = 1.5
 posZ = hut*np.ones(Nusers)
 users=np.vstack([posX,posY,posZ]).T
-macroIndex = (users[:,0:-1]-txPos[0:-1]+corrDist/2)//corrDist
-
-vals,counts = np.unique(macroIndex,axis=0,return_counts=True)
-vals=vals+numberMacrosCell//2
-mm = np.zeros((numberMacrosCell,numberMacrosCell))
-mm[vals[:,0].astype(int),vals[:,1].astype(int)]=counts
-
-
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-X,Y=np.meshgrid(np.arange(0, cellRadius+5, corrDist)-cellRadius/2,np.arange(0, cellRadius+5, corrDist)-cellRadius/2)
-plt.pcolor(X,Y,mm, cmap='RdYlBu_r',label=None)
-plt.plot(0,0,'^k',label='BS')
-plt.colorbar(label="Number of users", orientation="vertical")
-plt.xlabel('distance (m)')
-plt.ylabel('distance (m)')
-plt.legend()
-plt.show()
 
 losState = np.zeros(Nusers,dtype=bool) 
 macroDS = np.zeros(Nusers) 
@@ -126,19 +114,24 @@ Xd,Yd=np.meshgrid(np.arange(0, cellRadius, 1.0)-cellRadius/2,np.arange(0, cellRa
 losPgrid = model.scenarioLosProb(np.sqrt(Xd**2+Yd**2),hut)
 hiddenUlos = np.array([[model.get_LOSUnif_from_location((0,0,25),(x,y,1.5)) for x in np.arange(0, cellRadius, 1.0)-cellRadius/2] for y in np.arange(0, cellRadius, 1.0)-cellRadius/2 ])
 losBgrid = losPgrid >= hiddenUlos
-plt.pcolor(Xd,Yd,losBgrid)
-hiddenPlosTxt = np.array([['%.2f'%model.get_LOSUnif_from_location((0,0,25),(x*corrDist,y*corrDist,1.5)) for x in np.arange(-(numberMacrosCell//2),numberMacrosCell//2+1)] for y in np.arange(-(numberMacrosCell//2), numberMacrosCell//2+1) ])
+plt.pcolor(Xd,Yd,losBgrid,cmap="Pastel1")
+hiddenPlosTxt = np.array([['%.2f'%model.get_LOSUnif_from_location((0,0,25),(x*corrLOS,y*corrLOS,1.5)) for x in np.arange(-(numberBinsLOS//2),numberBinsLOS//2+1)] for y in np.arange(-(numberBinsLOS//2), numberBinsLOS//2+1) ])
 
-for x in np.arange(-(numberMacrosCell//2),numberMacrosCell//2+1):
-    for y in np.arange(-(numberMacrosCell//2), numberMacrosCell//2+1):
-        U=model.get_LOSUnif_from_location((0,0,25),(x*corrDist,y*corrDist,1.5))
-        P=model.scenarioLosProb(np.sqrt((x*corrDist)**2+(y*corrDist)**2),hut)
+for x in np.arange(-(numberBinsLOS//2),numberBinsLOS//2+1):
+    for y in np.arange(-(numberBinsLOS//2), numberBinsLOS//2+1):
+        U=model.get_LOSUnif_from_location((0,0,25),(x*corrLOS,y*corrLOS,1.5))
+        P=model.scenarioLosProb(np.sqrt((x*corrLOS)**2+(y*corrLOS)**2),hut)
         S = '<=' if U<=P else '>'
-        plt.text(x*corrDist-corrDist/2,y*corrDist-corrDist/2,'%.2f %s %.2f'%(U,S,P))
-plt.colorbar(label="LOS areas", orientation="vertical")
+        plt.text(x*corrLOS,y*corrLOS,'%.2f %s %.2f'%(U,S,P),horizontalalignment='center',verticalalignment='center')
+        
+proxy = [plt.Rectangle((0,0),1,1,fc = cm.Pastel1(x)) 
+    for x in [0,255]]
+
+plt.legend(proxy, ["NLOS", "LOS"])
+        
 plt.xlabel('distance (m)')
 plt.ylabel('distance (m)')
-plt.title('hiden LOS Uniform variable per square< pLos at discanceper')
+plt.title('hiden LOS Uniform < pLos at discance')
 
     
 fig_ctr+=1
@@ -146,13 +139,28 @@ fig = plt.figure(fig_ctr)
 ax = plt.gca()
 plt.xlim([-cellRadius/2, cellRadius/2])
 plt.ylim([-cellRadius/2, cellRadius/2])
-plt.yticks(np.arange(-cellRadius/2, cellRadius/2+5, corrDist))
-plt.xticks(np.arange(-cellRadius/2, cellRadius/2+5, corrDist))
+plt.yticks(np.arange(-numberBinsStatLOS//2+.5, 1.5+numberBinsStatLOS//2, 1)*corrStatLOS)
+plt.xticks(np.arange(-numberBinsStatLOS//2+.5, 1.5+numberBinsStatLOS//2, 1)*corrStatLOS)
 plt.grid(axis='both',color='red')
 plt.plot(0,0,'^k',label='BS')
 sc = plt.scatter(posX[losState],posY[losState],s=20,c=1e9*macroDS[losState], marker='o', cmap='RdYlBu_r',label='LOS')
+plt.colorbar(label="LOS DS (ns)", orientation="vertical")
+plt.xlabel('distance (m)')
+plt.ylabel('distance (m)')
+plt.legend()
+
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+ax = plt.gca()
+plt.xlim([-cellRadius/2, cellRadius/2])
+plt.ylim([-cellRadius/2, cellRadius/2])
+plt.yticks(np.arange(-numberBinsStatNLOS//2+.5, 1.5+numberBinsStatNLOS//2, 1)*corrStatNLOS)
+plt.xticks(np.arange(-numberBinsStatNLOS//2+.5, 1.5+numberBinsStatNLOS//2, 1)*corrStatNLOS)
+plt.grid(axis='both',color='red')
+plt.plot(0,0,'^k',label='BS')
 sc = plt.scatter(posX[np.logical_not(losState)],posY[np.logical_not(losState)],s=20,c=1e9*macroDS[np.logical_not(losState)],marker='x', cmap='RdYlBu_r',label='NLOS')
-plt.colorbar(label="DS (ns)", orientation="vertical")
+plt.colorbar(label="LOS DS (ns)", orientation="vertical")
 plt.xlabel('distance (m)')
 plt.ylabel('distance (m)')
 plt.legend()

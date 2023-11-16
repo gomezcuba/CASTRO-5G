@@ -521,7 +521,6 @@ class ThreeGPPMultipathChannelModel:
             dCorr = self.scenarioParams.LOS.corrStatistics
         else:
             dCorr = self.scenarioParams.NLOS.corrStatistics
-
         TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, dCorr) #ray corr distance
         macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
         if not macrokey in self.dMacrosGenerated.index:
