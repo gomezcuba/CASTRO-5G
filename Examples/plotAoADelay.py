@@ -22,7 +22,8 @@ pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-ax = Axes3D(fig)
+# ax = Axes3D(fig)
+ax = fig.add_subplot(111, projection='3d')
 
 ########################################################################
 #since there is no plot.polar() in 3D, we need to draw the axis manually
@@ -67,7 +68,8 @@ for n,m in subpaths.index:#plot3D needs to be called 1 line at a time
     ax.scatter3D(x,y,subpaths.loc[n,m].TDOA*1e9,marker=(3,0,-90+clusters.loc[n].AOA),color=clr)
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-ax = Axes3D(fig)
+# ax = Axes3D(fig)
+ax = fig.add_subplot(111, projection='3d')
 
 plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.TDOA)*1e9))
 

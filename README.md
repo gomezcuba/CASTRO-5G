@@ -74,6 +74,27 @@ the expected result is that this script should run without warnings, simulate a 
 
 ## Structure of the Code
 
+
+### Folder structure
+
+
+* Drafts contains independen tests with the intent of rapid testing of mathematical expressions before they are embedded in the project
+
+* Examples contains python scripts that demonstrate the characteristics of the simulator
+
+* Tutorials contains Jupyter notebooks that both demonstrate the simulator and teach its inner logic and theory
+
+* Simulations contains python script for large scale simulation of specific problems
+
+* CASTRO-5G is the main python package developed by this project. Its intended use is to provide multiple libraries imported such as
+
+```
+from CASTRO5G import *
+```
+
+
+### Structure of the simulator
+
 ![](code_structure.svg)
 
 The aim the repo CASTRO-5G is the simulation of the interplays between location and communications in multipath channels. For this, there are four high level functionalities that must be implemented

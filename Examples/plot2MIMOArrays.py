@@ -54,7 +54,7 @@ plt.title('%d ULA MIMO directivity for sum of all paths'%(Nant))
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-plt.pcolor(angTx, angRx, channelResponseCombineddB, cmap=cm.jet)
+plt.pcolor(angTx, angRx, channelResponseCombineddB, cmap=cm.coolwarm)
 plt.colorbar(label = 'Analog Beam Gain dB')
 plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$2\\pi$'])
 plt.yticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$2\\pi$'])
@@ -65,4 +65,7 @@ maxdB=np.max(10*np.log10(Nant*Nant*np.abs(channelResponseCombined)**2))
 mindB=-30
 for n in range(nClusters):   
     Nsp=subpaths.loc[n,:].shape[0]
-    plt.scatter(np.mod(subpaths.loc[n,:].AOD*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),color=cm.jet((10*np.log10(Nant*Nant*subpaths.loc[n,:].P)-mindB)/((maxdB-mindB))),marker='^',edgecolor=cm.jet(n/(nClusters-1)), linewidth=1)
+    plt.scatter(np.mod(subpaths.loc[n,:].AOD*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),
+                # color=cm.coolwarm((10*np.log10(Nant*Nant*subpaths.loc[n,:].P)-mindB)/((maxdB-mindB))),
+                color=cm.jet(n/(nClusters-1)),
+                marker='o')

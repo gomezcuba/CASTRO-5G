@@ -10,6 +10,8 @@ from matplotlib import animation, rc
 rc('animation', html='html5')
 from matplotlib import cm
 
+import sys
+sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as pg
 from CASTRO5G import multipathChannel as mc
 
@@ -33,10 +35,10 @@ pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy
 
 #DEC
 Ts=2 #ns
-Ds=np.max(subpaths.tau*1e9)
+Ds=np.max(subpaths.TDOA*1e9)
 Ntaps = int(np.ceil(Ds/Ts))
 n=np.linspace(0,Ntaps-1,Ntaps)
-pulses = np.sinc(n[:,None]-subpaths.tau.to_numpy()*1e9/Ts)
+pulses = np.sinc(n[:,None]-subpaths.TDOA.to_numpy()*1e9/Ts)
 
 # array responses
 Nant = 16

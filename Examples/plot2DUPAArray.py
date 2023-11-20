@@ -106,7 +106,7 @@ channelResponseCombineddB = np.maximum(10*np.log10(Nant*Nant*np.abs(channelRespo
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 Aang,Zang = np.meshgrid(azimut_plot,zenit_plot)
-plt.pcolor(Aang,Zang, channelResponseCombineddB, cmap=cm.jet)
+plt.pcolor(Aang,Zang, channelResponseCombineddB, cmap=cm.coolwarm)
 plt.gca().invert_yaxis()#this is so ZoA=0 is seen 'up' in the plot
 plt.colorbar(label = 'Analog Beam Gain dB')
 plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$','$\pi$','$\\frac{3\\pi}{2}$','$2\\pi$'])
@@ -117,7 +117,7 @@ plt.title('sum of %dx%d UPA directivity times all chan coefs'%(Nant,Nant))
 
 for n in range(nClusters):   
     Nsp=subpaths.loc[n,:].shape[0]
-    plt.scatter(np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),subpaths.loc[n,:].ZOA*np.pi/180,color=cm.jet(n/(nClusters-1)),marker='^',edgecolor='black', linewidth=1)
+    plt.scatter(np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].ZOA*np.pi/180,2*np.pi),color=cm.jet(n/(nClusters-1)),marker='o')
 
 
 fig_ctr+=1
