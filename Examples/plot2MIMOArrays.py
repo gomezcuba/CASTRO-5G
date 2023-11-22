@@ -6,6 +6,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import os
 
+import sys
+sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as pg
 from CASTRO5G import multipathChannel as mc
 

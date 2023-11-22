@@ -9,7 +9,7 @@ sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as pg
 from CASTRO5G import multipathChannel as mc
 
-model = pg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)
+model = pg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=False)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 nClusters = clusters.shape[0]
 nNLOSsp=subpaths.loc[1,:].shape[0]
