@@ -61,12 +61,10 @@ manual_colors= (chanGainsdB-np.min(chanGainsdB)) / ( np.max(chanGainsdB)-np.min(
 for nfig in range(0,Nfigs):
     fig_ctr+=1
     # fig = plt.figure(fig_ctr)
-    fig = plt.figure(fig_ctr,figsize=(12, 9),dpi=80)#size is in in with dpi converting to pixels
-    ax = fig.add_subplot(111, projection='3d')#Axes3D(fig)
-    # ax.set_box_aspect((4, 25, 4))
-    # ax.set_aspect("equal")
+    fig = plt.figure(fig_ctr,figsize=(16,12))#size is in in with dpi converting to pixels
+    ax = fig.add_subplot(projection='3d',aspect='auto')#Axes3D(fig)
     ax.set_proj_type('ortho')
-    ax.set_box_aspect((1, 4, 1))
+    ax.set_box_aspect((1,3.5,1), zoom=1.15)
     ax.view_init(azim=-20,elev=10)
     X = np.linspace(0, 2*np.pi, Npointsplot)
     Z = np.linspace(0, 2*np.pi, Npointsplot)
@@ -79,7 +77,7 @@ for nfig in range(0,Nfigs):
             C=np.zeros((Npointsplot,Npointsplot,4))
         Y = Ts*(tap+nfig*NtapsPerFigure)*np.ones((Npointsplot,Npointsplot))
         surf = ax.plot_surface(X, Y, Z, facecolors=C, linewidth=0, antialiased=False)
-        surf = ax.plot_wireframe(X, Y, Z, color='k', linewidth=1)
+        # surf = ax.plot_wireframe(X, Y, Z, color='k', linewidth=1)
     
     cbar = fig.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),shrink=0.8,label = 'Directive Array Channel Gain dB')
     cbar.set_ticks((np.arange(np.ceil(np.min(chanGainsdB)/10)*10,np.max(chanGainsdB),10) -np.min(chanGainsdB) )/(np.max(chanGainsdB)-np.min(chanGainsdB)))

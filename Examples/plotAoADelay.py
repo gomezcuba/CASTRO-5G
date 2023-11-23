@@ -5,7 +5,6 @@ from CASTRO5G import multipathChannel as mc
 
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
 
 from matplotlib import cm
 
@@ -30,6 +29,7 @@ ax = fig.add_subplot(111, projection='3d')
 ########################################################################
 def plot3DPolarCilinder(ax,N,zval,lval,maxv):
     #polar "circle" levels axis    
+    Npointsplot=101
     angles_plot = np.linspace(0,2*np.pi,Npointsplot)
     for vref in lval:
         radius=vref - zval
@@ -75,8 +75,11 @@ plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.TDOA)*1e9)
 
 ########################################################################
 # compute the response of the antenna array with Nant antennas
-Nant = 16
+Nant = 8
 # compute the "beamforming vector". This vector is multiplied by the "response" when we want to receive from the desired angle
+
+Npointsplot=101
+angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
 
 for n,m in subpaths.index:#plot3D needs to be called 1 line at a time
