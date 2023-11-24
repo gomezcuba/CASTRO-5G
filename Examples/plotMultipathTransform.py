@@ -16,14 +16,14 @@ fig_ctr = 0
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
 sce = "UMa"
-transform = "SRandom" #type None for no transform
+transform = "DERandom" #type None for no transform
 delBacklobe = False
 bool3D=True
 
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
-rx = (5,-90,1.5)
+rx = (100,0,1.5)
 txArrayAngle = 45
 rxArrayAngle = -180
 vLOS=np.array(rx)-np.array(tx)
@@ -34,12 +34,12 @@ phi0 = 0
 # ---- Canle A, largeBW = true
 # ----------------------------
 
-modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
-plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
-los, PLfree, SF = plinfo
-nClusters = clustersNAD.shape[0]
-nNLOSsp=subpathsNAD.loc[1,:].shape[0]
-
+# modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
+# plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
+# los, PLfree, SF = plinfo
+# nClusters = clustersNAD.shape[0]
+# nNLOSsp=subpathsNAD.loc[1,:].shape[0]
+# # print("Condition: ",(clustersNAD.P[0]<.9)&(los))
 
 # Adaptación canle 1:
 
@@ -62,7 +62,7 @@ if transform:
     elif transform == "SERandom":
         (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=1,Es=.5,P=[0,.5,.5,0],mode3D=bool3D)
     elif transform == "DERandom":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.9,Es=.5,P=[0,.5,.5,0],mode3D=bool3D)
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.95,Es=.5,P=[0,.5,.5,0],mode3D=bool3D)
     else:
         print("Transform '",transform,"' not supported")
     
@@ -260,7 +260,7 @@ if delBacklobe:
     plt.fill_between(np.linspace(np.pi/2,3*np.pi/2,100)+rxArrayAngle*np.pi/180,-45,-10,alpha=0.2, color='k')
 plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
-plt.xlabel("%d/%d subpaths adapted (%.2f%%)"%(nASP,nSP,100*nASP/nSP))
+plt.xlabel("%d/%d subpaths adapted (%.2f\%%)"%(nASP,nSP,100*nASP/nSP))
 for ctr in range(0,clustersAD.shape[0]):
     n=clustersAD.index[ctr]
     markerline, stemlines, baseline = plt.stem( subpathsAD.loc[n,:].TDOA.to_numpy() ,10*np.log10( subpathsAD.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpathsAD.P.to_numpy())))

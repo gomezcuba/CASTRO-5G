@@ -7,7 +7,7 @@ Created on Sat Nov  5 16:48:43 2022
 
 import matplotlib.pyplot as plt
 import numpy as np
-import math as mt
+plt.rcParams['text.usetex'] = True
 
 import sys
 sys.path.append('../')
@@ -90,7 +90,7 @@ pdfAoD = np.exp(-(aux_x / (np.sqrt(2)*(asd/7)) ) ** 2)/(np.sqrt(2*np.pi)*asd/7)
 plt.plot(aux_x,pdfAoD,'r:', label = "PDF")
 plt.legend()
 plt.title("Histogram of cluster AoD random part vs p.d.f.")
-plt.xlabel("AoD - LOS-AoD - \mu_{AoD}(cluster) (º)")
+plt.xlabel("AoD - LOS-AoD - $\mu_{AoD}$(cluster) (º)")
 plt.show()
 
 plt.figure(3)
@@ -101,7 +101,7 @@ pdfAoA = np.exp(-(aux_x / (np.sqrt(2)*(asa/7)) ) ** 2)/(np.sqrt(2*np.pi)*asa/7)
 plt.plot(aux_x,pdfAoA,'r:', label = "PDF")
 plt.legend()
 plt.title("Histogram of cluster AoA random part vs p.d.f.")
-plt.xlabel("AoA - LOS-AoA - \mu_{AoA}(cluster) (º)")
+plt.xlabel("AoA - LOS-AoA - $\mu_{AoA}$(cluster) (º)")
 plt.show()
 
 plt.figure(4)
@@ -112,7 +112,7 @@ pdfZoD = np.exp(-(aux_x / (np.sqrt(2)*(zsd/7)) ) ** 2)/(np.sqrt(2*np.pi)*zsd/7)
 plt.plot(aux_x,pdfZoD,'r:', label = "PDF")
 plt.legend()
 plt.title("Histogram of cluster ZoD random part vs p.d.f.")
-plt.xlabel("ZoD - LOS-ZoD - \mu_{ZoD}(cluster) (º)")
+plt.xlabel("ZoD - LOS-ZoD - $\mu_{ZoD}$(cluster) (º)")
 plt.show()
 
 
@@ -124,5 +124,5 @@ pdfZoA = np.exp(-(aux_x / (np.sqrt(2)*(zsa/7)) ) ** 2)/(np.sqrt(2*np.pi)*zsa/7)
 plt.plot(aux_x,pdfZoA,'r:', label = "PDF")
 plt.legend()
 plt.title("Histogram of cluster ZoA random part vs p.d.f.")
-plt.xlabel("ZoA - LOS-ZoA - \mu_{ZoA}(cluster) (º)")
+plt.xlabel("ZoA - LOS-ZoA - $\mu_{ZoA}$(cluster) (º)")
 plt.show()

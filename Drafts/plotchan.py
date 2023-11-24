@@ -3,7 +3,6 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
 
 from matplotlib import animation, rc
 from IPython.display import HTML, Image
@@ -22,7 +21,7 @@ los, PLfree, SF = plinfo
 tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 =  subpaths.T.to_numpy()
 
 fig = plt.figure(1)
-ax = Axes3D(fig)
+ax = fig.add_subplot(projection='3d')
 t=np.linspace(0,2*np.pi,100)
 for dbref in range(4):
     ax.plot3D(40*(1-dbref/4)*np.cos(t),40*(1-dbref/4)*np.sin(t),np.zeros_like(t),color='k')
@@ -56,12 +55,12 @@ for pind in range(0,len( selectedAoA )):
     ax.plot3D([0,x],[0,y],[delay,delay])
     ax.scatter3D(x,y,delay,marker='o')
     
-plt.savefig('animation_frame0.png')
+plt.savefig('../Figures/animation_frame0.png')
 ax.view_init(azim=-61)
-plt.savefig('animation_frame1.png')
+plt.savefig('../Figures/animation_frame1.png')
 
 import os
-os.system('convert -delay 10 -loop 0 animation_frame0.png animation_frame1.png animated.gif')
+os.system('convert -delay 10 -loop 0 ../Figures/animation_frame0.png ../Figures/animation_frame1.png ../Figures/animated.gif')
 
 from matplotlib import animation, rc
 rc('animation', html='html5')
@@ -75,7 +74,7 @@ def animate(i):
 
 anim = animation.FuncAnimation(fig, animate, frames=2, interval=100)
 
-anim.save('./testanim.gif', writer='imagemagick', fps=10, progress_callback =  lambda i, n: print(f'Saving frame {i} of {n}'))
+anim.save('../Figures/testanim.gif', writer='imagemagick', fps=10, progress_callback =  lambda i, n: print(f'Saving frame {i} of {n}'))
 
 #import imageio
 #frames = ['animation_frame0.png','animation_frame1.png']
