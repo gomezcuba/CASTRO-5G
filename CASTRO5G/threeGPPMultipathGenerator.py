@@ -1049,13 +1049,13 @@ class ThreeGPPMultipathChannelModel:
     def randomFitAllSubpaths(self, txPos, rxPos,plinfo,clusters,subpaths,P=np.full(4,.25),mode3D=True):
         #P=[Pnot,Paoa,Paod,Ptoa]  
         P=np.array(P)#safety to permit tuple, list and dataframe as input
-        transformIndex=self.chooseRandomTransform(txPos, rxPos, clusters, P,mode3D)
-        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
+        transformIndexClusters=self.chooseRandomTransform(txPos, rxPos, clusters, P,mode3D)
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(clusters,transformIndexClusters,maxG=4)
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters)
         clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexToA,mode3D)
         
-        transformIndex=self.chooseRandomTransform(txPos, rxPos, subpaths, P,mode3D)        
-        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(subpaths,transformIndex,maxG=4)
+        transformIndexClusters=self.chooseRandomTransform(txPos, rxPos, subpaths, P,mode3D)        
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(subpaths,transformIndexClusters,maxG=4)
         subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexToA,mode3D)
         
         return(txPos,rxPos,plinfo,clusters,subpaths)    
@@ -1064,16 +1064,31 @@ class ThreeGPPMultipathChannelModel:
         #P=[Pnot,Paoa,Paod,Ptoa]        
         P=np.array(P)#safety to permit tuple, list and dataframe as input
         transformRandom=self.chooseRandomTransform(txPos, rxPos, clusters, P,mode3D)   
-        transformEnergy=self.chooseEnergyPctileGlobal(clusters, Ec)
-        transformIndex=transformEnergy*transformRandom
-        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(clusters,transformIndex,maxG=4)
+        indexTopEnergyClusters=self.chooseEnergyPctileGlobal(clusters, Ec)
+        transformIndexClusters=indexTopEnergyClusters*transformRandom
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(clusters,transformIndexClusters,maxG=4)
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters,mode3D)
+        clusters_bk=clusters.copy()
         clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexToA,mode3D)
-        transformEnergySubpaths=self.chooseEnergyPctileGroups(clusters, Es)
-        transformBroadcastClusters=transformIndex.reindex(index=transformEnergySubpaths.index,level=0)
-        transformIndexSubpaths=transformEnergySubpaths*transformBroadcastClusters
+        delta_clusters = clusters-clusters_bk#save this for non adapted subpaths consistency
+        
+        indexTopEnergySubpaths=self.chooseEnergyPctileGroups(subpaths, Es)
+        transformCBroadcastSubpaths=transformIndexClusters.reindex(index=indexTopEnergySubpaths.index,level=0)
+        transformIndexSubpaths=indexTopEnergySubpaths*transformCBroadcastSubpaths
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(subpaths,transformIndexSubpaths,maxG=4)
         subpaths=self.applyMultiTransform(txPos,rxPos,subpaths, tauOffset, indexAoA, indexAoD, indexToA,mode3D)
+        
         #TODO: non fitted subpaths that belong in a transformed cluster should get ther cluster mean values transformed
+        transformShiftSubpaths=np.logical_not(indexTopEnergySubpaths)*transformCBroadcastSubpaths
+        delta_clusters_broadcast = delta_clusters.reindex(indexTopEnergySubpaths.index,level=0)
+        (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(subpaths,transformShiftSubpaths,maxG=4)
+        subpaths.AOA.loc[indexAoA] = np.mod(subpaths.loc[indexAoA].AOA + delta_clusters_broadcast.loc[indexAoA].AOA,360)
+        subpaths.AOD.loc[indexAoD] = np.mod(subpaths.loc[indexAoD].AOD + delta_clusters_broadcast.loc[indexAoD].AOD,360)
+        subpaths.TDOA.loc[indexToA] += delta_clusters_broadcast.loc[indexToA].TDOA
+        if mode3D:
+            subpaths.ZOA.loc[indexAoA] = np.mod(subpaths.loc[indexAoA].ZOA + delta_clusters_broadcast.loc[indexAoA].ZOA,360)
+            subpaths.ZOD.loc[indexAoD] = np.mod(subpaths.loc[indexAoD].ZOD + delta_clusters_broadcast.loc[indexAoD].ZOD,360)
+                
         return(txPos,rxPos,plinfo,clusters,subpaths)
         
     
@@ -1164,7 +1179,7 @@ class ThreeGPPMultipathChannelModel:
         PothersCN=P[0:3] /(np.sum(P[0:3]))# P ( others | not valid)
         PCN=np.concatenate([PothersCN,[PtoaCN]])
         r=np.random.rand(data.shape[0])
-        transformIndex=np.where(
+        transformIndexClusters=np.where(
         #if
             validIntersection,
         #then
@@ -1172,15 +1187,15 @@ class ThreeGPPMultipathChannelModel:
         #else
             np.digitize(r,np.cumsum(PCN)),
             )
-        return(pd.Series(transformIndex,index=data.index))     
+        return(pd.Series(transformIndexClusters,index=data.index))     
         
     def chooseEnergyPctileGlobal(self,data,E):
         # Forms a group index vector such that the strongest paths with sum
         # power sum_n(P[n])>E are in group 1 and the rest in group 0.
         # Thus enabling a boolean mask on other vectors.
         srtdP = data.P.sort_values(ascending=True)
-        transformIndex = (srtdP.cumsum()/srtdP.sum())>(1-E)
-        return(transformIndex.sort_index())
+        transformIndexClusters = (srtdP.cumsum()/srtdP.sum())>(1-E)
+        return(transformIndexClusters.sort_index())
     def chooseEnergyPctileGroups(self,data,E):
         # Forms a group index vector such that the strongest paths with sum
         # power sum_m(P[n,m])>E for each n are in group 1 and the rest in 0
@@ -1188,8 +1203,8 @@ class ThreeGPPMultipathChannelModel:
         # thus enabling a boolean mask on other vectors.
         srtdP = data.P.sort_values(ascending=True)
         grpdP = srtdP.groupby(level=0)
-        transformIndex = (grpdP.cumsum()/grpdP.sum())>(1-E)
-        return(transformIndex.sort_index())
+        transformIndexClusters = (grpdP.cumsum()/grpdP.sum())>(1-E)
+        return(transformIndexClusters.sort_index())
     
     def applyMultiTransform(self,txPos,rxPos,data,tauOffset,indexAoA,indexAoD,indexToA,mode3D=True):
         data['Xs']=np.full_like(data.TDOA,fill_value=np.inf)

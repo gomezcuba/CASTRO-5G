@@ -18,13 +18,13 @@ fig_ctr = 0
 sce = "UMa"
 transform = "DERandom" #type None for no transform
 delBacklobe = False
-bool3D=True
+bool3D=False
 
 # Posicións transmisor e receptor
 
 tx = (0,0,10)
 rx = (100,0,1.5)
-txArrayAngle = 45
+txArrayAngle = 0
 rxArrayAngle = -180
 vLOS=np.array(rx)-np.array(tx)
 d2D=np.linalg.norm(vLOS[0:2])
@@ -34,14 +34,26 @@ phi0 = 0
 # ---- Canle A, largeBW = true
 # ----------------------------
 
-# modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
+modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
 # plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
 # los, PLfree, SF = plinfo
-# nClusters = clustersNAD.shape[0]
 # nNLOSsp=subpathsNAD.loc[1,:].shape[0]
-# # print("Condition: ",(clustersNAD.P[0]<.9)&(los))
-
-# Adaptación canle 1:
+# print("Condition: ",(clustersNAD.P[0]<.9)&(los))
+# clustersNAD.to_csv("./changendataAdaptation3GPP/clustersNAD.csv")
+# subpathsNAD.to_csv("./changendataAdaptation3GPP/subpathsNAD.csv")
+# macro.to_csv("./changendataAdaptation3GPP/macro.csv")
+# np.savez("./changendataAdaptation3GPP/plinfo.npz",plinfo=plinfo)
+data=np.load("./changendataAdaptation3GPP/plinfo.npz")
+plinfo=tuple(data['plinfo'])
+macro=pd.read_csv("./changendataAdaptation3GPP/macro.csv")
+macro=macro.drop('Unnamed: 0',axis=1)
+clustersNAD=pd.read_csv("./changendataAdaptation3GPP/clustersNAD.csv",index_col=["n"])
+subpathsNAD=pd.read_csv("./changendataAdaptation3GPP/subpathsNAD.csv",index_col=["n","m"])
+nClusters = clustersNAD.shape[0]
+# plinfo=data.plinfo
+# macro=data.macro
+# clustersNAD=data.clustersNAD
+# subpathsNAD=data.subpathsNAD
 
 clustersAD = clustersNAD.copy()
 subpathsAD = subpathsNAD.copy()
@@ -76,15 +88,16 @@ nCL=len(clustersNAD)
 nKCL=len(clustersAD)
 nACL=np.sum(clustersAD.Xs<np.inf)
 
+c=3e8
 #Distancia entre receptor e posición do rebote
-liRX_cNA = pd.Series(d2D/2, index=clustersNAD.index)
+liRX_cNA = (clustersNAD.TDOA*c+d2D)/2
 liRX_cA=np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2).where(clustersAD.Xs<np.inf,d2D/2)
-liRX_sNA = pd.Series(d2D/2, index=subpathsNAD.index)
+liRX_sNA = (subpathsNAD.TDOA*c+d2D)/2
 liRX_sA=np.sqrt((subpathsAD.Xs-rx[0])**2+(subpathsAD.Ys - rx[1])**2).where(subpathsAD.Xs<np.inf,d2D/2)
 #Distancia entre transmisor e posicion do rebote
-liTX_cNA = pd.Series(d2D/2, index=clustersNAD.index)
+liTX_cNA = (clustersNAD.TDOA*c+d2D)/2
 liTX_cA=np.sqrt((clustersAD.Xs)**2+(clustersAD.Ys)**2).where(clustersAD.Xs<np.inf,d2D/2)
-liTX_sNA = pd.Series(d2D/2, index=subpathsNAD.index)
+liTX_sNA = (subpathsNAD.TDOA*c+d2D)/2
 liTX_sA=np.sqrt((subpathsAD.Xs)**2+(subpathsAD.Ys)**2).where(subpathsAD.Xs<np.inf,d2D/2)
 
 # ---- Gráfica 1, camiños non adaptados:
@@ -144,7 +157,10 @@ if delBacklobe:
     drawShadedArc(plt.gca(),rx,rxArrayAngle*np.pi/180-np.pi,d2D/2)
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.title("%d|%d|%d of %d clusters adapted|kept|deleted"%(nACL,nKCL,nCL-nKCL,nCL))
+if delBacklobe:
+    plt.title("%d|%d|%d of %d clusters adapted|kept|deleted"%(nACL,nKCL,nCL-nKCL,nCL))
+else:
+    plt.title("%d of %d clusters adapted"%(nACL,nCL))
 plt.savefig("../Figures/fit%s_clusAD.eps"%(transform))
 
 # Gráfica 3 - Subpaths non adaptados
@@ -190,8 +206,10 @@ plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 if delBacklobe:
     drawShadedArc(plt.gca(),tx,txArrayAngle*np.pi/180-np.pi,d2D/2)
-    drawShadedArc(plt.gca(),rx,rxArrayAngle*np.pi/180-np.pi,d2D/2)
-plt.title("%d|%d|%d of %d subpaths adapted|kept|deleted"%(nASP,nKSP,nSP-nKSP,nSP))
+    drawShadedArc(plt.gca(),rx,rxArrayAngle*np.pi/180-np.pi,d2D/2)    
+    plt.title("%d|%d|%d of %d subpaths adapted|kept|deleted"%(nASP,nKSP,nSP-nKSP,nSP))
+else:
+    plt.title("%d of %d subpaths adapted"%(nASP,nSP))
 legend = plt.legend(shadow=True, fontsize='10')
 
 plt.savefig("../Figures/fit%s_subpAD.eps"%(transform))
