@@ -1060,11 +1060,16 @@ class ThreeGPPMultipathChannelModel:
         
         return(txPos,rxPos,plinfo,clusters,subpaths)    
             
-    def randomFitEpctClusters(self, txPos, rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=np.full(4,.25),mode3D=True):
+    def randomFitEpctClusters(self, txPos, rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=np.full(4,.25),mode3D=True,skipLOS=True):
         #P=[Pnot,Paoa,Paod,Ptoa]        
         P=np.array(P)#safety to permit tuple, list and dataframe as input
-        transformRandom=self.chooseRandomTransform(txPos, rxPos, clusters, P,mode3D)   
+        transformRandom=self.chooseRandomTransform(txPos, rxPos, clusters, P,mode3D)
+        if skipLOS and plinfo[0]:
+            Plos = subpaths.P.loc[0,self.maxM]
+            clusters.P.loc[0]=clusters.P.loc[0] - Plos
         indexTopEnergyClusters=self.chooseEnergyPctileGlobal(clusters, Ec)
+        if skipLOS and plinfo[0]:
+            clusters.P.loc[0]=clusters.P.loc[0] + Plos
         transformIndexClusters=indexTopEnergyClusters*transformRandom
         (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(clusters,transformIndexClusters,maxG=4)
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters,mode3D)
@@ -1072,7 +1077,12 @@ class ThreeGPPMultipathChannelModel:
         clusters=self.applyMultiTransform(txPos,rxPos,clusters, tauOffset, indexAoA, indexAoD, indexToA,mode3D)
         delta_clusters = clusters-clusters_bk#save this for non adapted subpaths consistency
         
-        indexTopEnergySubpaths=self.chooseEnergyPctileGroups(subpaths, Es)
+        if skipLOS and plinfo[0]:
+            subpaths.P.loc[0,self.maxM] = 0
+        indexTopEnergySubpaths=self.chooseEnergyPctileGroups(subpaths, Es)        
+        if skipLOS and plinfo[0]:
+            subpaths.P.loc[0,self.maxM] = Plos
+            indexTopEnergySubpaths.loc[0,self.maxM] = True
         transformCBroadcastSubpaths=transformIndexClusters.reindex(index=indexTopEnergySubpaths.index,level=0)
         transformIndexSubpaths=indexTopEnergySubpaths*transformCBroadcastSubpaths
         (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(subpaths,transformIndexSubpaths,maxG=4)

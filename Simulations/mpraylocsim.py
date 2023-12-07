@@ -59,7 +59,8 @@ parser.add_argument('--print', help='Save plot files in eps to results folder', 
 
 # args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D 16:16:16,64:64:64,256:256:256,1024:1024:1024,4096:4096:4096,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
-args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label test --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:75 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
+args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label newadapt --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:50 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label test --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:75 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
 # args = parser.parse_args("-N 1000 --nompg --noloc -G Geo:20 --noerror -D=64:64:64,256:256:256,1024:1024:1024 --label test --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:80 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
 #args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
 
@@ -121,8 +122,8 @@ if not os.path.isdir(outfoldername):
     os.mkdir(outfoldername)
 
 #TODO: create command line arguments for these parameters
-Xmax=200
-Xmin=0
+Xmax=100
+Xmin=-100
 Ymax=100
 Ymin=-100
 
@@ -189,17 +190,19 @@ else:
         aoa = np.zeros((Npath,Nsims))
         x = np.zeros((Npath,Nsims))
         y = np.zeros((Npath,Nsims))
+        losAll = np.zeros((Nsims),dtype=bool)
         bar = Bar("Generating %d 3GPP multipath channels"%(Nsims), max=Nsims)
         bar.check_tty = False
         for n in range(Nsims):
             # while nvalid[n]<4:#discard channels with too few paths
             rxPos = (x0[n],y0[n],1.5)
-            plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)            
+            plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)     
+            losAll[n]=plinfo[0]
             # (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullFitAOA(txPos,rxPos,plinfo,clusters,subpaths)
-            (txPos,rxPos,plinfo,clusters,subpaths)  = model.randomFitEpctClusters(txPos,rxPos,plinfo,clusters,subpaths,Ec=.95,Es=.5,P=[0,.5,.5,0],mode3D=False)
-            txArrayAngle = 0#deg
-            rxArrayAngle = np.mod(np.pi+np.arctan2(y0[n],x0[n]),2*np.pi)*180/np.pi
-            (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullDeleteBacklobes(txPos,rxPos,plinfo,clusters,subpaths,tAOD=txArrayAngle,rAOA=rxArrayAngle)
+            (txPos,rxPos,plinfo,clusters,subpaths)  = model.randomFitEpctClusters(txPos,rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=[0,.5,.5,0],mode3D=False)
+            # txArrayAngle = 0#deg
+            # rxArrayAngle = np.mod(np.pi+np.arctan2(y0[n],x0[n]),2*np.pi)*180/np.pi
+            # (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullDeleteBacklobes(txPos,rxPos,plinfo,clusters,subpaths,tAOD=txArrayAngle,rAOA=rxArrayAngle)
             #remove subpaths that have not been converted to first order
             subpathsDiscarded = subpaths.loc[~np.isinf(subpaths.Xs)]
             #remove weak subpaths if there are more than 50 for faster computation
@@ -433,6 +436,8 @@ if args.pcl:
         for nc in range(NlocAlg):
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
             plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[nc,errCaseMask,:],Pctl,axis=1),line+marker+color,label=caseStr)
+            # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'r',label=caseStr)
+            # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,~losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'g',label=caseStr)
         plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(error_dumb,80),':k',label="random guess")
         Ts = loc.getTParamToLoc(x0,y0,tauE+tau0,aoa0,x,y,['dDAoA'],['dx0','dy0'])
         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))

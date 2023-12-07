@@ -74,7 +74,7 @@ if transform:
     elif transform == "SERandom":
         (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=1,Es=.5,P=[0,.5,.5,0],mode3D=bool3D)
     elif transform == "DERandom":
-        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.95,Es=.5,P=[0,.5,.5,0],mode3D=bool3D)
+        (tx,rx,plinfo,clustersAD,subpathsAD)  = modelA.randomFitEpctClusters(tx,rx,plinfo,clustersAD,subpathsAD,Ec=.75,Es=.75,P=[0,.5,.5,0],mode3D=bool3D)
     else:
         print("Transform '",transform,"' not supported")
     
