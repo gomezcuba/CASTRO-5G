@@ -14,6 +14,9 @@ Please read [CONTRIBUTING.md](CONTRIBUTE.md) for details on our code of conduct,
 * Version [0.1.1](https://github.com/gomezcuba/CASTRO-5G/commit/cb1310b779897ac864780a305b1d415b6ecc48d9) - [iagoalvarez](https://github.com/iagoalvarez) finished his TFG, upgrading threeGPPMultipathGenerator.py and creating its test files
 * Version [0.1.2](https://github.com/gomezcuba/CASTRO-5G/commit/fd4cb8a4e868ae48db633350e20564a11be52962) - [gts-99](https://github.com/gts-99) finished his TFG, upgrading the IoTSpatialConsistencyExperimentthreeGPPMultipathGenerator.py to simulate a multi-user system with link adaptation
 * Version [0.2.0](https://github.com/gomezcuba/CASTRO-5G/releases/tag/v0.2.0-alpha.3gpp) - [gomezcuba](https://github.com/gomezcuba) refactored the code to return values as Pandas Dataframes and support clusters with variable number of subpaths and prepared the new release version
+* Version [0.2.1](https://github.com/gomezcuba/CASTRO-5G/commit/d45090125a2df21bc949c83ae364385f04e4ea2a) - [uxxiat](https://github.com/uxxiat) finished her TFG, upgrading the threeGPPMultipathGenerator.py to simulate first-order reflections in ISAC scenarios
+* Version [0.2.2](https://github.com/gomezcuba/CASTRO-5G/commit/8f5939e8d6c8412e6e61ce10fa2d99a9db70e571) - [anavidgar](https://github.com/anavidgar) finished her TFG, upgrading the threeGPPMultipathGenerator.py to implement the 3GPP standard spatial consistency model and mobility support
+* Version [0.3.0](https://github.com/gomezcuba/CASTRO-5G/releases/tag/v0.3.0-alpha.isac) - [gomezcuba](https://github.com/gomezcuba) prepared the new functionalities for relase and refactored the codebase into several folders. Now the main functionalities of the CASTRO-5G repo form a common python package 
 
 ## Authors
 
@@ -204,7 +207,9 @@ The following files can be added to your PATH and employed as python libraries o
 
 * Gonzalo Feijoo Rodríguez, "Implementación de un algoritmo de localización de usuarios empleando señales 5G en lenguaje Python"
 * Iago Alvarez Ramos, "Implementación de un simulador de canales 5G en lenguaje Python"
-* Guillermo Tomás Sancho Camacho(TFG), "Implementación de un algoritmo de Adaptación de Enlace / Control de Congestión para comunicaciones multiusuario de máquina a máquina utilizando el lenguaje Python"
+* Guillermo Tomás Sancho Camacho, "Implementación de un algoritmo de Adaptación de Enlace / Control de Congestión para comunicaciones multiusuario de máquina a máquina utilizando el lenguaje Python"
+* Uxía Tarrío Pinazas, "Implementación dunha extensión de ray-tracing para o modelo de canle 5G en linguaxe Python"
+* Ana María Vidal García, "Implementación de un simulador de canal móbil 5G en lenguaje Python"
 
 ##  Acknowledgments
 
@@ -219,7 +224,7 @@ The following files can be added to your PATH and employed as python libraries o
 
 * The OMPBR Compressed Sensing algorithm was first discussed in: F. Gómez-Cuba and A. J. Goldsmith, "Compressed Sensing Channel Estimation for OFDM With Non-Gaussian Multipath Gains," in IEEE Transactions on Wireless Communications, vol. 19, no. 1, pp. 47-61, Jan. 2020
 * The 3GPP channel model is defined in: 3GPP. (2022). 3rd Generation Partnership Project; Technical Specification Group Radio Access Network; Study on channel model for frequencies from 0.5 to 100 GHz (Release 17). ETSI TR 38.901, 17.0.
-1
+
 ## License
 
 This project is licensed under the GPLv3 license - see the [LICENSE](LICENSE) file for details
