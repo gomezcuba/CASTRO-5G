@@ -12,7 +12,7 @@ import argparse
 plt.close('all')
 import sys
 sys.path.append('../')
-# from CASTRO5G import threeGPPMultipathGenerator as mpg
+from CASTRO5G import threeGPPMultipathGenerator as mpg
 from CASTRO5G import multipathChannel as ch
 # from CASTRO5G import OMPCachedRunner as oc
 # import MIMOPilotChannel as pil
@@ -66,6 +66,8 @@ parser = argparse.ArgumentParser(description='Multiuser Multipath Channel Displa
 parser.add_argument('-Ns', type=int,help='No. simulated drops')
 #parameters that affect user fleet
 parser.add_argument('-Nu', type=int,help='No. simulated users')
+#parameters that affect multipath generator
+parser.add_argument('-G', type=str,help='Type of generator')
 #parameters that affecto OFDM physical layer dimensions
 parser.add_argument('-Nt', type=int,help='No. transmitter antennas')
 parser.add_argument('-Nr', type=int,help='No. receiver antennas')
@@ -91,11 +93,19 @@ parser.add_argument('--show', help='Open plot figures during execution', action=
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
 
-args = parser.parse_args("--nompg --nolinksim -Ns 100 -Nu 10 -Nt 16 -Nr 16 -Nrft 1 -Nrfr 4 -Nk 128 -Ncp 128 --show --print --label test --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+# args = parser.parse_args("-G 3gpp:50 -Ns 20 -Nu 10 -Nt 8 -Nr 8 -Nrft 1 -Nrfr 4 -Nk 32 -Ncp 16 --show --print --label test --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+# args = parser.parse_args("--nompg --nolinksim -G 3gpp:100 -Ns 100 -Nu 10 -Nt 16 -Nr 16 -Nrft 1 -Nrfr 4 -Nk 1024 -Ncp 128 --show --print --label test --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+args = parser.parse_args("-G 3gpp:100 -Ns 100 -Nu 10 -Nt 16 -Nr 16 -Nrft 1 -Nrfr 4 -Nk 1024 -Ncp 128 --show --print --label test --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
 
 
 Ns = args.Ns if args.Ns else 2
 Nu = args.Nu if args.Nu else 3  
+
+# multipath generator
+if args.G:
+    mpgenInfo = args.G.split(':')
+else:        
+    mpgenInfo = ['Uni','20']
 
 Nt= args.Nt if args.Nt else 4
 Nr= args.Nr if args.Nr else 4
@@ -110,20 +120,17 @@ else:
     outfoldername="../Results/MULinkAdaptresults-%d-%d"%(Ns,Nu)
 if not os.path.isdir(outfoldername):
     os.mkdir(outfoldername)
-    
+
 xmax=100
 ymax=100
 dmax=10
-chgen = UIMultipathChannelModel(Ncp,Nt,Nr)
 
 ###########################################################################################
 p_tx = 500e-3        #(first version )transmitter power W [can be an input parameter].
 numerology_mu = 0
 delta_f = 15e3 * (2**numerology_mu)      #carrier spacing [Hz]
-p_loss = 1e-12                           #pathloss
 Ds=320e-9
 Ts=Ds/Ncp
-Npath=20
 
 c=3e8
 Temp = 290                       # Define temperature T (in Kelvin), 17ºC
@@ -160,26 +167,68 @@ else:
     y=np.cumsum(np.concatenate((y1[:,None],ystep),axis=1),axis=1)
     
     # generate multipath channels
+    if mpgenInfo[0]=='Uni':
+        chgen = UIMultipathChannelModel(Ncp,Nt,Nr)
+        Npath = int(mpgenInfo[1])
+    elif mpgenInfo[0]=='3gpp':        
+        Nclippaths = int(mpgenInfo[1])
+        # model = mpg.ThreeGPPMultipathChannelModel(scenario="UMa",fc=3.5,bLargeBandwidthOption=True)
+        model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",fc=28,bLargeBandwidthOption=True)
+        Npath = np.minimum( model.maxM * model.scenarioParams.NLOS.N , Nclippaths )
+    else:
+        print("MultiPath generator not supported")
+    
+    p_loss = np.zeros((Ns,Nu))   #pathloss
     tdoa=np.zeros((Ns,Nu,Npath))
     aod=np.zeros((Ns,Nu,Npath))
     aoa=np.zeros((Ns,Nu,Npath))
+    coefs=np.zeros((Ns,Npath),dtype=complex)
+    nvalid=Npath*np.ones(Ns,dtype=int)
     clock_offset=np.zeros(Ns)
     bar = Bar('Generating channels', max=Ns)
-    for isim in range(Ns):            
-        coefs,delay1,aod1,aoa1=chgen.generateDEC(Npath)
-        delay1-np.min(delay1)        
-        ord_true=np.argsort(-np.abs(coefs)**2)
-        coefs=coefs[ord_true]
-        delay1=delay1[ord_true]
-        aod1=aod1[ord_true]
-        aoa1=aoa1[ord_true]
-        
-        tdoa[isim,0,:]=delay1*Ts
-        aod[isim,0,:]=aod1
-        aoa[isim,0,:]=aoa1   
-        for nu in range(Nu-1):    
-            tdoa[isim,nu+1,:],aod[isim,nu+1,:],aoa[isim,nu+1,:]=displaceMultipathChannel(tdoa[isim,nu,:],aod[isim,nu,:],aoa[isim,nu,:],xstep[isim,nu],ystep[isim,nu])
-            #for 3GPP coefs must be updated too
+    for isim in range(Ns):           
+        if mpgenInfo[0]=='Uni':
+            p_loss[isim,:]=1e-12
+            coefs1,delay1,aod1,aoa1=chgen.generateDEC(Npath)
+            delay1-np.min(delay1)        
+            ord_true=np.argsort(-np.abs(coefs1)**2)
+            coefs[isim,:]=coefs1[ord_true]
+            delay1=delay1[ord_true]
+            aod1=aod1[ord_true]
+            aoa1=aoa1[ord_true]
+            tdoa[isim,0,:]=delay1*Ts
+            aod[isim,0,:]=aod1
+            aoa[isim,0,:]=aoa1
+            for nu in range(Nu-1):    
+                tdoa[isim,nu+1,:],aod[isim,nu+1,:],aoa[isim,nu+1,:]=displaceMultipathChannel(tdoa[isim,nu,:],aod[isim,nu,:],aoa[isim,nu,:],xstep[isim,nu],ystep[isim,nu])
+            
+        elif mpgenInfo[0]=='3gpp':
+            txPos = (0,0,10)        
+            rxPos = (x1[isim],y1[isim],1.5)
+            model.initCache()#make sure channels are independent
+            plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)    
+            p_loss[isim,:]= 10**(-(plinfo[1]+plinfo[2])/10)
+            if ( subpaths.shape[0] > Nclippaths ):            
+                srtdP = subpaths.P.sort_values(ascending=False)
+                indexStrongest=srtdP.iloc[0:Nclippaths].index
+                subpaths = subpaths.loc[indexStrongest]
+            nvalid[isim]=subpaths.shape[0]
+            tdoa[isim,0,0:nvalid[isim]] = subpaths.TDOA*np.pi/180
+            aoa[isim,0,0:nvalid[isim]] = subpaths.AOA*np.pi/180
+            aod[isim,0,0:nvalid[isim]] = subpaths.AOD*np.pi/180
+            coefs[isim,0:nvalid[isim]] = np.sqrt(subpaths.P)*np.exp(2j*np.pi*subpaths.phase00)
+            subpathsPrev=subpaths
+            for nu in range(Nu-1):
+                #TODO to use the next code we must first apply the same procedure in the channel prediction in CSIT
+                # tdoa[isim,nu+1,:],aod[isim,nu+1,:],aoa[isim,nu+1,:]=displaceMultipathChannel(tdoa[isim,nu,:],aod[isim,nu,:],aoa[isim,nu,:],xstep[isim,nu],ystep[isim,nu])
+                rxPosPrev = (x[isim,nu],y[isim,nu],1.5)
+                rxPosNext = (x[isim,nu+1],y[isim,nu+1],1.5)
+                subpathsNext = model.displaceMultipathChannel(subpathsPrev,txPos,rxPosPrev,txPos,rxPosNext)
+                tdoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.TDOA*np.pi/180
+                aoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.AOA*np.pi/180
+                aod[isim,nu+1,0:nvalid[isim]] = subpathsNext.AOD*np.pi/180
+                # coefs[isim,nu+1,0:nvalid[isim]] = np.sqrt(subpathsNext.P)*np.exp(2j*np.pi*subpathsNext.phase00) 
+                subpathsPrev=subpathsNext
         clock_offset[isim]=np.min(tdoa[isim,:,:])
         tdoa[isim,:,:] = tdoa[isim,:,:] - clock_offset[isim]
         bar.next()
@@ -258,6 +307,14 @@ else:
     rate_tx = np.zeros((NcsitCases, Ns, Nu),dtype = np.float32)     #tx rate 
     marg_epsilon = np.empty((NcsitCases, Ns , Nu),dtype = np.float32) 
     marg_lin = np.empty((NcsitCases, Ns , Nu),dtype = np.float32) 
+    hall = np.zeros((Ns , Nu, Ncp, Nr, Nt),dtype=complex) 
+    bar = Bar('Pregenerating perfect channels', max=Ns*Nu)
+    for isim in range(Ns):
+        for nu in range(Nu):
+            hall[isim,nu,:,:,:]=chgen.computeDEC(tdoa[isim,nu,0:nvalid[isim]]/Ts,aod[isim,nu,0:nvalid[isim]],aoa[isim,nu,0:nvalid[isim]],coefs[isim,0:nvalid[isim]])
+            bar.next()
+    bar.finish()
+    
     for nCSIT in range(NcsitCases):
         method,methodConfig = csitConfig[nCSIT]
         marg_epsilon[nCSIT,:,0] = np.zeros(Ns)
@@ -274,22 +331,15 @@ else:
     
         bar = Bar('Simulating LA with CSIT type %s'%(methodLegend), max=Ns*Nu)
         for isim in range(Ns):
-            
-            hall=np.zeros((Nu,Ncp,Nr,Nt),dtype=np.complex64)
-            hall_est=np.zeros((Nu,Ncp,Nr,Nt),dtype=np.complex64)
-                #for 3GPP coefs must be updated too
-            
-            for nu in range(Nu):    #note ht was generated without clock offset and must be modified
-                hall[nu,:,:,:]=chgen.computeDEC(tdoa[isim,nu,:]/Ts,aod[isim,nu,:],aoa[isim,nu,:],coefs)
-                hall_est[nu,:,:,:]=chgen.computeDEC(tdoa[isim,nu,0:NpathFeedback]/Ts,aod[isim,nu,0:NpathFeedback],aoa[isim,nu,0:NpathFeedback],coefs[0:NpathFeedback])
-                
-            #priNcp("NMSE: %s"%(  np.sum(np.abs(hall-hall_est)**2,axis=(1,2,3))/np.sum(np.abs(hall)**2,axis=(1,2,3)) ))
-            hkall=np.fft.fft(hall,Nk,axis=1) 
+            hkall=np.fft.fft(hall[isim,:,:,:,:],Nk,axis=1) 
             if method =='perfectCSIT':
                 hkall_est=hkall
             elif method=='perfect1User':
                 hkall_est = np.tile(hkall[0,:,:,:] ,[Nu,1,1,1])
             elif method=='NpathDisplaced':
+                hall_est=np.zeros((Nu,Ncp,Nr,Nt),dtype=np.complex64)
+                for nu in range(Nu):
+                    hall_est[nu,:,:,:]=chgen.computeDEC(tdoa[isim,nu,0:NpathFeedback]/Ts,aod[isim,nu,0:NpathFeedback],aoa[isim,nu,0:NpathFeedback],coefs[isim,0:NpathFeedback])
                 hkall_est=np.fft.fft(hall_est,Nk,axis=1)
             else:
                 print("Method not supported")   
@@ -315,11 +365,11 @@ else:
                 G_beamf_max_real[nu,:] = np.abs(W[:,best_ind_rx].T.conj() @ hkall[nu,:,:,:] @ V[:,best_ind_tx])**2
     
                 #TX
-                SNR_k_est[nCSIT, isim, nu, :] = ( p_tx * p_loss * G_beamf_max_est[nu, :] ) / ( N0_noise * Nk * delta_f ) #calculation of the estimated SNR
+                SNR_k_est[nCSIT, isim, nu, :] = ( p_tx * p_loss[isim,nu] * G_beamf_max_est[nu, :] ) / ( N0_noise * Nk * delta_f ) #calculation of the estimated SNR
                 rate_tx[nCSIT, isim, nu] = np.sum(np.log2(1 + SNR_k_est[nCSIT, isim,nu,:] * marg_lin[nCSIT, isim, nu]), axis = 0) * delta_f                      ##calculation of the TX rate
                 
                 #RX
-                SNR_k[nCSIT, isim, nu, :] = ( p_tx * p_loss * G_beamf_max_real[nu, :] ) / ( N0_noise * Nk * delta_f )  #calculation of the SNR
+                SNR_k[nCSIT, isim, nu, :] = ( p_tx * p_loss[isim,nu] * G_beamf_max_real[nu, :] ) / ( N0_noise * Nk * delta_f )  #calculation of the SNR
                 ach_rate[nCSIT, isim, nu] = np.sum(np.log2(1 + SNR_k[nCSIT, isim,nu,:]), axis = 0) * delta_f 
                 
                 #compare previous TX rate with previous achievable rate RX to generate ACK 
@@ -364,6 +414,8 @@ if args.tracerate:
         plt.xlabel('Trajectory point')
         plt.ylabel('Rate (Mbps)')
         plt.title(testLegends[nCSIT])
+        if args.print:
+            plt.savefig(outfoldername+'/rate_margin_%s.eps'%(testLegends[nCSIT]))
 
 if args.tracemargin:
     fig_ctr+=1
@@ -372,7 +424,8 @@ if args.tracemargin:
     plt.xlabel('Iteration')
     plt.ylabel('Linear Margin (1 is better)')
     plt.legend(testLegends)
-    plt.show()
+    if args.print:
+        plt.savefig(outfoldername+'/trace_margin.eps')
 
 if args.barrate:
     fig_ctr+=1
@@ -381,14 +434,19 @@ if args.barrate:
     plt.xlabel('Simulations')
     plt.ylabel('Mean Achievable rate (Mbps)')
     plt.xticks(ticks=np.arange(NcsitCases),labels=testLegends)
+    if args.print:
+        plt.savefig(outfoldername+'/rate_vs_csit.eps')
+    
 if args.barpout:
     fig_ctr+=1
     plt.figure(fig_ctr)   
     plt.bar(np.arange(NcsitCases), np.mean(E_dB, axis=(1,2) ) )
-    plt.plot(np.arange(NcsitCases)-.5, epsy*np.ones(NcsitCases), ':k') 
+    plt.plot(np.arange(NcsitCases+1)-.5, epsy*np.ones(NcsitCases+1), ':k') 
     plt.xlabel('Simulations')
     plt.ylabel('Mean Pout')
     plt.xticks(ticks=np.arange(NcsitCases),labels=testLegends)
+    if args.print:
+        plt.savefig(outfoldername+'/pout_vs_csit.eps')
     
 if args.userrate:
     for nCSIT in range(NcsitCases):
@@ -398,12 +456,17 @@ if args.userrate:
         plt.xlabel('User')
         plt.ylabel('Mean Achievable rate (Mbps)')
         plt.title(testLegends[nCSIT])
+        if args.print:
+            plt.savefig(outfoldername+'/rate_vs_user_%s.eps'%(testLegends[nCSIT]))
+                        
 if args.userpout:
     for nCSIT in range(NcsitCases):
         fig_ctr+=1
         plt.figure(fig_ctr)       
         plt.bar(np.arange(Nu), np.mean(E_dB[nCSIT,:,:], axis=0 ) )
-        plt.plot(np.arange(Nu)-.5, epsy*np.ones(Nu), ':k') 
+        plt.plot(np.arange(Nu+1)-.5, epsy*np.ones(Nu+1), ':k') 
         plt.xlabel('User')
         plt.ylabel('Mean Pout')
-        plt.title(testLegends[nCSIT])
+        plt.title(testLegends[nCSIT])        
+        if args.print:
+            plt.savefig(outfoldername+'/pout_vs_user_%s.eps'%(testLegends[nCSIT]))

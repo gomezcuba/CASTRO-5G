@@ -208,7 +208,7 @@ else:
             #remove weak subpaths if there are more than 50 for faster computation
             if ( subpathsDiscarded.shape[0] > Nclippaths ):            
                 srtdP = subpathsDiscarded.P.sort_values(ascending=False)
-                indexStrongest=srtdP.iloc[0:50].index
+                indexStrongest=srtdP.iloc[0:Nclippaths].index
                 subpathsDiscarded = subpathsDiscarded.loc[indexStrongest]
             nvalid[n]=subpathsDiscarded.shape[0]
             #     if nvalid[n]<4:

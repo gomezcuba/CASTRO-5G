@@ -419,6 +419,9 @@ class ThreeGPPMultipathChannelModel:
 
         self.smallCorrDist = smallCorrDist
         
+        self.initCache()
+        
+    def initCache(self):
         self.dMacrosGenerated = pd.DataFrame(columns=[
             'TGridx','TGridy','RGridx','RGridy','LOS',
             'sfdB','ds','asa','asd','zsa','zsd_lslog','K'
@@ -434,7 +437,6 @@ class ThreeGPPMultipathChannelModel:
         #       'TDOA','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'
         # ]).set_index(['Xt','Yt','Zt','Xr','Yr','Zr','n','m'])
         self.dLOSGenerated = {}
-        self.miscasillas = {}
 
     # TODO introduce code for multi-floor hut in UMi & UMa
     #         if not indoor:
