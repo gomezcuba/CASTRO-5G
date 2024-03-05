@@ -77,6 +77,8 @@ parser.add_argument('-Ncp', type=int,help='No. CP samples in OFDM')
 parser.add_argument('-Nk', type=int,help='No. subcarriers in OFDM')
 
 #parameters that affect the plots
+parser.add_argument('--barnmse',help='plot rate traces for each case', action='store_true')
+parser.add_argument('--usernmse',help='plot rate traces for each case', action='store_true')
 parser.add_argument('--tracerate',help='plot rate traces for each case', action='store_true')
 parser.add_argument('--tracemargin',help='plot margin traces for all cases', action='store_true')
 parser.add_argument('--barrate',help='plot rate traces for all cases', action='store_true')
@@ -92,10 +94,16 @@ parser.add_argument('--nolinksim',help='Do not perform link simulation, load exi
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
 
-
-# args = parser.parse_args("-G 3gpp:50 -Ns 20 -Nu 10 -Nt 8 -Nr 8 -Nrft 1 -Nrfr 4 -Nk 32 -Ncp 16 --show --print --label test --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
-# args = parser.parse_args("--nompg --nolinksim -G 3gpp:100 -Ns 100 -Nu 10 -Nt 16 -Nr 16 -Nrft 1 -Nrfr 4 -Nk 1024 -Ncp 128 --show --print --label test --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
-args = parser.parse_args("-G 3gpp:100 -Ns 100 -Nu 10 -Nt 16 -Nr 16 -Nrft 1 -Nrfr 4 -Nk 1024 -Ncp 128 --show --print --label test --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+#### to plot only add -nompg --nolinksim
+## Ultra fast small simulations for debug
+# args = parser.parse_args("-G Unif:20 -Ns 20 -Nu 4 -Nt 4 -Nr 4 -Nrft 1 -Nrfr 4 -Nk 32 -Ncp 16 --show --print --label test --barnmse --usernmse --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+# args = parser.parse_args("-G 3gpp:50 -Ns 20 -Nu 4 -Nt 4 -Nr 4 -Nrft 1 -Nrfr 4 -Nk 32 -Ncp 16 --show --print --label test --barnmse --usernmse --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+## medium size simulations for monte-carlo average debug
+# args = parser.parse_args("-G Unif:20 -Ns 100 -Nu 10 -Nt 8 -Nr 8 -Nrft 1 -Nrfr 4 -Nk 128 -Ncp 64 --show --print --label test --barnmse --usernmse --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+# args = parser.parse_args("-G 3gpp:100 -Ns 100 -Nu 10 -Nt 8 -Nr 8 -Nrft 1 -Nrfr 4 -Nk 128 -Ncp 64 --show --print --label test --barnmse --usernmse --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+## large simulations for realistic system results
+# args = parser.parse_args("-G Unif:30 -Ns 100 -Nu 10 -Nt 16 -Nr 16 -Nrft 1 -Nrfr 4 -Nk 1024 -Ncp 128 --show --print --label test --barnmse --usernmse --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
+args = parser.parse_args("--nompg --nolinksim -G 3gpp:100 -Ns 100 -Nu 10 -Nt 16 -Nr 16 -Nrft 1 -Nrfr 4 -Nk 1024 -Ncp 128 --show --print --label test --barnmse --usernmse --tracerate --tracemargin --barrate --barpout --userrate --userpout".split(' '))
 
 
 Ns = args.Ns if args.Ns else 2
@@ -105,7 +113,7 @@ Nu = args.Nu if args.Nu else 3
 if args.G:
     mpgenInfo = args.G.split(':')
 else:        
-    mpgenInfo = ['Uni','20']
+    mpgenInfo = ['Unif','20']
 
 Nt= args.Nt if args.Nt else 4
 Nr= args.Nr if args.Nr else 4
@@ -167,13 +175,15 @@ else:
     y=np.cumsum(np.concatenate((y1[:,None],ystep),axis=1),axis=1)
     
     # generate multipath channels
-    if mpgenInfo[0]=='Uni':
-        chgen = UIMultipathChannelModel(Ncp,Nt,Nr)
+    if mpgenInfo[0]=='Unif':
+        chgen = UIMultipathChannelModel(Ncp,Nr,Nt)
         Npath = int(mpgenInfo[1])
     elif mpgenInfo[0]=='3gpp':        
         Nclippaths = int(mpgenInfo[1])
         # model = mpg.ThreeGPPMultipathChannelModel(scenario="UMa",fc=3.5,bLargeBandwidthOption=True)
         model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",fc=28,bLargeBandwidthOption=True)
+        #TODO: this is only used temporarity in place of future multipathchannel getDEC
+        chgen = UIMultipathChannelModel(Ncp,Nr,Nt)
         Npath = np.minimum( model.maxM * model.scenarioParams.NLOS.N , Nclippaths )
     else:
         print("MultiPath generator not supported")
@@ -187,7 +197,7 @@ else:
     clock_offset=np.zeros(Ns)
     bar = Bar('Generating channels', max=Ns)
     for isim in range(Ns):           
-        if mpgenInfo[0]=='Uni':
+        if mpgenInfo[0]=='Unif':
             p_loss[isim,:]=1e-12
             coefs1,delay1,aod1,aoa1=chgen.generateDEC(Npath)
             delay1-np.min(delay1)        
@@ -199,9 +209,10 @@ else:
             tdoa[isim,0,:]=delay1*Ts
             aod[isim,0,:]=aod1
             aoa[isim,0,:]=aoa1
+            tdoa[isim,0,:]+=d1[isim]#displace function supports only absolute delays
             for nu in range(Nu-1):    
                 tdoa[isim,nu+1,:],aod[isim,nu+1,:],aoa[isim,nu+1,:]=displaceMultipathChannel(tdoa[isim,nu,:],aod[isim,nu,:],aoa[isim,nu,:],xstep[isim,nu],ystep[isim,nu])
-            
+            tdoa[isim,:,:]-=d1[isim]
         elif mpgenInfo[0]=='3gpp':
             txPos = (0,0,10)        
             rxPos = (x1[isim],y1[isim],1.5)
@@ -217,13 +228,12 @@ else:
             aoa[isim,0,0:nvalid[isim]] = subpaths.AOA*np.pi/180
             aod[isim,0,0:nvalid[isim]] = subpaths.AOD*np.pi/180
             coefs[isim,0:nvalid[isim]] = np.sqrt(subpaths.P)*np.exp(2j*np.pi*subpaths.phase00)
-            subpathsPrev=subpaths
+            subpathsPrev=subpaths  
             for nu in range(Nu-1):
                 #TODO to use the next code we must first apply the same procedure in the channel prediction in CSIT
-                # tdoa[isim,nu+1,:],aod[isim,nu+1,:],aoa[isim,nu+1,:]=displaceMultipathChannel(tdoa[isim,nu,:],aod[isim,nu,:],aoa[isim,nu,:],xstep[isim,nu],ystep[isim,nu])
                 rxPosPrev = (x[isim,nu],y[isim,nu],1.5)
                 rxPosNext = (x[isim,nu+1],y[isim,nu+1],1.5)
-                subpathsNext = model.displaceMultipathChannel(subpathsPrev,txPos,rxPosPrev,txPos,rxPosNext)
+                subpathsNext = model.displaceMultipathChannel(subpathsPrev,txPos,rxPosPrev,txPos,rxPosNext,bKeepClockSync=True)
                 tdoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.TDOA*np.pi/180
                 aoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.AOA*np.pi/180
                 aod[isim,nu+1,0:nvalid[isim]] = subpathsNext.AOD*np.pi/180
@@ -252,12 +262,11 @@ NpathFeedback=10
 
 method = 'NpathDisplaced'
 
-NMSE=np.zeros((Ns,Nu))
-NMSEdisp=np.zeros((Ns,Nu))
-aodFlipErrors=np.zeros(Ns)
-aoaFlipErrors=np.zeros(Ns)
-aodFlipWeight=np.zeros(Ns)
-aoaFlipWeight=np.zeros(Ns)
+# NMSEdisp=np.zeros((Ns,Nu))
+# aodFlipErrors=np.zeros(Ns)
+# aoaFlipErrors=np.zeros(Ns)
+# aodFlipWeight=np.zeros(Ns)
+# aoaFlipWeight=np.zeros(Ns)
 
 bGenRand=True
 
@@ -270,9 +279,11 @@ bGenRand=True
 csitConfig = [
     ("perfectCSIT",None),
     ("perfect1User",None),
+    # ("NpathDisplaced",30),
+    ("NpathDisplaced",20),
     ("NpathDisplaced",10),
     ("NpathDisplaced",5),
-    ("NpathDisplaced",2),
+    # ("NpathDisplaced",2),
     ]
 testLegends = []
 NcsitCases = len(csitConfig)
@@ -289,6 +300,7 @@ if args.nolinksim:
     SNR_k_est=data["SNR_k_est"]
     rate_tx=data["rate_tx"]
     E_dB=data["E_dB"]
+    NMSE=data["NMSE"]
     for nCSIT in range(NcsitCases):
         method,methodConfig = csitConfig[nCSIT]        
         if method=='NpathDisplaced':
@@ -307,6 +319,7 @@ else:
     rate_tx = np.zeros((NcsitCases, Ns, Nu),dtype = np.float32)     #tx rate 
     marg_epsilon = np.empty((NcsitCases, Ns , Nu),dtype = np.float32) 
     marg_lin = np.empty((NcsitCases, Ns , Nu),dtype = np.float32) 
+    NMSE=np.zeros((NcsitCases, Ns , Nu),dtype = np.float32)
     hall = np.zeros((Ns , Nu, Ncp, Nr, Nt),dtype=complex) 
     bar = Bar('Pregenerating perfect channels', max=Ns*Nu)
     for isim in range(Ns):
@@ -342,7 +355,9 @@ else:
                     hall_est[nu,:,:,:]=chgen.computeDEC(tdoa[isim,nu,0:NpathFeedback]/Ts,aod[isim,nu,0:NpathFeedback],aoa[isim,nu,0:NpathFeedback],coefs[isim,0:NpathFeedback])
                 hkall_est=np.fft.fft(hall_est,Nk,axis=1)
             else:
-                print("Method not supported")   
+                print("Method not supported")
+            for nu in range(Nu):
+                NMSE[nCSIT,isim,nu]=np.sum(np.abs(hkall_est[nu,:,:,:]-hkall[nu,:,:,:])**2)/np.sum(np.abs(hkall[nu,:,:,:])**2)
         
             #Beamforming calculation
             G_beamf_max_est = np.zeros((Nu, Nk))
@@ -396,12 +411,52 @@ else:
                     ach_rate=ach_rate,
                     SNR_k_est=SNR_k_est,
                     rate_tx=rate_tx,
-                    E_dB=E_dB
+                    E_dB=E_dB,
+                    NMSE=NMSE
                     )
             
 
 plt.close('all')
 fig_ctr=0
+E_dB[0,:,:]=0
+if args.barnmse:
+    fig_ctr+=1
+    plt.figure(fig_ctr)   
+    plt.bar(np.arange(NcsitCases), 10*np.log10(np.mean(NMSE, axis=(1,2)))+10,bottom=-10) 
+    plt.xlabel('Simulations')
+    plt.ylabel('NMSE dB')
+    plt.xticks(ticks=np.arange(NcsitCases),labels=testLegends)
+    if args.print:
+        plt.savefig(outfoldername+'/nmse_vs_csit.eps')
+    fig_ctr+=1
+    plt.figure(fig_ctr)   
+    plt.bar(np.arange(NcsitCases), 10*np.log10(np.mean(SNR_k_est/SNR_k,axis=(1,2,3)))) 
+    plt.xlabel('Simulations')
+    plt.ylabel('SINR gap dB')
+    plt.xticks(ticks=np.arange(NcsitCases),labels=testLegends)
+    if args.print:
+        plt.savefig(outfoldername+'/nmse_vs_csit.eps')
+
+
+if args.usernmse:
+    fig_ctr+=1
+    plt.figure(fig_ctr)   
+    # barwidth=0.9/NcsitCases   
+    # for nCSIT in range(NcsitCases):
+    #     offset=(nCSIT-(NcsitCases-1)/2)*barwidth
+    #     plt.bar(np.arange(Nu)+offset, 10*np.log10(np.mean(NMSE[nCSIT,:,:], axis=0)),width=barwidth,label=testLegends[nCSIT] )
+    # plt.xlabel('User')
+    # plt.xticks(ticks=np.arange(Nu),labels=['UE%d'%x for x in np.arange(Nu)])
+    barwidth=0.9/Nu
+    for nu in range(Nu):
+        offset=(nu-(Nu-1)/2)*barwidth
+        plt.bar(np.arange(NcsitCases)+offset,10*np.log10(np.mean(NMSE[:,:,nu],axis=1 ))+10,bottom=-10,width=barwidth,label='U%d'%(nu))
+    plt.xticks(ticks=np.arange(NcsitCases),labels=testLegends)
+    plt.ylabel('NMSE dB')
+    plt.legend()
+    if args.print:
+        plt.savefig(outfoldername+'/nmse_vs_user.eps')
+
 if args.tracerate:
     for nCSIT in range(NcsitCases):
         fig_ctr+=1
@@ -449,24 +504,42 @@ if args.barpout:
         plt.savefig(outfoldername+'/pout_vs_csit.eps')
     
 if args.userrate:
-    for nCSIT in range(NcsitCases):
-        fig_ctr+=1
-        plt.figure(fig_ctr)       
-        plt.bar(np.arange(Nu), np.mean((1 - E_dB[nCSIT,:,:])*rate_tx[nCSIT,:,:], axis=0 )* 1e-6 ) 
-        plt.xlabel('User')
-        plt.ylabel('Mean Achievable rate (Mbps)')
-        plt.title(testLegends[nCSIT])
-        if args.print:
-            plt.savefig(outfoldername+'/rate_vs_user_%s.eps'%(testLegends[nCSIT]))
+    fig_ctr+=1
+    plt.figure(fig_ctr)
+    # barwidth=0.9/NcsitCases
+    # for nCSIT in range(NcsitCases):
+    #     offset=(nCSIT-(NcsitCases-1)/2)*barwidth
+    #     plt.bar(np.arange(Nu)+offset,np.mean((1 - E_dB[nCSIT,:,:])*rate_tx[nCSIT,:,:],axis=0 )* 1e-6,width=barwidth,label=testLegends[nCSIT])
+    # plt.xlabel('User')
+    # plt.xticks(ticks=np.arange(Nu),labels=['UE%d'%x for x in np.arange(Nu)])    
+    barwidth=0.9/Nu
+    for nu in range(Nu):
+        offset=(nu-(Nu-1)/2)*barwidth
+        plt.bar(np.arange(NcsitCases)+offset,np.mean((1 - E_dB[:,:,nu])*rate_tx[:,:,nu],axis=1 )* 1e-6,width=barwidth,label='U%d'%(nu))
+    plt.xticks(ticks=np.arange(NcsitCases),labels=testLegends)
+    plt.ylabel('User Achievable rate (Mbps)')
+    plt.legend()
+    if args.print:
+        plt.savefig(outfoldername+'/rate_vs_user.eps')
                         
 if args.userpout:
-    for nCSIT in range(NcsitCases):
-        fig_ctr+=1
-        plt.figure(fig_ctr)       
-        plt.bar(np.arange(Nu), np.mean(E_dB[nCSIT,:,:], axis=0 ) )
-        plt.plot(np.arange(Nu+1)-.5, epsy*np.ones(Nu+1), ':k') 
-        plt.xlabel('User')
-        plt.ylabel('Mean Pout')
-        plt.title(testLegends[nCSIT])        
-        if args.print:
-            plt.savefig(outfoldername+'/pout_vs_user_%s.eps'%(testLegends[nCSIT]))
+    fig_ctr+=1
+    plt.figure(fig_ctr)    
+    # barwidth=0.9/NcsitCases   
+    # for nCSIT in range(NcsitCases):
+    #     offset=(nCSIT-(NcsitCases-1)/2)*barwidth
+    #     plt.bar(np.arange(Nu)+offset, np.mean(E_dB[nCSIT,:,:], axis=0 ),width=barwidth,label=testLegends[nCSIT] )
+    # plt.plot(np.arange(Nu+1)-.5, epsy*np.ones(Nu+1), ':k') 
+    # plt.xlabel('User')
+    # plt.xticks(ticks=np.arange(Nu),labels=['UE%d'%x for x in np.arange(Nu)])
+       
+    barwidth=0.9/Nu
+    for nu in range(Nu):
+        offset=(nu-(Nu-1)/2)*barwidth
+        plt.bar(np.arange(NcsitCases)+offset,np.mean(E_dB[:,:,nu],axis=1 ),width=barwidth,label='U%d'%(nu))
+    plt.xticks(ticks=np.arange(NcsitCases),labels=testLegends)
+    plt.plot(np.arange(NcsitCases+1)-.5, epsy*np.ones(NcsitCases+1), ':k') 
+    plt.ylabel('User Pout')
+    plt.legend()     
+    if args.print:
+        plt.savefig(outfoldername+'/pout_vs_user.eps')

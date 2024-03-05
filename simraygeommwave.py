@@ -18,9 +18,6 @@ from CASTRO5G import multipathChannel as ch
 from CASTRO5G import  OMPCachedRunner as oc
 import  MIMOPilotChannel as pil
 
-def fUPA( incidAngle , Nant = 16, dInterElement = .5):
-    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)
-
 def radUPA( Nangpoint, incidAngle , Nant = 16, dInterElement = .5):
     vUPA=ch.fULA(incidAngle,Nant,dInterElement)
     vAngle=ch.fULA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)

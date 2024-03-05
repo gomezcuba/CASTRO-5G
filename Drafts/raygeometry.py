@@ -87,7 +87,7 @@ plt.axis([-50,50,-50,50])
 plt.xlabel('$d_{ox}$ (m)')
 plt.ylabel('$d_{oy}$ (m)')
 plt.legend(['Transmitter','Receiver'])
-plt.savefig('graphsol%d.eps'%(Npath))
+plt.savefig('../Figures/graphsol%d.eps'%(Npath))
 
 
 X0e=np.zeros((1000,Npath))
@@ -149,7 +149,7 @@ for p in range(np.shape(theta_true)[0]):
     plt.plot(x0_root+scaleguide*.05*(p+1)*np.cos(AoA[p]*t+phi0_root),y0_root+scaleguide*.05*(p+1)*np.sin(AoA[p]*t+phi0_root),'m')
 
 plt.title("All estimations of position for the full set of multipaths, after phi0 is estimated with root method")
-plt.savefig('locfromAoAAoD.png')
+plt.savefig('../Figures/locfromAoAAoD.png')
 
 error_bisec=np.sqrt(np.abs(x0_true-x0_bisec)**2+np.abs(y0_true-y0_bisec))
 error_root=np.sqrt(np.abs(x0_true-x0_root)**2+np.abs(y0_true-y0_root))
@@ -165,7 +165,7 @@ plt.axis([-50,50,-50,50])
 plt.xlabel('$d_{ox}$ (m)')
 plt.ylabel('$d_{oy}$ (m)')
 plt.legend(['Transmitter','Receiver'])
-plt.savefig('graphsoldrop1%d.eps'%(Npath))
+plt.savefig('../Figures/graphsoldrop1%d.eps'%(Npath))
 
 plt.figure(6)
 ax = plt.axes(projection='3d')
@@ -180,7 +180,7 @@ ax.set_xlabel('$d_{ox}$ (m)')
 ax.set_ylabel('$d_{oy}$ (m)')
 ax.set_zlabel('$\\ell_e$ (m)')
 plt.legend(['Transmitter','Receiver'])
-plt.savefig('graph3Dsoldrop1%d.eps'%(Npath))
+plt.savefig('../Figures/graph3Dsoldrop1%d.eps'%(Npath))
 
 
 
@@ -197,7 +197,7 @@ ax.set_xlabel('$d_{ox}$ (m)')
 ax.set_ylabel('$d_{oy}$ (m)')
 ax.set_zlabel('$\\ell_e$ (m)')
 plt.legend(['Transmitter','Receiver'])
-plt.savefig('graph3Dsol%d.eps'%(Npath))
+plt.savefig('../Figures/graph3Dsol%d.eps'%(Npath))
 
 
 #experimental code to find the correct phi_true as a function of dels , theta_true, x0 and y0; used in mmwave sim to modify channel model

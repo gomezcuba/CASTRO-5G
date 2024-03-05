@@ -793,7 +793,7 @@ class ThreeGPPMultipathChannelModel:
     #Parte de consistencia espacial
 
     
-    def displaceMultipathChannel(self, dataframe, origTxPos, origRxPos, destTxPos, destRxPos):
+    def displaceMultipathChannel(self, dataframe, origTxPos, origRxPos, destTxPos, destRxPos, bKeepClockSync = False):
         # Código que cumple con el procedimiento A del apartado de consistencia espacial 
         #Parámetros para actualizar tau
         c = 3e8
@@ -835,8 +835,10 @@ class ThreeGPPMultipathChannelModel:
         auxtau2= auxtau / c
         auxtau2 = np.squeeze(auxtau2)
         tau_tilde = tau_tilde_previo - auxtau2
-
-        tau_nueva = tau_tilde-np.min( tau_tilde) 
+        if bKeepClockSync:
+            tau_nueva = tau_tilde - d3D/c
+        else:
+            tau_nueva = tau_tilde-np.min( tau_tilde) 
      
 
         ############################AOD#####################3
