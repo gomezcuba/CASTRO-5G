@@ -94,8 +94,8 @@ for clustersONE in lClusters:
    
     legend = plt.legend(shadow=True, fontsize='10')
         
-    filename = f"figura_{fig_ctr}.png"
-    #plt.savefig(filename)
+    filename = f"../Figures/clusters_{fig_ctr}.png"
+    plt.savefig(filename)
     z=z+1
     
     
@@ -119,8 +119,8 @@ for subpathONE in lsubpaths:
     plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
     plt.plot(lrxPosNext0[z],lrxPosNext1[z],'sb',label='UE', linewidth='4.5')
     legend = plt.legend(shadow=True, fontsize='10')
-    filename = f"subpaths{fig_ctr}.png"
-    #plt.savefig(filename)
+    filename = f"../Figures/subpaths_{fig_ctr}.png"
+    plt.savefig(filename)
     z=z+1
 
 # Gráfica 3
@@ -152,11 +152,8 @@ for subpathONE in lsubpaths:
         markerline, stemlines, baseline = plt.stem( subpathONE.loc[n,:].TDOA ,10*np.log10( subpathONE.loc[n,:].P ),bottom=np.min(10*np.log10(subpathONE.P)))
         plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
         plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
-filename = f"Gráfica 3:{fig_ctr}.png"
-        
-plt.savefig(filename)
-plt.show()
-plt.grid()
+    filename = f"../Figures/deck_{fig_ctr}.png"            
+    plt.savefig(filename)
 
     
     

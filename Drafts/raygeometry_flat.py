@@ -1,15 +1,9 @@
 #!/usr/bin/python
-from progress.bar import Bar
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
-import scipy.optimize as opt
 
 import numpy as np
-import time
-import os
-import sys
-import argparse
 
 plt.close('all')
 Npoint=2

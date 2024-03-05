@@ -2,7 +2,6 @@
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
-from mpl_toolkits import mplot3d
 
 import numpy as np
 
@@ -90,6 +89,7 @@ plt.legend(['Transmitter','Receiver'])
 plt.savefig('../Figures/graphsol%d.eps'%(Npath))
 
 
+from mpl_toolkits import mplot3d
 X0e=np.zeros((1000,Npath))
 Y0e=np.zeros((1000,Npath))
 TauEe=np.zeros((1000,Npath))
@@ -115,6 +115,7 @@ plt.plot([x0_bisec,x0_bisec+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(ph
 for p in range(np.shape(theta_true)[0]):
     plt.plot([0,x_true[p],x0_true],[0,y_true[p],y0_true],':k')
     t=np.linspace(0,1,21)
+from mpl_toolkits import mplot3d
     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
     plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(AoA[p]*t+phi0_true),y0_true+scaleguide*.05*(p+1)*np.sin(AoA[p]*t+phi0_true),'k')
     plt.plot([0,x_bisec[p],x0_bisec],[0,y_bisec[p],y0_bisec],':m')

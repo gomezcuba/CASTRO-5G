@@ -83,4 +83,4 @@ plt.plot([0,x0_true],[0,y0_true],':g')
 plt.legend(['paths 1,2,3 $\\phi_o$ ok','paths 2,3,4 $\\phi_o$ ok','paths 1,2,3 $\\phi_o$ wrong','paths 2,3,4 $\\phi_o$ wrong','BS','UE'])
 plt.title("All angles of a multipath channel")
 
-plt.savefig('graphPhi02groupsExpl.eps')
+plt.savefig('../Figures/graphPhi02groupsExpl.eps')

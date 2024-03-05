@@ -1,9 +1,6 @@
 #!/usr/bin/python
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm
-import pandas as pd
-import os
 
 import sys
 sys.path.append('../')
@@ -63,14 +60,14 @@ sols[1,:] = np.arcsin(sol2)
 sols[2,:] = np.pi - np.arcsin(sol1)
 sols[3,:] = np.pi - np.arcsin(sol2)
 
-print("Diferencia sols old 2D AOA (º):\n %s"%( ( np.mod(np.pi+losAOD-sols,2*np.pi)-AOA )*180/np.pi ))
+print("Diference sols old 2D AOA (º):\n %s"%( ( np.mod(np.pi+losAOD-sols,2*np.pi)-AOA )*180/np.pi ))
 
 #Ubicacion dos rebotes 
 x=(vLOS[1]-vLOS[0]*np.tan(losAOD+np.pi-sols))/(np.tan( AOD )-np.tan(losAOD+np.pi-sols))
 y=x*np.tan( AOD )
 solPos=np.hstack([x,y])
 
-print("Diferencia sols old 2D posicion (m):\n %s"%( np.linalg.norm(refPos[0:-1] - solPos,axis=1,keepdims=True) ))
+print("Diference sols old 2D posicion (m):\n %s"%( np.linalg.norm(refPos[0:-1] - solPos,axis=1,keepdims=True) ))
 
 ###############################################################################
 # IMPROVED ALGORITHM WITH 3d SUPPORT
@@ -79,45 +76,45 @@ print("Diferencia sols old 2D posicion (m):\n %s"%( np.linalg.norm(refPos[0:-1] 
 ui2D=np.array([np.cos(AOD),np.sin(AOD)])
 eta2D=.5*(li2D**2-d2D**2)/(li2D-ui2D[None,:]@vLOS[0:2,None])
 solPos2D=(eta2D*ui2D)[0,:]
-print("Diferencia sols new 2D posicion (m):\n %s"%( np.linalg.norm(refPos[0:-1] - solPos2D,axis=0,keepdims=True) ))
+print("Diference sols new 2D posicion (m):\n %s"%( np.linalg.norm(refPos[0:-1] - solPos2D,axis=0,keepdims=True) ))
 
 dOA=solPos2D-vLOS[0:2]
 solAOA2D=np.arctan2(dOA[1],dOA[0])
-print("Diferencia sols new 2D AOA (º):\n %s"%( ( np.mod(solAOA2D,2*np.pi)-AOA )*180/np.pi ))
+print("Diference sols new 2D AOA (º):\n %s"%( ( np.mod(solAOA2D,2*np.pi)-AOA )*180/np.pi ))
 
 #3D case
 ui=np.array([np.cos(AOD)*np.sin(ZOD),np.sin(AOD)*np.sin(ZOD),np.cos(ZOD)])
 eta=.5*(li**2-d3D**2)/(li-ui[None,:]@vLOS[:,None])
 solPos3D=(eta*ui)[0,:] + txPos
-print("Diferencia sols new 3D posicion (m):\n %s"%( np.linalg.norm(refPos - solPos3D,axis=0) ))
+print("Diference sols new 3D posicion (m):\n %s"%( np.linalg.norm(refPos - solPos3D,axis=0) ))
 
 dOA=solPos3D-rxPos
 solAOA3D=np.arctan2(dOA[1],dOA[0])
-print("Diferencia sols new 3D AOA (º): %s"%( ( np.mod(solAOA3D,2*np.pi)-AOA )*180/np.pi ))
+print("Diference sols new 3D AOA (º): %s"%( ( np.mod(solAOA3D,2*np.pi)-AOA )*180/np.pi ))
 solZOA3D=np.pi/2-np.arctan2(dOA[2],np.linalg.norm(dOA[0:2]))
-print("Diferencia sols new 3D ZOA (º): %s"%( ( np.mod(solZOA3D,2*np.pi)-ZOA )*180/np.pi ))
+print("Diference sols new 3D ZOA (º): %s"%( ( np.mod(solZOA3D,2*np.pi)-ZOA )*180/np.pi ))
 
 #test of the implemented libraries, in 2D and 3D
 model=pg.ThreeGPPMultipathChannelModel()
 libAoA2D,libPos2D = model.fitAOA(txPos,rxPos,TDOA2D,AOD)
-print("Diferencia sols lib 2D posicion (m): %s"%( np.linalg.norm(refPos[0:2] - libPos2D[:,0],axis=0) ))
-print("Diferencia sols lib 2D AOA (º): %s"%( ( np.mod(libAoA2D[0],2*np.pi)-AOA )*180/np.pi ))
+print("Diference sols lib 2D posicion (m): %s"%( np.linalg.norm(refPos[0:2] - libPos2D[:,0],axis=0) ))
+print("Diference sols lib 2D AOA (º): %s"%( ( np.mod(libAoA2D[0],2*np.pi)-AOA )*180/np.pi ))
 libAoA3D,lipZoA3D,libPos3D = model.fitAOA(txPos,rxPos,TDOA,AOD,ZOD)
-print("Diferencia sols lib 3D posicion (m): %s"%( np.linalg.norm(refPos - libPos3D[:,0],axis=0) ))
-print("Diferencia sols lib 3D AOA (º): %s"%( ( np.mod(libAoA3D[0],2*np.pi)-AOA )*180/np.pi ))
-print("Diferencia sols lib 3D ZOA (º): %s"%( ( np.mod(lipZoA3D[0],2*np.pi)-ZOA )*180/np.pi ))
+print("Diference sols lib 3D posicion (m): %s"%( np.linalg.norm(refPos - libPos3D[:,0],axis=0) ))
+print("Diference sols lib 3D AOA (º): %s"%( ( np.mod(libAoA3D[0],2*np.pi)-AOA )*180/np.pi ))
+print("Diference sols lib 3D ZOA (º): %s"%( ( np.mod(lipZoA3D[0],2*np.pi)-ZOA )*180/np.pi ))
 
 libAoD2D,libPos2D = model.fitAOD(txPos,rxPos,TDOA2D,AOA)
-print("Diferencia sols lib 2D posicion (m): %s"%( np.linalg.norm(refPos[0:2] - libPos2D[:,0],axis=0) ))
-print("Diferencia sols lib 2D AOD (º): %s"%( ( np.mod(libAoD2D[0],2*np.pi)-AOD )*180/np.pi ))
+print("Diference sols lib 2D posicion (m): %s"%( np.linalg.norm(refPos[0:2] - libPos2D[:,0],axis=0) ))
+print("Diference sols lib 2D AOD (º): %s"%( ( np.mod(libAoD2D[0],2*np.pi)-AOD )*180/np.pi ))
 libAoD3D,lipZoD3D,libPos3D = model.fitAOD(txPos,rxPos,TDOA,AOA,ZOA)
-print("Diferencia sols lib 3D posicion (m): %s"%( np.linalg.norm(refPos - libPos3D[:,0],axis=0) ))
-print("Diferencia sols lib 3D AOD (º): %s"%( ( np.mod(libAoD3D[0],2*np.pi)-AOD )*180/np.pi ))
-print("Diferencia sols lib 3D ZOD (º): %s"%( ( np.mod(lipZoD3D[0],2*np.pi)-ZOD )*180/np.pi ))
+print("Diference sols lib 3D posicion (m): %s"%( np.linalg.norm(refPos - libPos3D[:,0],axis=0) ))
+print("Diference sols lib 3D AOD (º): %s"%( ( np.mod(libAoD3D[0],2*np.pi)-AOD )*180/np.pi ))
+print("Diference sols lib 3D ZOD (º): %s"%( ( np.mod(lipZoD3D[0],2*np.pi)-ZOD )*180/np.pi ))
 
 libTDoA2D,libPos2D,valid = model.fitTDOA(txPos,rxPos,AOA,AOD)
-print("Diferencia sols lib 2D posicion (m): %s"%( np.linalg.norm(refPos[0:2] - libPos2D[:,0],axis=0) ))
-print("Diferencia sols lib 2D TDOA (ns): %s"%( (libTDoA2D[0]-TDOA2D)*1e9 ) )
+print("Diference sols lib 2D posicion (m): %s"%( np.linalg.norm(refPos[0:2] - libPos2D[:,0],axis=0) ))
+print("Diference sols lib 2D TDOA (ns): %s"%( (libTDoA2D[0]-TDOA2D)*1e9 ) )
 libTDoA3D,libPos3D,valid = model.fitTDOA(txPos,rxPos,AOA,AOD,ZOA,ZOD)
-print("Diferencia sols lib 3D posicion (m): %s"%( np.linalg.norm(refPos - libPos3D[:,0],axis=0) ))
-print("Diferencia sols lib 3D TDOA (ns): %s"%( (libTDoA3D[0]-TDOA)*1e9 ) )
+print("Diference sols lib 3D posicion (m): %s"%( np.linalg.norm(refPos - libPos3D[:,0],axis=0) ))
+print("Diference sols lib 3D TDOA (ns): %s"%( (libTDoA3D[0]-TDOA)*1e9 ) )

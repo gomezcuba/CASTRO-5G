@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from matplotlib import animation, rc
-from IPython.display import HTML, Image
-# equivalent to rcParams['animation.html'] = 'html5'
 rc('animation', html='html5')
 
 import sys
@@ -62,8 +60,6 @@ plt.savefig('../Figures/animation_frame1.png')
 import os
 os.system('convert -delay 10 -loop 0 ../Figures/animation_frame0.png ../Figures/animation_frame1.png ../Figures/animated.gif')
 
-from matplotlib import animation, rc
-rc('animation', html='html5')
 # animation function. This is called sequentially
 def animate(i):
     if ax.azim==-60:

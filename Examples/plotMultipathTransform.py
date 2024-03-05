@@ -39,16 +39,16 @@ modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption
 # los, PLfree, SF = plinfo
 # nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 # print("Condition: ",(clustersNAD.P[0]<.9)&(los))
-# clustersNAD.to_csv("./changendataAdaptation3GPP/clustersNAD.csv")
-# subpathsNAD.to_csv("./changendataAdaptation3GPP/subpathsNAD.csv")
-# macro.to_csv("./changendataAdaptation3GPP/macro.csv")
-# np.savez("./changendataAdaptation3GPP/plinfo.npz",plinfo=plinfo)
-data=np.load("./changendataAdaptation3GPP/plinfo.npz")
+# clustersNAD.to_csv("../Results/changendataAdaptation3GPP/clustersNAD.csv")
+# subpathsNAD.to_csv("../Results/changendataAdaptation3GPP/subpathsNAD.csv")
+# macro.to_csv("../Results/changendataAdaptation3GPP/macro.csv")
+# np.savez("../Results/changendataAdaptation3GPP/plinfo.npz",plinfo=plinfo)
+data=np.load("../Results/changendataAdaptation3GPP/plinfo.npz")
 plinfo=tuple(data['plinfo'])
-macro=pd.read_csv("./changendataAdaptation3GPP/macro.csv")
+macro=pd.read_csv("../Results/changendataAdaptation3GPP/macro.csv")
 macro=macro.drop('Unnamed: 0',axis=1)
-clustersNAD=pd.read_csv("./changendataAdaptation3GPP/clustersNAD.csv",index_col=["n"])
-subpathsNAD=pd.read_csv("./changendataAdaptation3GPP/subpathsNAD.csv",index_col=["n","m"])
+clustersNAD=pd.read_csv("../Results/changendataAdaptation3GPP/clustersNAD.csv",index_col=["n"])
+subpathsNAD=pd.read_csv("../Results/changendataAdaptation3GPP/subpathsNAD.csv",index_col=["n","m"])
 nClusters = clustersNAD.shape[0]
 # plinfo=data.plinfo
 # macro=data.macro
