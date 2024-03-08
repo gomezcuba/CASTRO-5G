@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
 from CASTRO5G import OMPCachedRunner as oc
+from CASTRO5G import multipathChannel as mc
+
 import MIMOPilotChannel as pil
-import csProblemGenerator as prb
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +30,8 @@ MSE=[]
 Npaths=[]
 totTimes=[]
 
-def pseudoOMP(v,xi):
+#SIMPLIFIED algorithms assume that observation matrix is the identity, v is directly the sparse vector and dictionary columns are orthonormal
+def simplifiedOMP(v,xi):
     #assumes v is explicitly sparse and returns its N largest coefficients where rho(N)<xi
     (Nt,Nd,Na)=np.shape(v)
     r=v
@@ -48,8 +50,8 @@ def pseudoOMP(v,xi):
     e=et
     return(e)
     
-def pseudoISTA(v,xi,Niter,horig):
-    #assumes v is explicitly sparse and returns its N largest coefficients where rho(N)<xi
+def simplifiedISTA(v,xi,Niter,horig):
+    #assumes v is explicitly sparse and returns N iterations of ISTA 
     (Nt,Nd,Na)=np.shape(v)
     r=v
     et=np.zeros(np.shape(r))
@@ -62,15 +64,15 @@ def pseudoISTA(v,xi,Niter,horig):
     e=et
     return(e)
     
-def pseudoFISTA(v,xi,Niter,horig):
-    #assumes v is explicitly sparse and returns its N largest coefficients where rho(N)<xi
+def simplifiedFISTA(v,xi,Niter,horig):
+    #assumes v is explicitly sparse and returns N iterations of FISTA 
     (Nt,Nd,Na)=np.shape(v)
     r=v
     et=np.zeros(np.shape(r))
     old_et=et
     beta=.5
     for n in range(Niter):
-        c=et+beta*r+(et-old16_et)*(n-2.0)/(n+1.0)
+        c=et+beta*r+(et-old_et)*(n-2.0)/(n+1.0)
         old_et=et
         et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-xi,0)
         r=v-et
@@ -78,8 +80,8 @@ def pseudoFISTA(v,xi,Niter,horig):
     e=et
     return(e)
 
-def pseudoAMP(v,xi,Niter,horig):
-    #assumes v is explicitly sparse and returns its N largest coefficients where rho(N)<xi
+def simplifiedAMP(v,xi,Niter,horig):
+    #assumes v is explicitly sparse and returns N iterations of AMP 
     (Nt,Nd,Na)=np.shape(v)
     r=v
     et=np.zeros(np.shape(r))
@@ -97,21 +99,27 @@ def pseudoAMP(v,xi,Niter,horig):
 
 omprunner = oc.OMPCachedRunner()
 pilgen = pil.MIMOPilotChannel("UPhase")
-probgen = prb.csProblemGenerator(Nt,Nd,Na,Nrft,Nrfr,Nxp,Ts,pilotType ="UPhase", chanModel = "simple")
-probgen.pregenerate(Nchan)
+model=mc.DiscreteMultipathChannelModel(dims=(Nt,Na,Nd),fftaxes=(1,2))
+listPreparedProblems = []
+for ichan in range(Nchan):    
+    h=model.getDEC(3)
+    hk=np.fft.fft(h,axis=0)
+    zp=mc.AWGN((Nt,Nxp,Na,1))
+    (wp,vp)=pilgen.generatePilots((Nt,Nxp,Nrfr,Na,Nd,Nrft))      
+    listPreparedProblems.append( (hk,zp,wp,vp) )  
 
 legStrAlgs=[
 #        'LS',
-#        'pseudoOMP',
+#        'simplifiedOMP',
 #        'OMPx1',
 #        'OMPx2',
         'OMPBR',
         'OMPBR accel',
-#        'pseudoISTA',
+#        'simplifiedISTA',
 #        'ISTAx1',
-#        'pseudoFISTA',
+#        'simplifiedFISTA',
 #        'FISTAx1',
-#        'pseudoAMP',
+#        'simplifiedAMP',
 #        'AMP',
 #        'VAMP'
         ]
@@ -119,7 +127,7 @@ legStrAlgs=[
 bar = Bar("CS sims", max=Nchan)
 bar.check_tty = False
 for ichan in range(0,Nchan):
-    (hk,zp,wp,vp)=probgen.listPreparedProblems[ichan]
+    (hk,zp,wp,vp)=listPreparedProblems[ichan]
         
     h=np.fft.ifft(hk,axis=0)
     hsparse=np.fft.ifft(h,axis=1)*np.sqrt(Nd)
@@ -129,8 +137,6 @@ for ichan in range(0,Nchan):
     totTimes.append([])
     Npaths.append([])
 
-    zh=probgen.zAWGN((Nt,Na,Nd))
-
     for isnr in range(0,len(SNRs)):
         sigma2=1.0/SNRs[isnr]
         totTimes[-1].append([])
@@ -138,12 +144,13 @@ for ichan in range(0,Nchan):
         Npaths[-1].append([])
 
         #direct observation with noise
+#        zh=mc.AWGN((Nt,Na,Nd))
 #        hest=hsparse*np.sqrt(Nt)+zh*np.sqrt(sigma2)
 #        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
 #
-#        #pseudoOMP sparse component selection
+#        #simplifiedOMP sparse component selection
 #        t0 = time.time()
-#        hest2=pseudoOMP(hest,sigma2*Nt*Na*Nd)
+#        hest2=simplifiedOMP(hest,sigma2*Nt*Na*Nd)
 #        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest2/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
 #        totTimes[-1][-1].append(time.time()-t0)
 #        Npaths[-1].append([])        
@@ -177,7 +184,7 @@ for ichan in range(0,Nchan):
         Npaths[-1][-1].append(len(paths.delays))
 #        
 #        t0 = time.time()
-#        hest6=pseudoISTA(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
+#        hest6=simplifiedISTA(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
 #        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest6/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
 #        totTimes[-1][-1].append(time.time()-t0)
 #        Npaths[-1][-1].append(np.sum(hest6!=0))
@@ -195,7 +202,7 @@ for ichan in range(0,Nchan):
 #        Npaths[-1][-1].append(len(paths.delays))
         
 #        t0 = time.time()
-#        hest9=pseudoFISTA(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
+#        hest9=simplifiedFISTA(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
 #        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest9/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
 #        totTimes[-1][-1].append(time.time()-t0)
 #        Npaths[-1][-1].append(np.sum(hest6!=0))
@@ -207,7 +214,7 @@ for ichan in range(0,Nchan):
 #        Npaths[-1][-1].append(len(paths.delays))
 #        
 #        t0 = time.time()
-#        hest11=pseudoAMP(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
+#        hest11=simplifiedAMP(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
 #        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest11/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
 #        totTimes[-1][-1].append(time.time()-t0)
 #        Npaths[-1][-1].append(np.sum(hest6!=0))

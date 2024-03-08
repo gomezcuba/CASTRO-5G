@@ -4,7 +4,6 @@ from CASTRO5G import threeGPPMultipathGenerator as mp3g
 from CASTRO5G import multipathChannel as ch
 from CASTRO5G import OMPCachedRunner as oc
 import MIMOPilotChannel as pil
-import csProblemGenerator as prb
 #import testRLmp as rl
 
 import matplotlib.pyplot as plt
@@ -16,15 +15,15 @@ from progress.bar import Bar
 
 plt.close('all')
 
-Nchan=100
+Nchan=5
 #()
 Nd=4 #Nt (Ntv*Nth) con Ntv=1
 Na=4 #Nr (Nrv*Nrh) con Ntv=1
-Nt=128
+Nt=32
 Nxp=2
 Nrft=1
 Nrfr=2
-K=128
+K=32
 #Ts=2.5
 Ts=320/Nt
 Ds=Ts*Nt
@@ -35,9 +34,6 @@ omprunner = oc.OMPCachedRunner()
 pilgen = pil.MIMOPilotChannel("IDUV")
 chgen = mp3g.ThreeGPPMultipathChannelModel()
 chgen.bLargeBandwidthOption=True
-probgen = prb.csProblemGenerator(Nt,Nd,Na,Nrft,Nrfr,Nxp,Ts,"IDUV")
-#probgen.pregenerate(Nchan)
-
 
 x0=np.random.rand(Nchan)*100-50
 y0=np.random.rand(Nchan)*100-50
@@ -82,7 +78,7 @@ for ichan in range(0,Nchan):
     hk=np.fft.fft(ht.transpose([2,0,1]),K,axis=0)
         
     (wp,vp)=pilgen.generatePilots((K,Nxp,Nrfr,Na,Nd,Nrft),"IDUV")       
-    zp=probgen.zAWGN((K,Nxp,Na,1))
+    zp=ch.AWGN((K,Nxp,Na,1))
 #    h=np.fft.ifft(hk,axis=0)
 #    hsparse=np.fft.ifft(h,axis=1)*np.sqrt(Nd)
 #    hsparse=np.fft.ifft(hsparse,axis=2)*np.sqrt(Na)

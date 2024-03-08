@@ -1,5 +1,25 @@
 import numpy as np
 
+def AWGN(shape,sigma=1):
+    return ( np.random.normal(size=shape) + 1j*np.random.normal(size=shape) ) * np.sqrt( sigma / 2.0 )
+
+class DiscreteMultipathChannelModel:
+    def __init__(self,dims=(128,4,4),fftaxes=(1,2)):
+        self.dims=dims
+        self.Faxes=fftaxes
+        self.Natoms=np.prod(dims)
+    def getDEC(self,Npoints=1):
+        indices=np.random.choice(self.Natoms,Npoints)
+        h=np.zeros(self.Natoms,dtype=np.complex64)
+        h[indices]=AWGN(Npoints)
+        #TODO: config unnormalize
+        h=h/np.sqrt(np.sum(np.abs(h)**2))
+        h=h.reshape(self.dims)
+        #TODO: config postprocessing functions
+        for a in self.Faxes:
+            h=np.fft.fft(h,axis=a)*np.sqrt(1.0*self.dims[a])        
+        return h
+
 #TODO: this class only purpose is to hold all data pertaining to a single path reflectoin, it should be replaced with a Pandas data frame
 class ParametricPath:
     def __init__(self, g = 0, d = 0, aod = 0, aoa = 0, zod = 0, zoa = 0, nu = 0):
