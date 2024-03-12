@@ -2,7 +2,7 @@
 
 
 from CASTRO5G import threeGPPMultipathGenerator as mp3g
-import MIMOPilotChannel as pil
+from CASTRO5G import multipathChannel as ch
 from CASTRO5G import OMPCachedRunner as oc
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ Ds=Ts*Nt
 sigma2=.01
 
 omprunner = oc.OMPCachedRunner()
-pilgen = pil.MIMOPilotChannel("UPhase")
+pilgen = ch.MIMOPilotChannel("UPhase")
 
 (w,v)=pilgen.generatePilots((K,Nxp,Nrfr,Na,Nd,Nrft),"UPhase")
 
@@ -29,7 +29,7 @@ plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
 nClusters=tau.size
 los, PLfree, SF = plinfo
-tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,_,_,_,_,_ = subpaths.T.to_numpy()
 Npath = pow_sp.size
 
 paths=pd.DataFrame({

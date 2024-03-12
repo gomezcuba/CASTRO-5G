@@ -3,8 +3,6 @@
 from CASTRO5G import OMPCachedRunner as oc
 from CASTRO5G import multipathChannel as mc
 
-import MIMOPilotChannel as pil
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -98,7 +96,7 @@ def simplifiedAMP(v,xi,Niter,horig):
     return(e)
 
 omprunner = oc.OMPCachedRunner()
-pilgen = pil.MIMOPilotChannel("UPhase")
+pilgen = mc.MIMOPilotChannel("UPhase")
 model=mc.DiscreteMultipathChannelModel(dims=(Nt,Na,Nd),fftaxes=(1,2))
 listPreparedProblems = []
 for ichan in range(Nchan):    

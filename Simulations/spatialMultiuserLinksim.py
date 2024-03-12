@@ -15,7 +15,6 @@ sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as mpg
 from CASTRO5G import multipathChannel as ch
 # from CASTRO5G import OMPCachedRunner as oc
-# import MIMOPilotChannel as pil
 
 
 class UIMultipathChannelModel:
@@ -270,7 +269,7 @@ method = 'NpathDisplaced'
 
 bGenRand=True
 
-# pilgen = pil.MIMOPilotChannel("IDUV")
+# pilgen = ch.MIMOPilotChannel("IDUV")
 # omprunner = oc.OMPCachedRunner()
 
 # if bGenRand:

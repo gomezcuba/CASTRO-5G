@@ -16,7 +16,6 @@ from CASTRO5G import  MultipathLocationEstimator as mploc
 from CASTRO5G import  threeGPPMultipathGenerator as mp3g
 from CASTRO5G import multipathChannel as ch
 from CASTRO5G import  OMPCachedRunner as oc
-import  MIMOPilotChannel as pil
 
 def radUPA( Nangpoint, incidAngle , Nant = 16, dInterElement = .5):
     vUPA=ch.fULA(incidAngle,Nant,dInterElement)
@@ -259,7 +258,7 @@ if EST_CHANS:
     t_start_cs = time.time()
     Nchan=Nsims
     omprunner = oc.OMPCachedRunner()
-    pilgen = pil.MIMOPilotChannel("UPhase")
+    pilgen = ch.MIMOPilotChannel("UPhase")
     AoD_est=np.zeros((Nmaxpaths,Nsims))
     AoA_est=np.zeros((Nmaxpaths,Nsims))
     dels_est=np.zeros((Nmaxpaths,Nsims))

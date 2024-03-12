@@ -3,7 +3,6 @@
 from CASTRO5G import threeGPPMultipathGenerator as mp3g
 from CASTRO5G import multipathChannel as ch
 from CASTRO5G import OMPCachedRunner as oc
-import MIMOPilotChannel as pil
 #import testRLmp as rl
 
 import matplotlib.pyplot as plt
@@ -31,7 +30,7 @@ SNRs=10**(np.arange(-1,2.01,1.0))
 #SNRs=10**(np.arange(1,1.01,1.0))
 
 omprunner = oc.OMPCachedRunner()
-pilgen = pil.MIMOPilotChannel("IDUV")
+pilgen = ch.MIMOPilotChannel("IDUV")
 chgen = mp3g.ThreeGPPMultipathChannelModel()
 chgen.bLargeBandwidthOption=True
 

@@ -8,7 +8,6 @@ import numpy as np
 plt.close('all')
 
 from CASTRO5G import multipathChannel as mc
-import MIMOPilotChannel as pil
 
 fig_ctr=0
 
@@ -19,12 +18,12 @@ Nplotpoint =1000
 angles = np.arange(0,2*np.pi,2*np.pi/Nplotpoint)
 h_array = mc.fULA(angles,Nant,.5)
 
-pilGntr = pil.MIMOPilotChannel()
+pilGntr = mc.MIMOPilotChannel()
 
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
-w_eye,v_eye = pil.MIMOPilotChannel.generatePilotsEye(None,(1,1,Nrf,Nant,Nant,Nrf))
+w_eye,v_eye = mc.MIMOPilotChannel.generatePilotsEye(None,(1,1,Nrf,Nant,Nant,Nrf))
 v_eye = v_eye[0,0,:,:]
 g_eye= h_array.transpose([0,2,1]).conj() @ v_eye
 plt.polar(angles,np.maximum(10*np.log10(np.abs(g_eye[:,0,0])**2),mindBpolar),label='1-hot (omni)')
