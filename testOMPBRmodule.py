@@ -103,8 +103,8 @@ for ichan in range(Nchan):
     h=model.getDEC(3)
     hk=np.fft.fft(h,axis=0)
     zp=mc.AWGN((Nt,Nxp,Na,1))
-    (wp,vp)=pilgen.generatePilots((Nt,Nxp,Nrfr,Na,Nd,Nrft))      
-    listPreparedProblems.append( (hk,zp,wp,vp) )  
+    (wp,vp)=pilgen.generatePilots(Nt*Nxp,(Nrfr,Na),(Nd,Nrft))
+    listPreparedProblems.append( (hk,zp,wp.reshape(Nt,Nxp,Nrfr,Na),vp.reshape(Nt,Nxp,Nd,Nrft)) )  
 
 legStrAlgs=[
 #        'LS',

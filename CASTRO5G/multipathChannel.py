@@ -1,7 +1,16 @@
 import numpy as np
 
-def AWGN(shape,sigma=1):
-    return ( np.random.normal(size=shape) + 1j*np.random.normal(size=shape) ) * np.sqrt( sigma / 2.0 )
+def AWGN(shape,sigma2=1):
+    return ( np.random.normal(size=shape) + 1j*np.random.normal(size=shape) ) * np.sqrt( sigma2 / 2.0 )
+
+def fULA(incidAngle , Nant = 4, dInterElement = .5):
+    # returns an anttenna array response column vector corresponding to a Uniform Linear Array for each item in incidAngle (two extra dimensions are added at the end)
+    # inputs  incidAngle : numpy array containing one or more incidence angles
+    # input         Nant : number of MIMO antennnas of the array
+    # input InterElement : separation between antenna elements, default lambda/2
+    # output arrayVector : numpy array containing one or more response vectors, with simensions (incidAngle.shape ,Nant ,1 )
+                        
+    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)
 
 class DiscreteMultipathChannelModel:
     def __init__(self,dims=(128,4,4),fftaxes=(1,2)):
@@ -21,107 +30,68 @@ class DiscreteMultipathChannelModel:
         return h
 
 class MIMOPilotChannel:
-    def __init__(self, defAlgorithm="eye"):
+    def __init__(self, defAlgorithm="Eye"):
         self.defAlgorithm=defAlgorithm
-    def generatePilots(self,dimensions=(1,1,1,1,1,1),algorithm=False):
-        
+    def getCbFun(self,algorithm):
+        cbFunDict = {
+            "Eye": self.getCodebookEye,
+            "Gaussian": self.getCodebookGaussian,
+            "IDUV": self.getCodebookIDUV,
+            "QPSK": self.getCodebookQPSK,
+            "UPhase": self.getCodebookQPSK,
+            "Rectangular": self.getCodebookRectangular
+            }
+        return(cbFunDict[algorithm])
+    def generatePilots(self,Nv,rxDims,txDims,algorithm=False):      
         if not algorithm:
-            return self.generatePilots(dimensions,self.defAlgorithm)
+            return self.generatePilots(Nv,rxDims,txDims,self.defAlgorithm)
         else:
-            if algorithm == "eye":
-                return self.generatePilotsEye(dimensions)
-            elif algorithm == "Gaussian":
-                return self.generatePilotsGaussian(dimensions)
-            elif algorithm == "IDUV":
-                return self.generatePilotsIDUV(dimensions)
-            elif algorithm == "QPSK":
-                return self.generatePilotsQPSK(dimensions)
-            elif algorithm == "UPhase":
-                return self.generatePilotsUPhase(dimensions)
-            elif algorithm == "Rectangular":
-                return self.generatePilotsRectangular(dimensions)
-            else:
-                print("Unrecognized algoritm %s"%algorithm)
-    def generatePilotsEye(self,dimensions):
-        (Nt,Nxp,Nrfr,Na,Nd,Nrft)=dimensions
-        vp=np.empty(shape=(Nt,Nxp,Nd,Nrft))
-        wp=np.empty(shape=(Nt,Nxp,Nrfr,Na))
-        for k in range(0,Nt):
-            for p in range(0,Nxp):
-                vp[k,p,:,:]=np.eye(Nd,Nrft,-int(np.mod(p*Nrft,Nd/Nrft)))/np.sqrt(Nrft)
-                wp[k,p,:,:]=np.eye(Nrfr,Na,int(np.floor(p*Nrft/Nd))*Nrft*Nrfr)
-        return((wp,vp))
-    def generatePilotsGaussian(self,dimensions):
-        (Nt,Nxp,Nrfr,Na,Nd,Nrft)=dimensions
-        vp=( np.random.normal(size=(Nt,Nxp,Nd,Nrft)) + 1j*np.random.normal(size=(Nt,Nxp,Nd,Nrft)) ) * np.sqrt( 1 / 2.0 /Nd )
-        wp=( np.random.normal(size=(Nt,Nxp,Nrfr,Na)) + 1j*np.random.normal(size=(Nt,Nxp,Nrfr,Na)) ) * np.sqrt( 1 / 2.0 /Na )
-        return((wp,vp))
-    def generatePilotsIDUV(self,dimensions):
-        (Nt,Nxp,Nrfr,Na,Nd,Nrft)=dimensions
-        (wp,vp)=self.generatePilotsGaussian(dimensions)
-        for k in range(0,Nt):
-            for p in range(0,Nxp):
-                for r in range(0,Nrft):
-                    vp[k,p,:,r]=vp[k,p,:,r]/np.sqrt(np.sum(np.abs(vp[k,p,:,r])**2))/np.sqrt(Nrft)
-                for r in range(0,Nrfr):
-                    wp[k,p,r,:]=wp[k,p,r,:]/np.sqrt(np.sum(np.abs(wp[k,p,r,:])**2))
-        return((wp,vp))
-    def generatePilotsQPSK(self,dimensions):
-        (Nt,Nxp,Nrfr,Na,Nd,Nrft)=dimensions
-        vp=np.exp( .5j*np.pi*np.random.randint(0,4,size=(Nt,Nxp,Nd,Nrft)) ) * np.sqrt( 1 /Nd )
-        wp=np.exp( .5j*np.pi*np.random.randint(0,4,size=(Nt,Nxp,Nrfr,Na)) ) * np.sqrt( 1 /Na )
-        return((wp,vp))
-    def generatePilotsUPhase(self,dimensions):
-        (Nt,Nxp,Nrfr,Na,Nd,Nrft)=dimensions
-        vp=np.exp( 2j*np.pi*np.random.uniform(size=(Nt,Nxp,Nd,Nrft)) ) * np.sqrt( 1 /Nd )
-        wp=np.exp( 2j*np.pi*np.random.uniform(size=(Nt,Nxp,Nrfr,Na)) ) * np.sqrt( 1 /Na )
-        return((wp,vp))
-    def aUPA(self,theta,N):
-        return( np.exp( -1j*np.pi * np.arange(0.0,N,1.0).reshape((1,N)) * np.sin(theta).reshape((len(theta),1)) ) /np.sqrt(1.0*N) )
-    def generatePilotsRectangular(self,dimensions):
-        if len(dimensions)==6:
-            (Nt,Nxp,Nrfr,Na,Nd,Nrft)=dimensions
-            exK=np.log(Nd)/np.log(Na*Nd)        
-            Kt=int(np.floor( (Nxp*Nrfr)**(exK) ))
-            Kr=int(np.floor(Nxp*Nrfr/Kt))
-        elif  len(dimensions)==7:
-            (Nt,Nxp,Nrfr,Na,Nd,Nrft,Kt)=dimensions
-            Kr=int(np.floor(Nxp*Nrfr/Kt))
-        elif  len(dimensions)==8:
-            (Nt,Nxp,Nrfr,Na,Nd,Nrft,Kt,Kr)=dimensions
-        Nangles=128
-        RectWidtht=int(Nangles/Kt)
-        RectWidthr=int(Nangles/Kr)
-        allAngles=np.arange(0,np.pi,np.pi/Nangles)-np.pi/2
-        At=self.aUPA(allAngles,Nd)
-        Ar=self.aUPA(allAngles,Na)
-        vp=np.empty(shape=(Nt,Nxp,Nd,Nrft),dtype=np.cdouble)
-        wp=np.empty(shape=(Nt,Nxp,Nrfr,Na),dtype=np.cdouble)
-        for k in range(0,Nt):
-            for p in range(0,Nxp):
-                for r in range(0,Nrfr):
-                    bt=int(np.floor((r+p*Nrfr)/Kr))
-                    br=int(np.mod((r+p*Nrfr),Kr))
-                    Gt=np.zeros((Nangles,1),dtype=np.cdouble)
-                    Gt[bt*RectWidtht:(bt+1)*RectWidtht,0]=1.0
-                    Gr=np.zeros((Nangles,1),dtype=np.cdouble)
-                    Gr[br*RectWidthr:(br+1)*RectWidthr,0]=1.0
-                    vdes=np.linalg.lstsq(At,Gt,rcond=None)[0]
-                    wdes=np.linalg.lstsq(Ar,Gr,rcond=None)[0].reshape((Na,))
-                    vp[k,p,:,:]=vdes/np.sqrt(np.sum(np.abs(vdes)**2))
-                    wp[k,p,r,:]=wdes/np.sqrt(np.sum(np.abs(wdes)**2))
-        return((wp,vp))
+            bCombinatorial = ( algorithm in ["Eye","Rectangular"] )
+            cbFun = self.getCbFun(algorithm)
+            wp=cbFun(rxDims[1],Nv*rxDims[0]).T.reshape(Nv,rxDims[0],rxDims[1])
+            vp=cbFun(txDims[0],Nv*txDims[1]).reshape(txDims[0],txDims[1],Nv).transpose((2,1,0))
+            if bCombinatorial:
+                wp=np.tile(wp,[Nv,1,1,1]).reshape((Nv**2,rxDims[0],rxDims[1]))
+                vp=np.tile(vp[:,None,:,:],[1,Nv,1,1]).reshape((Nv**2,txDims[0],txDims[1]))
+            return((wp,vp))
+    def getCodebookEye(self,Nant,Ncol):
+        return( np.eye(Nant,Ncol) )
+    def getCodebookFFT(self,Nant,Ncol):
+        return( np.fft.fft( self.getCodebookEye(Nant,Ncol) ,norm="ortho",axis=0) )
+    def getCodebookGaussian(self,Nant,Ncol):
+        return( AWGN( (Nant,Ncol) , sigma2=1/Nant ) )
+    def getCodebookIDUV(self,Nant,Ncol):
+        w=AWGN( (Nant,Ncol) , sigma2=1/Nant )
+        return(w/(np.linalg.norm(w,axis=-1,keepdims=True)))
+    def getCodebookQPSK(self,Nant,Ncol):
+        return( np.exp( .5j*np.pi*np.random.randint(0,4,size=(Nant,Ncol)) ) * np.sqrt( 1 /Nant ) )
+    def getCodebookUPhase(self,Nant,Ncol):
+        return( np.exp( 2j*np.pi*np.random.uniform(0,4,size=(Nant,Ncol)) ) * np.sqrt( 1 /Nant ) )
+    def getCodebookRectangular(self,Nant,Ncol):
+        Ndesiredgains=Nant*16
+        angles_design = np.arange(-np.pi/2,np.pi/2,np.pi/Ndesiredgains)
+        desired_G = np.zeros((Ndesiredgains,Ncol))
+        for sec in range(Ncol):
+            k = np.mod(sec+Ncol/2,Ncol)
+            mask1 = angles_design >= (k-.5)*np.pi/Ncol -np.pi/2
+            mask2 = angles_design < (k+.5)*np.pi/Ncol -np.pi/2
+            if k == 0:
+                mask2 = mask2 | (angles_design >= np.pi/2-.5*np.pi/Ncol)
+            desired_G[mask1 & mask2,sec] = 1    
+        A_array_design = fULA(angles_design, Nant, .5)
+        W_ls,_,_,_=np.linalg.lstsq(A_array_design[:,:,0].conj(),desired_G,rcond=None)
+        return(W_ls)
     def applyPilotChannel(self,hk,wp,vp,zp):
-        Nt=np.shape(vp)[0]
-#        Nxp=np.shape(vp)[1]
-        Nd=np.shape(vp)[2]
+#        Nxp=np.shape(vp)[0]
+        # Nt=np.shape(vp)[0]
+        # Nd=np.shape(vp)[2]
 #        Nrfr=np.shape(wp)[2]
-        Na=np.shape(wp)[3]
+        # Na=np.shape(wp)[3]
 #        yp=np.empty(shape=(Nt,Nxp,Nrfr),dtype=np.cdouble)
 #        for k in range(0,Nt):
 #            for p in range(0,Nxp):
 #                yp[k,p,:]=np.matmul(wp[k,p,:,:] , np.sum(np.matmul(hk[k,:,:],vp[k,p,:,:]),axis=1,keepdims=True)+zp[k,p,:,:] ).reshape((Nrfr,))                
-        yp=np.matmul( wp,  np.sum( np.matmul( hk.reshape(Nt,1,Na,Nd) ,vp) ,axis=3,keepdims=True) + zp )        
+        yp=np.matmul( wp,  np.sum( np.matmul( hk[:,None,:,:] ,vp) ,axis=3,keepdims=True) + zp )        
         return(yp)
 
 #TODO: this class only purpose is to hold all data pertaining to a single path reflectoin, it should be replaced with a Pandas data frame
@@ -136,15 +106,6 @@ class ParametricPath:
         self.environmentDoppler = nu
     def __str__(self):
         return "(%s,%f,%f,%f,%f,%f,%f)"%(self.complexAmplitude,self.excessDelay,self.azimutOfDeparture,self.azimutOfArrival,self.zenithOfDeparture,self.zenithOfArrival,self.environmentDoppler)
-
-def fULA(incidAngle , Nant = 4, dInterElement = .5):
-    # returns an anttenna array response column vector corresponding to a Uniform Linear Array for each item in incidAngle (two extra dimensions are added at the end)
-    # inputs  incidAngle : numpy array containing one or more incidence angles
-    # input         Nant : number of MIMO antennnas of the array
-    # input InterElement : separation between antenna elements, default lambda/2
-    # output arrayVector : numpy array containing one or more response vectors, with simensions (incidAngle.shape ,Nant ,1 )
-                        
-    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)
 
 class MultipathChannel:
     def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), lPaths = [] ):

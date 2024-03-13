@@ -21,7 +21,9 @@ sigma2=.01
 omprunner = oc.OMPCachedRunner()
 pilgen = ch.MIMOPilotChannel("UPhase")
 
-(w,v)=pilgen.generatePilots((K,Nxp,Nrfr,Na,Nd,Nrft),"UPhase")
+(w,v)=pilgen.generatePilots(K*Nxp,(Nrfr,Na),(Nd,Nrft),"UPhase")
+w=w.reshape(K,Nxp,Nrfr,Na)
+v=v.reshape(K,Nxp,Nd,Nrft)
 
 chgen = mp3g.ThreeGPPMultipathChannelModel()
 model = mp3g.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=False)

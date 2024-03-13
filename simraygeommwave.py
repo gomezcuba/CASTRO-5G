@@ -71,8 +71,8 @@ Nstrongest=40
 Nmaxpaths=400
 Nsims=100
 
-EST_CHANS=False
-EST_PLOT=False
+EST_CHANS=True
+EST_PLOT=True
 Nd=16
 Na=16
 Nt=128
@@ -87,8 +87,8 @@ sigma2=.01
 MATCH_CHANS=False
 #MATCH_PLOT=True
 
-EST_LOCS=False
-PLOT_LOCS=False
+EST_LOCS=True
+PLOT_LOCS=True
 
 t_total_run_init=time.time()
 fig_ctr=0
@@ -124,7 +124,7 @@ if GEN_CHANS:
         plinfo,macro,clusters,subpaths = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))
         tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
         los, PLfree, SF = plinfo
-        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp = subpaths.T.to_numpy()
+        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,_,_,_,_,_  = subpaths.T.to_numpy()
         Npath=tau_sp.size
         #mpch é unha canle estrictamente acorde ao modelo, gardada en listas python normais.
         # convertimolo en arrays de numpy

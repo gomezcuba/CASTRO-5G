@@ -76,7 +76,10 @@ for ichan in range(0,Nchan):
     ht=mpch.getDEC(Na,Nd,Nt,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
     hk=np.fft.fft(ht.transpose([2,0,1]),K,axis=0)
         
-    (wp,vp)=pilgen.generatePilots((K,Nxp,Nrfr,Na,Nd,Nrft),"IDUV")       
+    (wp,vp)=pilgen.generatePilots(K*Nxp,(Nrfr,Na),(Nd,Nrft),"IDUV")
+    wp=wp.reshape(K,Nxp,Nrfr,Na)
+    vp=vp.reshape(K,Nxp,Nd,Nrft)
+
     zp=ch.AWGN((K,Nxp,Na,1))
 #    h=np.fft.ifft(hk,axis=0)
 #    hsparse=np.fft.ifft(h,axis=1)*np.sqrt(Nd)
