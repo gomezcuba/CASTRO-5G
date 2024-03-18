@@ -42,17 +42,23 @@ class MIMOPilotChannel:
             "Rectangular": self.getCodebookRectangular
             }
         return(cbFunDict[algorithm])
-    def generatePilots(self,Nv,rxDims,txDims,algorithm=False):      
+    def generatePilots(self,Np,Nr,Nt,Npr=None,rShape=None,tShape=None,algorithm=None):      
         if not algorithm:
-            return self.generatePilots(Nv,rxDims,txDims,self.defAlgorithm)
+            return self.generatePilots(Np,Nr,Nt,Npr,rShape,tShape,self.defAlgorithm)
         else:
             bCombinatorial = ( algorithm in ["Eye","Rectangular"] )
+            if not Npr:
+                Npr=Np
             cbFun = self.getCbFun(algorithm)
-            wp=cbFun(rxDims[1],Nv*rxDims[0]).T.reshape(Nv,rxDims[0],rxDims[1])
-            vp=cbFun(txDims[0],Nv*txDims[1]).reshape(txDims[0],txDims[1],Nv).transpose((2,1,0))
+            wp=cbFun(Nr,Npr).T.reshape(Npr,1,Nr)
+            vp=cbFun(Nt,Np).T.reshape(Np,Nt,1)
             if bCombinatorial:
-                wp=np.tile(wp,[Nv,1,1,1]).reshape((Nv**2,rxDims[0],rxDims[1]))
-                vp=np.tile(vp[:,None,:,:],[1,Nv,1,1]).reshape((Nv**2,txDims[0],txDims[1]))
+                wp=np.tile(wp,[Np,1,1,1]).reshape((Np*Npr,1,Nr))
+                vp=np.tile(vp[:,None,:,:],[1,Npr,1,1]).reshape((Np*Npr,Nt,1))
+            if rShape:
+                wp=wp.reshape(rShape)
+            if tShape:
+                vp=vp.reshape(tShape)
             return((wp,vp))
     def getCodebookEye(self,Nant,Ncol):
         return( np.eye(Nant,Ncol) )
@@ -62,7 +68,7 @@ class MIMOPilotChannel:
         return( AWGN( (Nant,Ncol) , sigma2=1/Nant ) )
     def getCodebookIDUV(self,Nant,Ncol):
         w=AWGN( (Nant,Ncol) , sigma2=1/Nant )
-        return(w/(np.linalg.norm(w,axis=-1,keepdims=True)))
+        return(w/(np.linalg.norm(w,axis=0,keepdims=True)))
     def getCodebookQPSK(self,Nant,Ncol):
         return( np.exp( .5j*np.pi*np.random.randint(0,4,size=(Nant,Ncol)) ) * np.sqrt( 1 /Nant ) )
     def getCodebookUPhase(self,Nant,Ncol):
@@ -81,17 +87,8 @@ class MIMOPilotChannel:
         A_array_design = fULA(angles_design, Nant, .5)
         W_ls,_,_,_=np.linalg.lstsq(A_array_design[:,:,0].conj(),desired_G,rcond=None)
         return(W_ls)
-    def applyPilotChannel(self,hk,wp,vp,zp):
-#        Nxp=np.shape(vp)[0]
-        # Nt=np.shape(vp)[0]
-        # Nd=np.shape(vp)[2]
-#        Nrfr=np.shape(wp)[2]
-        # Na=np.shape(wp)[3]
-#        yp=np.empty(shape=(Nt,Nxp,Nrfr),dtype=np.cdouble)
-#        for k in range(0,Nt):
-#            for p in range(0,Nxp):
-#                yp[k,p,:]=np.matmul(wp[k,p,:,:] , np.sum(np.matmul(hk[k,:,:],vp[k,p,:,:]),axis=1,keepdims=True)+zp[k,p,:,:] ).reshape((Nrfr,))                
-        yp=np.matmul( wp,  np.sum( np.matmul( hk[:,None,:,:] ,vp) ,axis=3,keepdims=True) + zp )        
+    def applyPilotChannel(self,hk,wp,vp,zp=None):          
+        yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=3,keepdims=True) + ( 0 if zp is None else zp))        
         return(yp)
 
 #TODO: this class only purpose is to hold all data pertaining to a single path reflectoin, it should be replaced with a Pandas data frame

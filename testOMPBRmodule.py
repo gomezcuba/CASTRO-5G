@@ -24,227 +24,167 @@ Ds=Ts*Nt
 SNRs=10**(np.arange(-1,2.01,1.0))
 #SNRs=10**(np.arange(1,1.01,1.0))
 # SNRs=np.array([100])
-MSE=[]
-Npaths=[]
-totTimes=[]
-
-#SIMPLIFIED algorithms assume that observation matrix is the identity, v is directly the sparse vector and dictionary columns are orthonormal
-def simplifiedOMP(v,xi):
-    #assumes v is explicitly sparse and returns its N largest coefficients where rho(N)<xi
-    (Nt,Nd,Na)=np.shape(v)
-    r=v
-    et=1j*np.zeros(np.shape(r))
-    #at least one iteration
-    ind=np.unravel_index(np.argmax(np.abs(r)),np.shape(r))
-    et[ind]=r[ind]
-    r=v-et
-    ctr=1
-    while np.sum(np.abs(r)**2)>xi:
-        ind=np.unravel_index(np.argmax(np.abs(r)),np.shape(r))
-        et[ind]=r[ind]
-        r=v-et
-        ctr=ctr+1
-#    print('OMP ctr %d'%ctr)
-    e=et
-    return(e)
-    
-def simplifiedISTA(v,xi,Niter,horig):
-    #assumes v is explicitly sparse and returns N iterations of ISTA 
-    (Nt,Nd,Na)=np.shape(v)
-    r=v
-    et=np.zeros(np.shape(r))
-    beta=.5
-    for n in range(Niter):
-        c=et+beta*r        
-        et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-xi,0)
-        r=v-et
-#        print(np.mean(np.abs(et-horig)**2)/np.mean(np.abs(horig)**2))
-    e=et
-    return(e)
-    
-def simplifiedFISTA(v,xi,Niter,horig):
-    #assumes v is explicitly sparse and returns N iterations of FISTA 
-    (Nt,Nd,Na)=np.shape(v)
-    r=v
-    et=np.zeros(np.shape(r))
-    old_et=et
-    beta=.5
-    for n in range(Niter):
-        c=et+beta*r+(et-old_et)*(n-2.0)/(n+1.0)
-        old_et=et
-        et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-xi,0)
-        r=v-et
-#        print(np.mean(np.abs(et-horig)**2)/np.mean(np.abs(horig)**2))
-    e=et
-    return(e)
-
-def simplifiedAMP(v,xi,Niter,horig):
-    #assumes v is explicitly sparse and returns N iterations of AMP 
-    (Nt,Nd,Na)=np.shape(v)
-    r=v
-    et=np.zeros(np.shape(r))
-    old_r=r
-    for n in range(Niter):
-        bt=np.sum(np.abs(et)>0)/(Nt*Nd*Na)
-        c=et+r
-        ldt = xi*np.sqrt(np.sum(np.abs(r)**2)/(Nt*Nd*Na))
-        et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-ldt,0)
-        old_r=r
-        r=v-et+bt*old_r
-#        print(np.mean(np.abs(et-horig)**2)/np.mean(np.abs(horig)**2))
-    e=et
-    return(e)
 
 omprunner = oc.OMPCachedRunner()
-pilgen = mc.MIMOPilotChannel("UPhase")
+dicBasic=oc.CSCachedDictionary()
+dicAcc=oc.CSAccelDictionary()
+pilgen = mc.MIMOPilotChannel("IDUV")
 model=mc.DiscreteMultipathChannelModel(dims=(Nt,Na,Nd),fftaxes=(1,2))
 listPreparedProblems = []
 for ichan in range(Nchan):    
     h=model.getDEC(3)
-    hk=np.fft.fft(h,axis=0)
-    zp=mc.AWGN((Nt,Nxp,Na,1))
-    (wp,vp)=pilgen.generatePilots(Nt*Nxp,(Nrfr,Na),(Nd,Nrft))
-    listPreparedProblems.append( (hk,zp,wp.reshape(Nt,Nxp,Nrfr,Na),vp.reshape(Nt,Nxp,Nd,Nrft)) )  
+    hk=np.fft.fft(h,K,axis=0)
+    zp=mc.AWGN((Nxp,K,Na,1))
+    (wp,vp)=pilgen.generatePilots(Nxp*K*Nrft,Na,Nd,Npr=Nxp*K*Nrfr,rShape=(Nxp,K,Nrfr,Na),tShape=(Nxp,K,Nd,Nrft))
+    listPreparedProblems.append( (hk,zp,wp,vp ) )
 
-legStrAlgs=[
-#        'LS',
-#        'simplifiedOMP',
-#        'OMPx1',
-#        'OMPx2',
-        'OMPBR',
-        'OMPBR accel',
-#        'simplifiedISTA',
-#        'ISTAx1',
-#        'simplifiedFISTA',
-#        'FISTAx1',
-#        'simplifiedAMP',
-#        'AMP',
-#        'VAMP'
+# legStrAlgs=[
+# #        'LS',
+# #        'simplifiedOMP',
+# #        'OMPx1',
+# #        'OMPx2',
+#         'OMPBR',
+#         'OMPBR accel',
+# #        'simplifiedISTA',
+# #        'ISTAx1',
+# #        'simplifiedFISTA',
+# #        'FISTAx1',
+# #        'simplifiedAMP',
+# #        'AMP',
+# #        'VAMP'
+#         ]
+
+algList = [
+        "dir",
+        "sOMP",
+        # "sISTA",
+        # "sFISTA",
+        # "sAMP",
+        "OMPx1",
+        # "OMPx2",
+        "OMPx4",
+        "OMPBR",
+        "OMPx4a",
+        # "ISTAx1",
+        # "ISTAx2",
+        # "FISTAx1",
+        # "AMPx1",
+        # "VAMPx1",
         ]
-
 bar = Bar("CS sims", max=Nchan)
 bar.check_tty = False
-for ichan in range(0,Nchan):
+Nalg=len(algList)
+Nsnr=len(SNRs)
+MSE=np.zeros((Nchan,Nsnr,Nalg))
+runTime=np.zeros((Nchan,Nsnr,Nalg))
+Npaths=np.zeros((Nchan,Nsnr,Nalg))
+for ichan in range(Nchan):
     (hk,zp,wp,vp)=listPreparedProblems[ichan]
+    zp_bb=np.matmul(wp,zp)
+    yp_noiseless=pilgen.applyPilotChannel(hk,wp,vp,None)
+    zh=mc.AWGN((Nt,Na,Nd))
         
-    h=np.fft.ifft(hk,axis=0)
-    hsparse=np.fft.ifft(h,axis=1)*np.sqrt(Nd)
+    hsparse=np.fft.ifft(hk,axis=0)[0:Nt,:,:]
+    hsparse=np.fft.ifft(hsparse,axis=1)*np.sqrt(Nd)
     hsparse=np.fft.ifft(hsparse,axis=2)*np.sqrt(Na)
-    # print(hk)
-    MSE.append([])
-    totTimes.append([])
-    Npaths.append([])
 
-    for isnr in range(0,len(SNRs)):
+    for isnr in range(Nsnr):
         sigma2=1.0/SNRs[isnr]
-        totTimes[-1].append([])
-        MSE[-1].append([])
-        Npaths[-1].append([])
-
-        #direct observation with noise
-#        zh=mc.AWGN((Nt,Na,Nd))
-#        hest=hsparse*np.sqrt(Nt)+zh*np.sqrt(sigma2)
-#        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
-#
-#        #simplifiedOMP sparse component selection
-#        t0 = time.time()
-#        hest2=simplifiedOMP(hest,sigma2*Nt*Na*Nd)
-#        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest2/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1].append([])        
-#        Npaths[-1][-1].append(np.sum(hest2!=0))
-
-        yp=pilgen.applyPilotChannel(hk,wp,vp,zp*np.sqrt(sigma2))
-        
-#        t0 = time.time()
-#        hest3,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,1.0)
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest3)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
-#
-#        t0 = time.time()
-#        hest4,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,2.0,2.0,2.0,1.0)
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest4)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
-
-        t0 = time.time()
-        hest5,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0)
-        MSE[-1][-1].append(np.mean(np.abs(hk-hest5)**2)/np.mean(np.abs(hk)**2))
-        totTimes[-1][-1].append(time.time()-t0)
-        Npaths[-1][-1].append(len(paths.delays))
-        
-        
-        t0 = time.time()
-        hest6,paths2=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0, accelDel = True)
-        MSE[-1][-1].append(np.mean(np.abs(hk-hest6)**2)/np.mean(np.abs(hk)**2))
-        totTimes[-1][-1].append(time.time()-t0)
-        Npaths[-1][-1].append(len(paths.delays))
-#        
-#        t0 = time.time()
-#        hest6=simplifiedISTA(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
-#        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest6/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(np.sum(hest6!=0))
-        
-#        t0 = time.time()
-#        hest7,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,1.0,1.0,1.0,'ISTA')
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest7)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
-#        
-#        t0 = time.time()
-#        hest8,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,2.0,2.0,2.0,'ISTA')
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest8)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
-        
-#        t0 = time.time()
-#        hest9=simplifiedFISTA(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
-#        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest9/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(np.sum(hest6!=0))
-#        
-#        t0 = time.time()
-#        hest10,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2),.5),15,ichan,vp,wp,1.0,1.0,1.0,'FISTA')
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest10)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
-#        
-#        t0 = time.time()
-#        hest11=simplifiedAMP(hest,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
-#        MSE[-1][-1].append(np.mean(np.abs(hsparse-hest11/np.sqrt(Nt))**2)/np.mean(np.abs(hsparse)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(np.sum(hest6!=0))
-#        
-#        t0 = time.time()
-#        hest12,paths=omprunner.Shrinkage(yp,(.5*np.sqrt(sigma2),),15,ichan,vp,wp,1.0,1.0,1.0,'AMP')
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest12)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
-#        
-#        t0 = time.time()
-#        hest13,paths=omprunner.Shrinkage(yp,(sigma2,5),5,ichan,vp,wp,1.0,1.0,1.0,'VAMP')
-#        MSE[-1][-1].append(np.mean(np.abs(hk-hest13)**2)/np.mean(np.abs(hk)**2))
-#        totTimes[-1][-1].append(time.time()-t0)
-#        Npaths[-1][-1].append(len(paths.delays))
+        yp=yp_noiseless+zp_bb*np.sqrt(sigma2)
+        hnoised=hsparse*np.sqrt(Nt)+zh*np.sqrt(sigma2)        
+        for ialg in range(Nalg):
+            alg=algList[ialg]            
+            t0 = time.time()
+            if alg in ["dir","sOMP","sISTA","sFISTA","sAMP"]:                
+                horig=hsparse*np.sqrt(Nt)
+            else:
+                horig=hk
+            if alg=="dir":
+                #direct observation with noise
+                hest=hnoised
+            elif alg=="sOMP":
+                #simplifiedOMP sparse component selection
+                hest=oc.simplifiedOMP(hnoised,sigma2*Nt*Na*Nd)
+            elif alg=="sISTA":
+                hest=oc.simplifiedISTA(hnoised,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
+            elif alg=="sFISTA":
+                hest=oc.simplifiedFISTA(hnoised,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))
+            elif alg=="sAMP":
+                hest=oc.simplifiedAMP(hnoised,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))                
+            elif alg=="OMPx1":
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,1.0)
+            elif alg=="OMPx2":  
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,2.0,2.0,2.0,1.0)    
+            elif alg=="OMPx4":  
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0)
+            elif alg=="OMPBR":
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0)
+            elif alg=="OMPx4a": 
+                omprunner.setDictionary(dicAcc)
+                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0)
+            elif alg=="ISTAx1":
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,1.0,1.0,1.0,'ISTA')
+            elif alg=="ISTAx2":
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,2.0,2.0,2.0,'ISTA')
+            elif alg=="FISTAx1":
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,1.0,1.0,1.0,'FISTA')
+            elif alg=="AMPx1":
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,1.0,1.0,1.0,'AMP')
+            elif alg=="VAMPx1":
+                omprunner.setDictionary(dicBasic)
+                hest,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,1.0,1.0,1.0,'VAMP')
+            else:
+                print("Unrecognized algorithm, doing nothing")
+            MSE[ichan,isnr,ialg] = np.mean(np.abs(horig-hest)**2)/np.mean(np.abs(horig)**2)
+            runTime[ichan,isnr,ialg] = time.time()-t0            
+            if alg in ["dir","sOMP","sISTA","sFISTA","sAMP"]:                
+                Npaths[ichan,isnr,ialg] = len(np.where(np.abs(hest)>0)[0])
+            else:          
+                Npaths[ichan,isnr,ialg] = len(paths.delays)
+       
+    for ialg in range(Nalg):    
+        alg=algList[ialg]                
+        if alg=="OMPx1":
+            dicAcc.freeCacheOfPilot(ichan,(Nt,Na,Nd),(Nt,Na,Nd))
+        elif alg=="OMPx2":  
+            dicAcc.freeCacheOfPilot(ichan,(Nt,Na,Nd),(2*Nt,2*Na,2*Nd))
+        elif alg=="OMPx4":  
+            dicAcc.freeCacheOfPilot(ichan,(Nt,Na,Nd),(4*Nt,Na,Nd))
+        elif alg=="OMPBR":
+            dicAcc.freeCacheOfPilot(ichan,(Nt,Na,Nd),(Nt,Na,Nd))
+        elif alg=="OMPx4a": 
+            dicAcc.freeCacheOfPilot(ichan,(Nt,Na,Nd),(4*Nt,Na,Nd))
     bar.next()
 bar.finish()
 
-MSE=np.array(MSE)
-totTimes=np.array(totTimes)
 print(np.mean(MSE,axis=0))
-print(np.mean(totTimes,axis=0))
+print(np.mean(runTime,axis=0))
 plt.semilogy(10*np.log10(SNRs),np.mean(MSE,axis=0))
-plt.legend(legStrAlgs)
+plt.legend(algList)
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
 plt.figure()
-plt.bar(range(np.size(totTimes)//Nchan),np.mean(totTimes,axis=0).reshape(np.size(totTimes)//Nchan,))
-plt.xlabel('alg')
+barwidth=0.9/Nalg * np.mean(np.diff(10*np.log10(SNRs)))
+for ialg in range(Nalg):
+    offset=(ialg-(Nalg-1)/2)*barwidth
+    plt.bar(10*np.log10(SNRs)+offset,np.mean(runTime[:,:,ialg],axis=0),width=barwidth,label=algList[ialg])
+plt.xlabel('SNR(dB)')
 plt.ylabel('runtime')
+plt.legend(algList)
 plt.figure()
-plt.bar(range(np.size(totTimes)//Nchan),np.mean(Npaths,axis=0).reshape(np.size(Npaths)//Nchan,))
-plt.xlabel('alg')
+barwidth=0.9/Nalg * np.mean(np.diff(10*np.log10(SNRs)))
+for ialg in range(1,Nalg):
+    offset=(ialg-(Nalg-1)/2)*barwidth
+    plt.bar(10*np.log10(SNRs)+offset,np.mean(Npaths[:,:,ialg],axis=0),width=barwidth,label=algList[ialg])
+plt.xlabel('SNR(dB)')
 plt.ylabel('N paths')
+plt.legend(algList[1:])
 plt.show()
