@@ -26,7 +26,7 @@ class DiscreteMultipathChannelModel:
         h=h.reshape(self.dims)
         #TODO: config postprocessing functions
         for a in self.Faxes:
-            h=np.fft.fft(h,axis=a)*np.sqrt(1.0*self.dims[a])        
+            h=np.fft.fft(h,axis=a,norm="ortho")    
         return h
 
 class MIMOPilotChannel:

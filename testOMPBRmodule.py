@@ -11,14 +11,14 @@ from progress.bar import Bar
 
 plt.close('all')
 
-Nchan=5
+Nchan=1
 Nd=4
 Na=4
-Nt=64
+Nt=16
 Nxp=3
 Nrft=1
 Nrfr=2
-K=64
+K=32
 Ts=2.5
 Ds=Ts*Nt
 SNRs=10**(np.arange(-1,2.01,1.0))
@@ -62,7 +62,7 @@ algList = [
         # "sAMP",
         "OMPx1",
         # "OMPx2",
-        "OMPx4",
+        # "OMPx4",
         "OMPBR",
         "OMPx4a",
         # "ISTAx1",
@@ -91,7 +91,7 @@ for ichan in range(Nchan):
     for isnr in range(Nsnr):
         sigma2=1.0/SNRs[isnr]
         yp=yp_noiseless+zp_bb*np.sqrt(sigma2)
-        hnoised=hsparse*np.sqrt(Nt)+zh*np.sqrt(sigma2)        
+        hnoised=hsparse*np.sqrt(Nt)+zh*np.sqrt(sigma2)
         for ialg in range(Nalg):
             alg=algList[ialg]            
             t0 = time.time()
@@ -113,19 +113,19 @@ for ichan in range(Nchan):
                 hest=oc.simplifiedAMP(hnoised,.5*np.sqrt(sigma2),15,hsparse*np.sqrt(Nt))                
             elif alg=="OMPx1":
                 omprunner.setDictionary(dicBasic)
-                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,1.0)
+                hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,1.0,Nt)
             elif alg=="OMPx2":  
                 omprunner.setDictionary(dicBasic)
-                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,2.0,2.0,2.0,1.0)    
+                hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,2.0,2.0,2.0,1.0,Nt)    
             elif alg=="OMPx4":  
                 omprunner.setDictionary(dicBasic)
-                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0)
+                hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0,Nt)
             elif alg=="OMPBR":
                 omprunner.setDictionary(dicBasic)
-                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,10.0)
+                hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,1.0,1.0,1.0,100.0,Nt)
             elif alg=="OMPx4a": 
                 omprunner.setDictionary(dicAcc)
-                hest,paths=omprunner.OMPBR(yp,sigma2*Nt*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0)
+                hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp,4.0,1.0,1.0,1.0,Nt)
             elif alg=="ISTAx1":
                 omprunner.setDictionary(dicBasic)
                 hest,paths=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,1.0,1.0,1.0,'ISTA')
@@ -172,7 +172,7 @@ plt.legend(algList)
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
 plt.figure()
-barwidth=0.9/Nalg * np.mean(np.diff(10*np.log10(SNRs)))
+barwidth= 0.9/Nalg * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
 for ialg in range(Nalg):
     offset=(ialg-(Nalg-1)/2)*barwidth
     plt.bar(10*np.log10(SNRs)+offset,np.mean(runTime[:,:,ialg],axis=0),width=barwidth,label=algList[ialg])

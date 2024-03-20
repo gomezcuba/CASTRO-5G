@@ -112,10 +112,11 @@ plt.plot(x_bisec,y_bisec,'oy')
 scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
 plt.plot([x0_bisec,x0_bisec+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_bisec)],[y0_bisec,y0_bisec+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_bisec)],'m')
+
+# from mpl_toolkits import mplot3d
 for p in range(np.shape(theta_true)[0]):
     plt.plot([0,x_true[p],x0_true],[0,y_true[p],y0_true],':k')
     t=np.linspace(0,1,21)
-from mpl_toolkits import mplot3d
     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
     plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(AoA[p]*t+phi0_true),y0_true+scaleguide*.05*(p+1)*np.sin(AoA[p]*t+phi0_true),'k')
     plt.plot([0,x_bisec[p],x0_bisec],[0,y_bisec[p],y0_bisec],':m')

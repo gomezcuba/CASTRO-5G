@@ -14,15 +14,15 @@ from progress.bar import Bar
 
 plt.close('all')
 
-Nchan=5
+Nchan=10
 #()
 Nd=4 #Nt (Ntv*Nth) con Ntv=1
 Na=4 #Nr (Nrv*Nrh) con Ntv=1
-Nt=1128
+Nt=328
 Nxp=3
 Nrft=1
 Nrfr=2
-K=128
+K=64
 #Ts=2.5
 Ts=320/Nt
 Ds=Ts*Nt
@@ -48,12 +48,12 @@ legStrAlgs=[
         # 'OMPBRx10acc',
         ]
 confAlgs=[#Xt Xd Xa Xmu accel
-    (1.0,1.0,1.0,1.0,dicBasic),
-    # (1.0,1.0,1.0,1.0,dicAcc),
+    # (1.0,1.0,1.0,1.0,dicBasic),
+    (1.0,1.0,1.0,1.0,dicAcc),
     # (4.0,4.0,4.0,1.0,dicBasic),
-    (8.0,8.0,8.0,1.0,dicAcc),
-    (1.0,1.0,1.0,10.0,dicBasic),
-    # (1.0,1.0,1.0,10.0,dicAcc),
+    (4.0,4.0,4.0,1.0,dicAcc),
+    # (1.0,1.0,1.0,100.0,dicBasic),
+    (1.0,1.0,1.0,10.0,dicAcc),
     ]
 
 Nalgs=len(confAlgs)
@@ -90,7 +90,7 @@ for ichan in range(0,Nchan):
             Xt,Xd,Xa,Xmu,confDic = confAlgs[nalg]
             t0 = time.time()
             omprunner.setDictionary(confDic)
-            hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu)
+            hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Nt)
             MSE[ichan,isnr,nalg] = np.mean(np.abs(hk-hest)**2)/np.mean(np.abs(hk)**2)
             runTimes[ichan,isnr,nalg] = time.time()-t0
             Npaths[ichan,isnr,nalg] = len(paths.delays)

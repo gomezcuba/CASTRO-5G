@@ -101,7 +101,7 @@ class CSCachedDictionary:
         vt=self.funTDoAh(delays,Nt,K)[:,None,None,:]
         va=self.funAoAh(aoas,Na)[None,:,None,:]
         vd=self.funAoDh(aods,Nd)[None,None,:,:]
-        vall=(vt*va*vd).reshape((Nt*Nd*Na,-1))#second dimension can be arbitrary, even a single column
+        vall=(vt*va*vd).reshape((K*Nd*Na,-1))#second dimension can be arbitrary, even a single column
         vall=vall/np.sqrt(np.sum(np.abs(vall)**2,axis=0)) #if vectors are not normalized, correlation-comparison is not valid        
         return( vall )
     
@@ -112,8 +112,11 @@ class CSCachedDictionary:
         Haux = Hcols.T.reshape(Ncolumns,1,K,Na,Nd)
         #TODO encapsulate in an "applyPilot" function
         wp,vp=pilotPattern
-        vref=np.matmul( wp,  np.sum( np.matmul( Haux,vp) ,axis=4,keepdims=True) )
-        return( vref.reshape(Ncolumns,-1).T )
+        vref=np.matmul( wp,  np.sum( np.matmul( Haux,vp) ,axis=4,keepdims=True) )        
+        vref=vref.reshape(Ncolumns,-1).T
+        #TODO study normalization variations
+        # vref=vref/np.linalg.norm(vref,axis=0)
+        return( vref )
     
     def createYCols(self, delays,aoas,aods, pilotPattern=None, dimH=None):
         pilotPattern = pilotPattern if pilotPattern else self.currYDic.pilotPattern
@@ -242,8 +245,10 @@ class CSAccelDictionary(CSCachedDictionary):
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
         TDoA_cols=self.currHDic.TDoAdic[ind_tdoa]
-        # col_tdoa=self.funTDoAh(TDoA_cols,Nt,K).reshape(K,1,Ncol)
-        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_cols)
+        #the factor 1/sqrt(K) is already contained in mPhiH, which has K subcarriers with amplitude 1/sqrt(k) each
+        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_cols)  
+        # col_tdoa=self.funTDoAh(TDoA_cols,Nt,K).reshape(1,K,1,Ncol)
+        # col_tdoa=col_tdoa*np.sqrt(K)/np.linalg.norm(col_tdoa,axis=1)
         col_angles=self.currHDic.mPhiH[:,ind_angles].reshape(K,Na*Nd,Ncol)
         col_tot= (col_tdoa*col_angles).reshape(K*Na*Nd,Ncol)  
         return(col_tot)
@@ -255,20 +260,27 @@ class CSAccelDictionary(CSCachedDictionary):
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
         TDoA_cols=self.currHDic.TDoAdic[ind_tdoa]
-        # col_tdoa=self.funTDoAh(TDoA_cols,Nt,K).reshape(1,K,1,Ncol)
+        #the factor 1/sqrt(K) is already contained in mPhiH, which has K subcarriers with amplitude 1/sqrt(k) each
         col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_cols)
+        # col_tdoa=self.funTDoAh(TDoA_cols,Nt,K).reshape(1,K,1,Ncol)
+        # col_tdoa=col_tdoa*np.sqrt(K)/np.linalg.norm(col_tdoa,axis=1)
         col_angles=self.currYDic.mPhiY[:,ind_angles].reshape(Nxp,K,Nrfr,Ncol)
         col_tot= (col_tdoa*col_angles).reshape(Nxp*K*Nrfr,Ncol)  
+        # col_tot=col_tot*np.linalg.norm(col_angles.reshape(Nxp*K*Nrfr,Ncol)  ,axis=0)/np.linalg.norm(col_tot,axis=0)
         return(col_tot)
     def projY(self,vSamples):
+        K,Nt,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         Nxp,K,Nrfr=self.currYDic.dimY
         # Tk=(vSamples*self.currYDic.mPhiY.conj()).reshape(Nxp,K,Nrfr,Ld*La)#tensor indices [OFDMsymbol, k, RFport, AoA&AoD]
         # Td=np.fft.fft(Tk,Lk,axis=1,norm="ortho")#tensor indices [OFDMsymbol, TDoA, RFport, AoA&AoD indices]
         # Md=np.sum(Td,axis=(0,2))#matrix indices [TDoA, AoA&AoD]
-        # c=Md.reshape(-1,1)#colum index [TDoA&AoA&AoD]
-        Call=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nxp,K,Nrfr)
-        c=np.sum(np.fft.ifft(Call,Lt,axis=2)*Lt,axis=(1,3)).T.reshape(-1,1)
+        # c=Md.reshape(-1,1)#colum index [TDoA&AoA&AoD]        
+        # Call=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nxp,K,Nrfr)
+        # c=np.sum(np.fft.ifft(Call,Lt,axis=2)*Lt,axis=(1,3)).T.reshape(-1,1)
+        Ccomb=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nxp,Nt,K//Nt,Nrfr)
+        Cperi=np.sum(Ccomb,axis=3)*np.sqrt(Nt/K)
+        c=np.sum(np.fft.ifft(Cperi,Lt,axis=2)*Lt,axis=(1,3)).T.reshape(-1,1)
         return( c )
 
 OMPInfoSet = col.namedtuple( "OMPInfoSet",[
@@ -300,72 +312,56 @@ class OMPCachedRunner:
         s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new=self.getBestProjDicInd(vSamples)
         K,Nt,Na,Nd = self.dictionaryEngine.dimH
         Lt,La,Ld = self.dictionaryEngine.dimPhi
-        wp,vp=self.dictionaryEngine.currYDic.pilotPattern
-        # t,a,d=np.unravel_index(s_ind,(Lt,La,Ld))
-        boolTable=np.array([ [(x%(2**(n+1)))//(2**n) for n in range(3)] for x in range(8)],dtype=np.double) #[0,0,0],[1,0,0],[0,1,0]...[1,1,1]
-        muTableInit=boolTable-.5 #[-.5,-.5,-.5] ... [.5,.5,.5]
-        muTable=muTableInit                
-        mid_mu=np.array([0,0,0],dtype=np.double)        
+        boolTable=np.unpackbits(np.arange(8,dtype=np.uint8).reshape(-1,1),axis=1,count=3,bitorder='little')
+        muTable=boolTable-.5
+        mid_mu=np.array([0,0,0],dtype=np.double)    
         while ( np.any(np.abs(mid_mu-muTable)>(.5/Xmu)) ):
             TDoA_mu = TDoA_new + muTable[:,0]*Nt/Lt             
             AoA_mu = np.arcsin(np.mod( np.sin(AoA_new) - muTable[:,1]*2.0/La +1,2)-1)
             AoD_mu = np.arcsin(np.mod( np.sin(AoD_new) - muTable[:,2]*2.0/Ld +1,2)-1)
-            #TODO: test this commented code with 3GPP channel
-            # vall=self.createOutDicCols( TDoA_mu, np.sin(AoA_mu) , np.sin(AoD_mu) , Nt,Na,Nd)
-            # vref=self.createObsDicCols(vall,vp,wp)            
             vref=self.dictionaryEngine.createYCols(TDoA_mu,AoA_mu,AoD_mu)
-            # print(np.isclose(vref,vref2))
             corr_mu=np.matmul( vref.transpose().conj() , vSamples )
             bestInd=np.argmax(np.abs(corr_mu))
             best_mu=muTable[bestInd,:]
             muTable=mid_mu*(1-boolTable)+best_mu*boolTable #[mid_mu,mid_mu,mid_mu] ... [best_mu,best_mu,best_mu]
-            mid_mu=np.mean(muTable,axis=0)
-        # mu=mid_mu
-        # vall=self.createOutDicCols( [TDoA_new + mu[0]*Nt/Lt] , [np.sin(AoA_new) -mu[1]*2.0/La] , [np.sin(AoD_new) -mu[2]*2.0/Ld] ,Nt,Nd,Na)
-        # vref=self.createObsDicCols(vall,vp,wp)
-        # vref=vref[:,bestInd]
-        c_ref = vref[:,bestInd]@vSamples
-        if ( np.abs(c_max) < np.abs(c_ref) ):
-            # vRsupp_new    = vref.reshape((-1,))
-            # TDoA_new =  TDoA_new + mu[0]*Nt/Lt
-            # AoA_new   = np.arcsin(np.mod( np.sin(AoA_new) -mu[1]*2.0/La +1,2)-1)
-            # AoD_new   = np.arcsin(np.mod( np.sin(AoD_new) -mu[2]*2.0/Ld +1,2)-1)
+            mid_mu=np.mean(muTable,axis=0)            
+        #     print ( np.abs(c_max) , np.abs(corr_mu[bestInd,0]) )
+        #     print((TDoA_new,AoA_new*180/np.pi,AoD_new*180/np.pi),(TDoA_mu[bestInd],AoA_mu[bestInd]*180/np.pi,AoD_mu[bestInd]*180/np.pi))
+        # print ( "-"*30 ) 
+        if ( np.abs(c_max) < np.abs(corr_mu[bestInd,0]) ):
             vRsupp_new    = vref[:,bestInd]
             TDoA_new =  TDoA_mu[bestInd]
             AoA_new   = AoA_mu[bestInd]
             AoD_new   = AoD_mu[bestInd]
-            c_max = c_ref
+            c_max = corr_mu[bestInd,0]
         return(s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new)
                 
-    def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0):
+    def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0, Nt=None):
         Nxp=np.shape(vp)[0]
-        Nt=np.shape(v)[1]
+        K=np.shape(v)[1]
+        Nt = K if Nt is None else Nt
         Nd=np.shape(vp)[2]
 #        Nrft=np.shape(vp)[3]
         Nrfr=np.shape(wp)[2]
         Na=np.shape(wp)[3]
-#        if (accelDel): #use FFTs and only antenna dictionary
-#            vflat=np.fft.ifft(v,axis=0)
-#        else:
-#            vflat=v.reshape(Nxp*Nt*Nrfr,1)
-        vflat=v.reshape(Nxp*Nt*Nrfr,1)
-        r=vflat
-        et=1j*np.zeros(np.shape(r))
-    
-        self.dictionaryEngine.setHDic((Nt,Nt,Na,Nd),(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))) 
+        vflat=v.reshape(Nxp*K*Nrfr,1)
+        
+        self.dictionaryEngine.setHDic((K,Nt,Na,Nd),(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))) 
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))      
     
-        Rsupp=np.zeros(shape=(Nxp*Nt*Nrfr,Nxp*Nt*Nrfr),dtype=np.complex)
-        delay_supp=np.zeros(Nxp*Nt*Nrfr)
-        aod_supp=np.zeros(Nxp*Nt*Nrfr)
-        aoa_supp=np.zeros(Nxp*Nt*Nrfr)
+        r=vflat
+        Rsupp=np.zeros(shape=(Nxp*K*Nrfr,Nxp*K*Nrfr),dtype=np.complex)
+        delay_supp=np.zeros(Nxp*K*Nrfr)
+        aod_supp=np.zeros(Nxp*K*Nrfr)
+        aoa_supp=np.zeros(Nxp*K*Nrfr)
         et=np.empty(shape=np.shape(r))
         ctr=0        
-        while ((ctr<Nxp*Nt*Nrfr) and (np.sum(np.abs(r)**2)>xi)) or ctr==0:            
+        while ((ctr<Nxp*K*Nrfr) and (np.sum(np.abs(r)**2)>xi)) or ctr==0:            
             if Xmu>1.0:
                 ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new = self.getBestProjBR(r,Xmu)
             else:
                 ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new = self.getBestProjDicInd(r)
+            # print(ind,c_max,TDoA_new,AoA_new*180/np.pi,AoD_new*180/np.pi)
             delay_supp[ctr] = TDoA_new
             aoa_supp[ctr] = AoA_new
             aod_supp[ctr] = AoD_new
@@ -379,7 +375,7 @@ class OMPCachedRunner:
         Hsupp = self.dictionaryEngine.createHCols(delay_supp[0:ctr] , aoa_supp[0:ctr], aod_supp[0:ctr])
         Isupp=OMPInfoSet(vflat_proj,delay_supp[0:ctr] , aod_supp[0:ctr], aoa_supp[0:ctr], Rsupp[:,0:ctr] , Hsupp)
         hest= Hsupp @ vflat_proj
-        return( hest.reshape(Nt,Na,Nd), Isupp )
+        return( hest.reshape(K,Na,Nd), Isupp )
         
     def Shrinkage(self,v,shrinkageParams,Nit,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, shrinkageAlg = "ISTA"):
         Nxp=np.shape(vp)[0]

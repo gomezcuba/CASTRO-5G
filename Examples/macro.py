@@ -115,14 +115,14 @@ losPgrid = model.scenarioLosProb(np.sqrt(Xd**2+Yd**2),hut)
 hiddenUlos = np.array([[model.get_LOSUnif_from_location((0,0,25),(x,y,1.5)) for x in np.arange(0, cellDiameter, 1.0)-cellDiameter/2] for y in np.arange(0, cellDiameter, 1.0)-cellDiameter/2 ])
 losBgrid = losPgrid >= hiddenUlos
 plt.pcolor(Xd,Yd,losBgrid,cmap="Pastel1")
-hiddenPlosTxt = np.array([['%.2f'%model.get_LOSUnif_from_location((0,0,25),(x*corrLOS,y*corrLOS,1.5)) for x in np.arange(-(numberBinsLOS//2),numberBinsLOS//2+1)] for y in np.arange(-(numberBinsLOS//2), numberBinsLOS//2+1) ])
+# hiddenPlosTxt = np.array([['%.2f'%model.get_LOSUnif_from_location((0,0,25),(x*corrLOS,y*corrLOS,1.5)) for x in np.arange(-(numberBinsLOS//2),numberBinsLOS//2+1)] for y in np.arange(-(numberBinsLOS//2), numberBinsLOS//2+1) ])
 
 for x in np.arange(-(numberBinsLOS//2),numberBinsLOS//2+1):
     for y in np.arange(-(numberBinsLOS//2), numberBinsLOS//2+1):
         U=model.get_LOSUnif_from_location((0,0,25),(x*corrLOS,y*corrLOS,1.5))
         P=model.scenarioLosProb(np.sqrt((x*corrLOS)**2+(y*corrLOS)**2),hut)
         S = '<=' if U<=P else '>'
-        plt.text(x*corrLOS,y*corrLOS,'%.2f %s %.2f'%(U,S,P),horizontalalignment='center',verticalalignment='center')
+        plt.text(x*corrLOS,y*corrLOS,'%.2f $%s$ %.2f'%(U,S,P),horizontalalignment='center',verticalalignment='center')
         
 proxy = [plt.Rectangle((0,0),1,1,fc = cm.Pastel1(x)) 
     for x in [0,255]]
