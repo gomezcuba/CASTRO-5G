@@ -21,7 +21,7 @@ def simplifiedOMP(v,xi):
     e=et
     return(e)
     
-def simplifiedISTA(v,xi,Niter,horig):
+def simplifiedISTA(v,xi,Niter):
     #assumes v is explicitly sparse and returns N iterations of ISTA 
     (Nt,Nd,Na)=np.shape(v)
     r=v
@@ -31,11 +31,10 @@ def simplifiedISTA(v,xi,Niter,horig):
         c=et+beta*r        
         et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-xi,0)
         r=v-et
-#        print(np.mean(np.abs(et-horig)**2)/np.mean(np.abs(horig)**2))
     e=et
     return(e)
     
-def simplifiedFISTA(v,xi,Niter,horig):
+def simplifiedFISTA(v,xi,Niter):
     #assumes v is explicitly sparse and returns N iterations of FISTA 
     (Nt,Nd,Na)=np.shape(v)
     r=v
@@ -47,11 +46,10 @@ def simplifiedFISTA(v,xi,Niter,horig):
         old_et=et
         et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-xi,0)
         r=v-et
-#        print(np.mean(np.abs(et-horig)**2)/np.mean(np.abs(horig)**2))
     e=et
     return(e)
 
-def simplifiedAMP(v,xi,Niter,horig):
+def simplifiedAMP(v,xi,Niter):
     #assumes v is explicitly sparse and returns N iterations of AMP 
     (Nt,Nd,Na)=np.shape(v)
     r=v
@@ -64,7 +62,6 @@ def simplifiedAMP(v,xi,Niter,horig):
         et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-ldt,0)
         old_r=r
         r=v-et+bt*old_r
-#        print(np.mean(np.abs(et-horig)**2)/np.mean(np.abs(horig)**2))
     e=et
     return(e)
 
@@ -187,8 +184,8 @@ class CSCachedDictionary:
     def createYDic(self,pilotPattern):
         #TODO encapsulate in an "applyPilot" function
         wp,vp=pilotPattern
-        Nxp,K,Nrfr=wp.shape[0:3]
-        dimY=(Nxp,K,Nrfr)
+        Nsym,K,Nrfr=wp.shape[0:3]
+        dimY=(Nsym,K,Nrfr)
         mPhiY=self.createYFromH( self.currHDic.mPhiH, pilotPattern)
         return( self.typeYCacheItem( dimY, pilotPattern, mPhiY ) )
     ###########################################################################
@@ -202,6 +199,7 @@ class CSCachedDictionary:
         inds = np.arange(np.prod(self.dimPhi),dtype=int) if inds is None else inds
         return(self.currYDic.mPhiY[:,inds])    
     def projY(self,vSamples):
+        # Delay domain projection complexity K*Xt*Nt
         return(self.currPhiYTConj @ vSamples)
     def evalHDic(self,coef,inds=None):
         if inds is None:
@@ -255,7 +253,7 @@ class CSAccelDictionary(CSCachedDictionary):
     def getYCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
-        Nxp,K,Nrfr=self.currYDic.dimY
+        Nsym,K,Nrfr=self.currYDic.dimY
         K,Nt,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
@@ -264,23 +262,29 @@ class CSAccelDictionary(CSCachedDictionary):
         col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_cols)
         # col_tdoa=self.funTDoAh(TDoA_cols,Nt,K).reshape(1,K,1,Ncol)
         # col_tdoa=col_tdoa*np.sqrt(K)/np.linalg.norm(col_tdoa,axis=1)
-        col_angles=self.currYDic.mPhiY[:,ind_angles].reshape(Nxp,K,Nrfr,Ncol)
-        col_tot= (col_tdoa*col_angles).reshape(Nxp*K*Nrfr,Ncol)  
-        # col_tot=col_tot*np.linalg.norm(col_angles.reshape(Nxp*K*Nrfr,Ncol)  ,axis=0)/np.linalg.norm(col_tot,axis=0)
+        col_angles=self.currYDic.mPhiY[:,ind_angles].reshape(Nsym,K,Nrfr,Ncol)
+        col_tot= (col_tdoa*col_angles).reshape(Nsym*K*Nrfr,Ncol)  
+        # col_tot=col_tot*np.linalg.norm(col_angles.reshape(Nsym*K*Nrfr,Ncol)  ,axis=0)/np.linalg.norm(col_tot,axis=0)
         return(col_tot)
     def projY(self,vSamples):
+        # Delay domain projection complexity K*Xt*(1+log(Nt*Xt))
         K,Nt,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
-        Nxp,K,Nrfr=self.currYDic.dimY
-        # Tk=(vSamples*self.currYDic.mPhiY.conj()).reshape(Nxp,K,Nrfr,Ld*La)#tensor indices [OFDMsymbol, k, RFport, AoA&AoD]
+        Nsym,K,Nrfr=self.currYDic.dimY
+        # Tk=(vSamples*self.currYDic.mPhiY.conj()).reshape(Nsym,K,Nrfr,Ld*La)#tensor indices [OFDMsymbol, k, RFport, AoA&AoD]
         # Td=np.fft.fft(Tk,Lk,axis=1,norm="ortho")#tensor indices [OFDMsymbol, TDoA, RFport, AoA&AoD indices]
         # Md=np.sum(Td,axis=(0,2))#matrix indices [TDoA, AoA&AoD]
         # c=Md.reshape(-1,1)#colum index [TDoA&AoA&AoD]        
-        # Call=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nxp,K,Nrfr)
+        # Call=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nsym,K,Nrfr)
         # c=np.sum(np.fft.ifft(Call,Lt,axis=2)*Lt,axis=(1,3)).T.reshape(-1,1)
-        Ccomb=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nxp,Nt,K//Nt,Nrfr)
-        Cperi=np.sum(Ccomb,axis=3)*np.sqrt(Nt/K)
-        c=np.sum(np.fft.ifft(Cperi,Lt,axis=2)*Lt,axis=(1,3)).T.reshape(-1,1)
+        Ncomb=K//Nt
+        Ccomb=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nsym,Nt,Ncomb,Nrfr)
+        Cfft=np.fft.ifft(Ccomb,Lt,axis=2)*Lt#fft conj
+        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Nt,Nt/Lt).reshape(1,1,Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,1,1,Ncomb,1))
+        # Cperi=np.sum(Ccomb,axis=3)
+        c=np.sum(Cbutterfly,axis=(1,3,4)).T.reshape(-1,1)
+        # c2=self.getYCols().T.conj()@vSamples
+        # print(f'FFTs are the same: {np.all(np.isclose(c,c2))}')
         return( c )
 
 OMPInfoSet = col.namedtuple( "OMPInfoSet",[
@@ -337,26 +341,26 @@ class OMPCachedRunner:
         return(s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new)
                 
     def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0, Nt=None):
-        Nxp=np.shape(vp)[0]
+        Nsym=np.shape(vp)[0]
         K=np.shape(v)[1]
         Nt = K if Nt is None else Nt
         Nd=np.shape(vp)[2]
 #        Nrft=np.shape(vp)[3]
         Nrfr=np.shape(wp)[2]
         Na=np.shape(wp)[3]
-        vflat=v.reshape(Nxp*K*Nrfr,1)
+        vflat=v.reshape(Nsym*K*Nrfr,1)
         
         self.dictionaryEngine.setHDic((K,Nt,Na,Nd),(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))) 
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))      
     
         r=vflat
-        Rsupp=np.zeros(shape=(Nxp*K*Nrfr,Nxp*K*Nrfr),dtype=np.complex)
-        delay_supp=np.zeros(Nxp*K*Nrfr)
-        aod_supp=np.zeros(Nxp*K*Nrfr)
-        aoa_supp=np.zeros(Nxp*K*Nrfr)
+        Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex)
+        delay_supp=np.zeros(Nsym*K*Nrfr)
+        aod_supp=np.zeros(Nsym*K*Nrfr)
+        aoa_supp=np.zeros(Nsym*K*Nrfr)
         et=np.empty(shape=np.shape(r))
         ctr=0        
-        while ((ctr<Nxp*K*Nrfr) and (np.sum(np.abs(r)**2)>xi)) or ctr==0:            
+        while ((ctr<Nsym*K*Nrfr) and (np.sum(np.abs(r)**2)>xi)) or ctr==0:            
             if Xmu>1.0:
                 ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new = self.getBestProjBR(r,Xmu)
             else:
@@ -378,13 +382,13 @@ class OMPCachedRunner:
         return( hest.reshape(K,Na,Nd), Isupp )
         
     def Shrinkage(self,v,shrinkageParams,Nit,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, shrinkageAlg = "ISTA"):
-        Nxp=np.shape(vp)[0]
+        Nsym=np.shape(vp)[0]
         Nt=np.shape(v)[1]
         Nd=np.shape(vp)[2]
 #        Nrft=np.shape(vp)[3]
         Nrfr=np.shape(wp)[2]
         Na=np.shape(wp)[3]
-        vflat=v.reshape(Nxp*Nt*Nrfr,1)
+        vflat=v.reshape(Nsym*Nt*Nrfr,1)
         r=vflat
         
         Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
@@ -420,9 +424,9 @@ class OMPCachedRunner:
                 r=vflat-self.dictionaryEngine.evalYDic(et)
             elif  shrinkageAlg == "AMP":
                 alpha=shrinkageParams[0]
-                bt=np.sum(np.abs(et)>0)/(Nxp*Nt*Nrfr)
+                bt=np.sum(np.abs(et)>0)/(Nsym*Nt*Nrfr)
                 c=et+self.dictionaryEngine.projY( r )
-                lamb = alpha*np.sqrt(np.sum(np.abs(r)**2)/(Nxp*Nt*Nrfr))
+                lamb = alpha*np.sqrt(np.sum(np.abs(r)**2)/(Nsym*Nt*Nrfr))
                 et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-lamb,0)
                 old_r=r
                 r=vflat-self.dictionaryEngine.evalYDic(et)+bt*old_r
@@ -433,15 +437,15 @@ class OMPCachedRunner:
 #                if np.any(np.isnan(np.matmul(M1,vflat)+np.matmul(M2,r_mmse))) or  np.any(np.isinf(np.matmul(M1,vflat)+np.matmul(M2,r_mmse))):
 #                    print("aqui")
 #                et_mmse=np.matmul(Vh.T.conj(),np.linalg.lstsq(M3,np.matmul(M1,vflat)+np.matmul(M2,r_mmse),rcond=None)[0])
-                M3_diagInv=( 1/(S**2+sigma2w/sigma2t_mmse) ).reshape((Nxp*Nt*Nrfr,1))
+                M3_diagInv=( 1/(S**2+sigma2w/sigma2t_mmse) ).reshape((Nsym*Nt*Nrfr,1))
                 et_mmse=np.matmul(Vh.T.conj(), M3_diagInv * np.matmul(M1,vflat)+np.matmul(M2,r_mmse) )
                 vt_mmse=np.sum(1.0/((S**2)*sigma2t_mmse/sigma2w+1))/(Nt*Nd*Na)
                 r=et_mmse-vt_mmse*r_mmse//(1-vt_mmse)
                 sigma2t=sigma2t_mmse*vt_mmse/(1-vt_mmse)
                 #Shrinkage stage
-                lamb=alpha*np.sqrt(sigma2t/(Nxp*Nt*Nrfr))
+                lamb=alpha*np.sqrt(sigma2t/(Nsym*Nt*Nrfr))
                 et=np.exp(1j*np.angle(r))*np.maximum(np.abs(r)-lamb,0)
-                vt=np.sum(np.abs(et)>0)/(Nxp*Nt*Nrfr)
+                vt=np.sum(np.abs(et)>0)/(Nsym*Nt*Nrfr)
                 r_mmse=(et-vt*r)/(1-vt)
                 sigma2t_mmse=sigma2t*vt/(1-vt)
             else:

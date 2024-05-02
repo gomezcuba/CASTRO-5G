@@ -14,15 +14,15 @@ from progress.bar import Bar
 
 plt.close('all')
 
-Nchan=10
+Nchan=5
 #()
-Nd=4 #Nt (Ntv*Nth) con Ntv=1
-Na=4 #Nr (Nrv*Nrh) con Ntv=1
-Nt=328
-Nxp=3
+Nd=16 #Nt (Ntv*Nth) con Ntv=1
+Na=16 #Nr (Nrv*Nrh) con Ntv=1
+Nt=128
+Nsym=1
 Nrft=1
 Nrfr=2
-K=64
+K=512
 #Ts=2.5
 Ts=320/Nt
 Ds=Ts*Nt
@@ -39,27 +39,23 @@ chgen.bLargeBandwidthOption=True
 x0=np.random.rand(Nchan)*100-50
 y0=np.random.rand(Nchan)*100-50
 
-legStrAlgs=[
-        'OMPx1',
-        # 'OMPx1acc',
-        # 'OMPx4',
-        'OMPx4acc',
-        'OMPBRx10',
-        # 'OMPBRx10acc',
-        ]
-confAlgs=[#Xt Xd Xa Xmu accel
-    # (1.0,1.0,1.0,1.0,dicBasic),
-    (1.0,1.0,1.0,1.0,dicAcc),
-    # (4.0,4.0,4.0,1.0,dicBasic),
-    (4.0,4.0,4.0,1.0,dicAcc),
-    # (1.0,1.0,1.0,100.0,dicBasic),
-    (1.0,1.0,1.0,10.0,dicAcc),
+confAlgs=[#Xt Xd Xa Xmu accel legend string name
+    # (1.0,1.0,1.0,1.0,dicBasic,'OMPx1'),
+    (1.0,1.0,1.0,1.0,dicAcc,'OMPx1a'),
+    # (4.0,1.0,1.0,1.0,dicBasic,'OMPx4T'),
+    # (4.0,1.0,1.0,1.0,dicAcc,'OMPx4Ta'),
+    # (4.0,4.0,4.0,1.0,dicBasic,'OMPx4'),
+    (4.0,4.0,4.0,1.0,dicAcc,'OMPx4a'),
+    # (1.0,1.0,1.0,100.0,dicBasic,'OMPBR'),
+    (1.0,1.0,1.0,10.0,dicAcc,'OMPBRa'),
     ]
 
+legStrAlgs=[x[-1] for x in confAlgs]
 Nalgs=len(confAlgs)
 Nsnr=len(SNRs)
 MSE=np.zeros((Nchan,Nsnr,Nalgs))
 Npaths=np.zeros((Nchan,Nsnr,Nalgs))
+dicPrepTime=np.zeros((Nchan,Nalgs))
 runTimes=np.zeros((Nchan,Nsnr,Nalgs))
 bar = Bar("CS sims", max=Nchan)
 bar.check_tty = False
@@ -78,29 +74,36 @@ for ichan in range(0,Nchan):
     ht=mpch.getDEC(Na,Nd,Nt,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
     hk=np.fft.fft(ht.transpose([2,0,1]),K,axis=0)
         
-    (wp,vp)=pilgen.generatePilots(Nxp*K*Nrft,Na,Nd,Npr=Nxp*K*Nrfr,rShape=(Nxp,K,Nrfr,Na),tShape=(Nxp,K,Nd,Nrft))
+    (wp,vp)=pilgen.generatePilots(Nsym*K*Nrft,Na,Nd,Npr=Nsym*K*Nrfr,rShape=(Nsym,K,Nrfr,Na),tShape=(Nsym,K,Nd,Nrft))
 
-    zp=ch.AWGN((Nxp,K,Na,1))
+    zp=ch.AWGN((Nsym,K,Na,1))
     zp_bb=np.matmul(wp,zp)
     yp_noiseless=pilgen.applyPilotChannel(hk,wp,vp,None)
+    
+    
+    for nalg in range(0,Nalgs):
+        t0 = time.time()
+        Xt,Xd,Xa,Xmu,confDic,label = confAlgs[nalg]        
+        confDic.setHDic((K,Nt,Na,Nd),(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))) 
+        confDic.setYDic(ichan,(wp,vp))
+        dicPrepTime[ichan,nalg] = time.time()-t0
     for isnr in range(0,Nsnr):
         sigma2=1.0/SNRs[isnr]
         yp=yp_noiseless+zp_bb*np.sqrt(sigma2)
         for nalg in range(0,Nalgs):
-            Xt,Xd,Xa,Xmu,confDic = confAlgs[nalg]
+            Xt,Xd,Xa,Xmu,confDic,label = confAlgs[nalg]
             t0 = time.time()
             omprunner.setDictionary(confDic)
-            hest,paths=omprunner.OMPBR(yp,sigma2*K*Nxp*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Nt)
+            hest,paths=omprunner.OMPBR(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Nt)
             MSE[ichan,isnr,nalg] = np.mean(np.abs(hk-hest)**2)/np.mean(np.abs(hk)**2)
             runTimes[ichan,isnr,nalg] = time.time()-t0
             Npaths[ichan,isnr,nalg] = len(paths.delays)
     #for large Nsims the pilot cache grows too much so we free the memory when not needed
     for nalg in range(0,Nalgs):
-        Xt,Xd,Xa,Xmu,confDic = confAlgs[nalg]
+        Xt,Xd,Xa,Xmu,confDic,label = confAlgs[nalg]
         confDic.freeCacheOfPilot(ichan,(Nt,Na,Nd),(int(Nt*Xt),int(Na*Xa),int(Nd*Xd)))
     bar.next()
 bar.finish()
-
 print(np.mean(MSE,axis=0))
 print(np.mean(runTimes,axis=0))
 plt.semilogy(10*np.log10(SNRs),np.mean(MSE,axis=0))
