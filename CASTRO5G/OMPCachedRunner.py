@@ -156,7 +156,6 @@ class CSCachedDictionary:
                 raise(TypeError("CSCachedDictionary setYDic() requires pilotPattern argument if pilotsID is not in the cache"))
         else:
             self.currYDic = self.currHDic.cacheYdic[pilotsID]
-        self.currPhiYTConj = self.currYDic.mPhiY.T.conj()
         return(self.currYDic.mPhiY)
     
     
@@ -200,7 +199,7 @@ class CSCachedDictionary:
         return(self.currYDic.mPhiY[:,inds])    
     def projY(self,vSamples):
         # Delay domain projection complexity K*Xt*Nt
-        return(self.currPhiYTConj @ vSamples)
+        return(self.currYDic.mPhiY.T.conj() @ vSamples)
     def evalHDic(self,coef,inds=None):
         if inds is None:
             Nvec=coef.shape[1]
@@ -221,7 +220,63 @@ class CSCachedDictionary:
             return(res)
         else: 
             return(self.getYCols(inds)@coef)
-    
+
+class CSMultiDictionary(CSCachedDictionary):
+    def createHDic(self,dimH=None,dimPhi=None):                
+        K,Nt,Nd,Na = dimH if dimH else self.dimH
+        Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
+        TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
+        AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))   
+        AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))     
+        mPhiH_tdoa=self.funTDoAh(TDoAdic,Nt,K)
+        mPhiH_aoa=self.funAoAh(AoAdic,Na)
+        mPhiH_aod=self.funAoDh(AoDdic,Nd)
+        mPhiH=(mPhiH_tdoa,mPhiH_aoa,mPhiH_aod)
+        return( self.typeHCacheItem(TDoAdic,AoDdic,AoAdic,mPhiH,{}) )
+    def getHCols(self,inds=None):
+        inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
+        Ncol=len(inds)
+        K,Nt,Na,Nd = self.dimH
+        Lt,La,Ld = self.dimPhi
+        ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
+        col_tdoa = self.currHDic.mPhiH[0][:,None,None,ind_tdoa]
+        col_aoa = self.currHDic.mPhiH[1][None,:,None,ind_aoa]
+        col_aod = self.currHDic.mPhiH[2][None,None,:,ind_aod]
+        col_tot= (col_tdoa*col_aoa*col_aod).reshape(K*Na*Nd,Ncol) #values are already repeated as necessary by unravel-index
+        return(col_tot)    
+    def createYDic(self,pilotPattern):
+        #TODO encapsulate in an "applyPilot" function
+        wp,vp=pilotPattern
+        Nsym,K,Nrfr=wp.shape[0:3]
+        dimY=(Nsym,K,Nrfr)
+        mPhiY_tdoa=self.currHDic.mPhiH[0]
+        mPhiY_aoa=np.matmul(wp , self.currHDic.mPhiH[1])
+        mPhiY_aod=np.matmul(self.currHDic.mPhiH[2].T,vp).transpose((0,1,3,2))
+        mPhiY=(mPhiY_tdoa,mPhiY_aoa,mPhiY_aod)
+        return( self.typeYCacheItem( dimY, pilotPattern, mPhiY ) )    
+    def getYCols(self,inds=None):
+        inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
+        Ncol=len(inds)
+        Nsym,K,Nrfr = self.currYDic.dimY
+        Lt,La,Ld = self.dimPhi
+        ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
+        col_tdoa = self.currYDic.mPhiY[0][:,None,None,ind_tdoa]
+        col_aoa = self.currYDic.mPhiY[1][None,:,None,ind_aoa]
+        col_aod = self.currYDic.mPhiY[2][None,None,:,ind_aod]
+        col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
+        return(col_tot) 
+    def projY(self,vSamples):        
+        Nsym,K,Nrfr = self.currYDic.dimY
+        K,Nt,Na,Nd = self.dimH
+        Lt,La,Ld = self.dimPhi
+        mPhiY_tdoa,mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY
+        vSamples = vSamples.reshape((Nsym,K,Nrfr,1))
+        v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
+        v3 = np.matmul(v2,mPhiY_aod.conj())
+        v4 = np.matmul(mPhiY_tdoa.T.conj(), v3.reshape(Nsym,K,La*Ld) )
+        c  = np.sum(v4,axis=0).reshape((Lt*La*Ld,1))
+        return(c)
+        
 class CSAccelDictionary(CSCachedDictionary):    
     def createHDic(self,dimH=None,dimPhi=None):                
         K,Nt,Nd,Na = dimH if dimH else self.dimH
@@ -275,10 +330,10 @@ class CSAccelDictionary(CSCachedDictionary):
         # Td=np.fft.fft(Tk,Lk,axis=1,norm="ortho")#tensor indices [OFDMsymbol, TDoA, RFport, AoA&AoD indices]
         # Md=np.sum(Td,axis=(0,2))#matrix indices [TDoA, AoA&AoD]
         # c=Md.reshape(-1,1)#colum index [TDoA&AoA&AoD]        
-        # Call=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nsym,K,Nrfr)
+        # Call=(self.currYDic.mPhiY.T.conj()*vSamples.T).reshape(Ld*La,Nsym,K,Nrfr)
         # c=np.sum(np.fft.ifft(Call,Lt,axis=2)*Lt,axis=(1,3)).T.reshape(-1,1)
         Ncomb=K//Nt
-        Ccomb=(self.currPhiYTConj*vSamples.T).reshape(Ld*La,Nsym,Nt,Ncomb,Nrfr)
+        Ccomb=(self.currYDic.mPhiY.T.conj()*vSamples.T).reshape(Ld*La,Nsym,Nt,Ncomb,Nrfr)
         Cfft=np.fft.ifft(Ccomb,Lt,axis=2)*Lt#fft conj
         Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Nt,Nt/Lt).reshape(1,1,Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,1,1,Ncomb,1))
         # Cperi=np.sum(Ccomb,axis=3)
@@ -354,7 +409,7 @@ class OMPCachedRunner:
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))      
     
         r=vflat
-        Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex)
+        Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex64)
         delay_supp=np.zeros(Nsym*K*Nrfr)
         aod_supp=np.zeros(Nsym*K*Nrfr)
         aoa_supp=np.zeros(Nsym*K*Nrfr)

@@ -12,13 +12,13 @@ from tqdm import tqdm
 plt.close('all')
 
 Nchan=10
-Nd=8
-Na=8
-Nt=64
+Nd=4
+Na=4
+Nt=32
 Nsym=3
 Nrft=1
 Nrfr=2
-K=128
+K=64
 Ts=2.5
 Ds=Ts*Nt
 SNRs=10**(np.arange(-1,2.01,1.0))
@@ -27,6 +27,7 @@ SNRs=10**(np.arange(-1,2.01,1.0))
 
 omprunner = oc.OMPCachedRunner()
 dicBasic=oc.CSCachedDictionary()
+dicMult=oc.CSMultiDictionary()
 dicAcc=oc.CSAccelDictionary()
 pilgen = mc.MIMOPilotChannel("IDUV")
 model=mc.DiscreteMultipathChannelModel(dims=(Nt,Na,Nd),fftaxes=(1,2))
@@ -40,13 +41,13 @@ for ichan in range(Nchan):
 
 confAlgs = [
         ("dir" ,'AWGN',None),
-        ("sOMP",'callF',lambda v,xi: oc.simplifiedOMP(v,xi)),
-        # ("sISTA",'callF',lambda v,xi: oc.simplifiedISTA(v,xi,15)),
-        # ("sFISTA",'callF',lambda v,xi: oc.simplifiedFISTA(v,xi,15)),
-        # ("sAMP",'callF',lambda v,xi: oc.simplifiedAMP(v,xi,15)),
+        ("sOMP",'callF',lambda v,xi: oc.simplifiedOMP(v,xi*Nt*Na*Nd)),
+        # ("sISTA",'callF',lambda v,xi: oc.simplifiedISTA(v,.5*np.sqrt(xi),15)),
+        # ("sFISTA",'callF',lambda v,xi: oc.simplifiedFISTA(v,.5*np.sqrt(xi),15)),
+        # ("sAMP",'callF',lambda v,xi: oc.simplifiedAMP(v,.5*np.sqrt(xi),15)),
         ("OMPx1",'runGreedy',1.0,1.0,1.0,1.0,dicBasic),
         # ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBasic),
-        # ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBasic),
+        ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBasic),
         ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBasic),
         ("OMPx4a",'runGreedy',4.0,4.0,4.0,1.0,dicAcc),
         # ("ISTAx1",'runShrink',1.0,1.0,1.0,'ISTA',dicBasic),
@@ -61,6 +62,8 @@ Nsnr=len(SNRs)
 MSE=np.zeros((Nchan,Nsnr,Nalg))
 prepYTime=np.zeros((Nchan,Nalg))
 prepHTime=np.zeros((Nalg))
+sizeYDic=np.zeros((Nalg))
+sizeHDic=np.zeros((Nalg))
 runTime=np.zeros((Nchan,Nsnr,Nalg))
 Npaths=np.zeros((Nchan,Nsnr,Nalg))
 
@@ -74,6 +77,7 @@ for ialg in range(Nalg):
         Xt,Xa,Xd,_,dicObj = algParam[2:]
         Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
         dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
+        sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
     prepHTime[ialg] = time.time()-t0            
     
 #-------------------------------------------------------------------------------
@@ -97,6 +101,7 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
             Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
             dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# should be cached here
             dicObj.setYDic(ichan,(wp,vp))
+            sizeYDic[ialg] = dicObj.currYDic.mPhiY.size
         prepYTime[ichan,ialg] = time.time()-t0            
     #--------------------------------------------------------------------------
     for isnr in range(Nsnr):
@@ -116,7 +121,7 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
                 hest=hnoised
             elif behavior == 'callF':
                 funHandle = algParam[2]
-                hest=funHandle(hnoised,.5*np.sqrt(sigma2))
+                hest=funHandle(hnoised,sigma2)
             elif behavior == 'runGreedy':
                 Xt,Xa,Xd,Xr,dicObj = algParam[2:]
                 omprunner.setDictionary(dicObj)
@@ -143,21 +148,34 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
             dicObj.freeCacheOfPilot(ichan,(Nt,Na,Nd),(Xt*Nt,Xa*Na,Xd*Nd))
 
 algLegendList = [x[0] for x in confAlgs]
-print(np.mean(MSE,axis=0))
-print(np.mean(runTime,axis=0))
 plt.semilogy(10*np.log10(SNRs),np.mean(MSE,axis=0))
 plt.legend(algLegendList)
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
 plt.figure()
-barwidth= 0.9/Nalg * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
-for ialg in range(Nalg):
-    offset=(ialg-(Nalg-1)/2)*barwidth
-    plt.bar(10*np.log10(SNRs)+offset,np.mean(runTime[:,:,ialg],axis=0),width=barwidth,label=algLegendList[ialg])
-plt.xlabel('SNR(dB)')
-plt.ylabel('runtime')
-plt.legend(algLegendList)
+plt.yscale("log")
+barwidth= 0.9/2
+offset=(-1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,4*sizeHDic,width=barwidth,label='H dict')
+offset=(+1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,4*sizeYDic,width=barwidth,label='Y dict')
+plt.xticks(ticks=np.arange(len(algLegendList)),labels=algLegendList)
+plt.xlabel('Algoritm')
+plt.ylabel('Dictionary size Bytes')
+plt.legend()
 plt.figure()
+plt.yscale("log")
+barwidth= 0.9/2
+offset=(-1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,prepHTime,width=barwidth,label='H dict')
+offset=(+1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,np.mean(prepYTime,axis=0),width=barwidth,label='Y dict')
+plt.xticks(ticks=np.arange(len(algLegendList)),labels=algLegendList)
+plt.xlabel('Algoritm')
+plt.ylabel('precomputation time')
+plt.legend()
+plt.figure()
+plt.yscale("log")
 barwidth= 0.9/Nalg * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
 for ialg in range(Nalg):
     offset=(ialg-(Nalg-1)/2)*barwidth
