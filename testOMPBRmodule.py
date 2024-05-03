@@ -46,6 +46,7 @@ confAlgs = [
         # ("sFISTA",'callF',lambda v,xi: oc.simplifiedFISTA(v,.5*np.sqrt(xi),15)),
         # ("sAMP",'callF',lambda v,xi: oc.simplifiedAMP(v,.5*np.sqrt(xi),15)),
         ("OMPx1",'runGreedy',1.0,1.0,1.0,1.0,dicBasic),
+        ("OMPx1m",'runGreedy',1.0,1.0,1.0,1.0,dicMult),
         # ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBasic),
         ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBasic),
         ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBasic),
@@ -77,7 +78,10 @@ for ialg in range(Nalg):
         Xt,Xa,Xd,_,dicObj = algParam[2:]
         Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
         dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
-        sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
+        if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
+            sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
+        else:
+            sizeHDic[ialg] = np.prod([x.size for x in dicObj.currHDic.mPhiH])
     prepHTime[ialg] = time.time()-t0            
     
 #-------------------------------------------------------------------------------
@@ -101,7 +105,10 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
             Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
             dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# should be cached here
             dicObj.setYDic(ichan,(wp,vp))
-            sizeYDic[ialg] = dicObj.currYDic.mPhiY.size
+            if isinstance(dicObj.currYDic.mPhiY,np.ndarray):
+                sizeYDic[ialg] = dicObj.currYDic.mPhiY.size
+            else:
+                sizeYDic[ialg] = np.prod([x.size for x in dicObj.currYDic.mPhiY])
         prepYTime[ichan,ialg] = time.time()-t0            
     #--------------------------------------------------------------------------
     for isnr in range(Nsnr):

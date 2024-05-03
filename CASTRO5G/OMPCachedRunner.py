@@ -260,9 +260,12 @@ class CSMultiDictionary(CSCachedDictionary):
         Nsym,K,Nrfr = self.currYDic.dimY
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
-        col_tdoa = self.currYDic.mPhiY[0][:,None,None,ind_tdoa]
-        col_aoa = self.currYDic.mPhiY[1][None,:,None,ind_aoa]
-        col_aod = self.currYDic.mPhiY[2][None,None,:,ind_aod]
+        col_tdoa = self.currYDic.mPhiY[0][:,:,None,None,ind_tdoa]
+        col_aoa = self.currYDic.mPhiY[1][:,None,:,None,ind_aoa]
+        col_aod = self.currYDic.mPhiY[2][:,None,None,:,ind_aod]
+        print(col_tdoa.shape)
+        print(col_aoa.shape)
+        print(col_aod.shape)
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot) 
     def projY(self,vSamples):        
