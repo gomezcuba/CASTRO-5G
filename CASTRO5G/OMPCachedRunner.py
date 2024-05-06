@@ -260,12 +260,12 @@ class CSMultiDictionary(CSCachedDictionary):
         Nsym,K,Nrfr = self.currYDic.dimY
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
-        col_tdoa = self.currYDic.mPhiY[0][:,:,None,None,ind_tdoa]
-        col_aoa = self.currYDic.mPhiY[1][:,None,:,None,ind_aoa]
-        col_aod = self.currYDic.mPhiY[2][:,None,None,:,ind_aod]
-        print(col_tdoa.shape)
-        print(col_aoa.shape)
-        print(col_aod.shape)
+        col_tdoa = self.currYDic.mPhiY[0][None,:,None,None,ind_tdoa]
+        col_aoa = self.currYDic.mPhiY[1][:,:,:,None,ind_aoa]
+        col_aod = self.currYDic.mPhiY[2][:,:,None,:,ind_aod]
+        # print(col_tdoa.shape)
+        # print(col_aoa.shape)
+        # print(col_aod.shape)
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot) 
     def projY(self,vSamples):        
@@ -284,6 +284,8 @@ class CSAccelDictionary(CSCachedDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
         K,Nt,Nd,Na = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
+        # parentDic = CSCachedDictionary.createHDic(self, dimH=(1,1,Na,Nd),dimPhi=(1,La,Ld) )
+        # rework the result and return
         TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))
@@ -412,7 +414,7 @@ class OMPCachedRunner:
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))      
     
         r=vflat
-        Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex64)
+        Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex128)
         delay_supp=np.zeros(Nsym*K*Nrfr)
         aod_supp=np.zeros(Nsym*K*Nrfr)
         aoa_supp=np.zeros(Nsym*K*Nrfr)
