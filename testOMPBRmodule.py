@@ -12,8 +12,8 @@ from tqdm import tqdm
 plt.close('all')
 
 Nchan=10
-Nd=4
-Na=4
+Nd=8
+Na=8
 Nt=32
 Nsym=3
 Nrft=1
@@ -26,7 +26,7 @@ SNRs=10**(np.arange(-1,2.01,1.0))
 # SNRs=np.array([100])
 
 omprunner = oc.OMPCachedRunner()
-dicBasic=oc.CSCachedDictionary()
+dicBase=oc.CSCachedDictionary()
 dicMult=oc.CSMultiDictionary()
 dicAcc=oc.CSAccelDictionary()
 pilgen = mc.MIMOPilotChannel("IDUV")
@@ -45,18 +45,18 @@ confAlgs = [
         # ("sISTA",'callF',lambda v,xi: oc.simplifiedISTA(v,.5*np.sqrt(xi),15)),
         # ("sFISTA",'callF',lambda v,xi: oc.simplifiedFISTA(v,.5*np.sqrt(xi),15)),
         # ("sAMP",'callF',lambda v,xi: oc.simplifiedAMP(v,.5*np.sqrt(xi),15)),
-        ("OMPx1",'runGreedy',1.0,1.0,1.0,1.0,dicBasic),
+        ("OMPx1",'runGreedy',1.0,1.0,1.0,1.0,dicBase),
         ("OMPx1m",'runGreedy',1.0,1.0,1.0,1.0,dicMult),
-        # ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBasic),
-        ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBasic),
+        # ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBase),
+        ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBase),
         ("OMPx4m",'runGreedy',4.0,4.0,4.0,1.0,dicMult),
-        ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBasic),
+        ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBase),
         ("OMPx4a",'runGreedy',4.0,4.0,4.0,1.0,dicAcc),
-        # ("ISTAx1",'runShrink',1.0,1.0,1.0,'ISTA',dicBasic),
-        # ("ISTAx2",'runShrink',2.0,2.0,2.0,'ISTA',dicBasic),
-        # ("FISTAx1",'runShrink',1.0,1.0,1.0,'FISTA',dicBasic),
-        # ("AMPx1",'runShrink',1.0,1.0,1.0,'AMP',dicBasic),
-        # ("VAMPx1",'runShrink',1.0,1.0,1.0,'VAMP',dicBasic),
+        # ("ISTAx1",'runShrink',1.0,1.0,1.0,'ISTA',dicBase),
+        # ("ISTAx2",'runShrink',2.0,2.0,2.0,'ISTA',dicBase),
+        # ("FISTAx1",'runShrink',1.0,1.0,1.0,'FISTA',dicBase),
+        # ("AMPx1",'runShrink',1.0,1.0,1.0,'AMP',dicBase),
+        # ("VAMPx1",'runShrink',1.0,1.0,1.0,'VAMP',dicBase),
     ]
 
 Nalg=len(confAlgs)
@@ -155,33 +155,40 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
             Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
             dicObj.freeCacheOfPilot(ichan,(Nt,Na,Nd),(Xt*Nt,Xa*Na,Xd*Nd))
 
+outputFileTag=f'{Nsym}-{K}-{Nt}-{Nrfr}-{Na}-{Nd}-{Nrfr}'
+bytesPerFloat = dicBase.currHDic.mPhiH[0].itemsize
 algLegendList = [x[0] for x in confAlgs]
+
+plt.figure()
+plt.yscale("log")
+barwidth= 0.9/2
+offset=(-1/2)*barwidth
+plt.bar(np.arange(len(algLegendList[2:]))+offset,bytesPerFloat*sizeHDic[2:]*(2.0**-20),width=barwidth,label='H dict')
+offset=(+1/2)*barwidth
+plt.bar(np.arange(len(algLegendList[2:]))+offset,bytesPerFloat*sizeYDic[2:]*(2.0**-20),width=barwidth,label='Y dict')
+plt.xticks(ticks=np.arange(len(algLegendList[2:])),labels=algLegendList[2:])
+plt.xlabel('Algoritm')
+plt.ylabel('Dictionary size MByte')
+plt.legend()
+plt.savefig(f'DicMBvsAlg-{outputFileTag}.svg')
+plt.figure()
+plt.yscale("log")
+barwidth= 0.9/2
+offset=(-1/2)*barwidth
+plt.bar(np.arange(len(algLegendList[2:]))+offset,prepHTime[2:],width=barwidth,label='H dict')
+offset=(+1/2)*barwidth
+plt.bar(np.arange(len(algLegendList[2:]))+offset,np.mean(prepYTime[:,2:],axis=0),width=barwidth,label='Y dict')
+plt.xticks(ticks=np.arange(len(algLegendList[2:])),labels=algLegendList[2:])
+plt.xlabel('Algoritm')
+plt.ylabel('precomputation time')
+plt.legend()
+plt.savefig(f'DicCompvsAlg-{outputFileTag}.svg')
+plt.figure()
 plt.semilogy(10*np.log10(SNRs),np.mean(MSE,axis=0))
 plt.legend(algLegendList)
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
-plt.figure()
-plt.yscale("log")
-barwidth= 0.9/2
-offset=(-1/2)*barwidth
-plt.bar(np.arange(len(algLegendList))+offset,4*sizeHDic,width=barwidth,label='H dict')
-offset=(+1/2)*barwidth
-plt.bar(np.arange(len(algLegendList))+offset,4*sizeYDic,width=barwidth,label='Y dict')
-plt.xticks(ticks=np.arange(len(algLegendList)),labels=algLegendList)
-plt.xlabel('Algoritm')
-plt.ylabel('Dictionary size Bytes')
-plt.legend()
-plt.figure()
-plt.yscale("log")
-barwidth= 0.9/2
-offset=(-1/2)*barwidth
-plt.bar(np.arange(len(algLegendList))+offset,prepHTime,width=barwidth,label='H dict')
-offset=(+1/2)*barwidth
-plt.bar(np.arange(len(algLegendList))+offset,np.mean(prepYTime,axis=0),width=barwidth,label='Y dict')
-plt.xticks(ticks=np.arange(len(algLegendList)),labels=algLegendList)
-plt.xlabel('Algoritm')
-plt.ylabel('precomputation time')
-plt.legend()
+plt.savefig(f'MSEvsSNR-{outputFileTag}.svg')
 plt.figure()
 plt.yscale("log")
 barwidth= 0.9/Nalg * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
@@ -191,6 +198,7 @@ for ialg in range(Nalg):
 plt.xlabel('SNR(dB)')
 plt.ylabel('runtime')
 plt.legend(algLegendList)
+plt.savefig(f'CSCompvsSNR-{outputFileTag}.svg')
 plt.figure()
 barwidth=0.9/Nalg * np.mean(np.diff(10*np.log10(SNRs)))
 for ialg in range(1,Nalg):
@@ -199,4 +207,5 @@ for ialg in range(1,Nalg):
 plt.xlabel('SNR(dB)')
 plt.ylabel('N paths')
 plt.legend(algLegendList[1:])
+plt.savefig(f'NpathvsSNR-{outputFileTag}.svg')
 plt.show()

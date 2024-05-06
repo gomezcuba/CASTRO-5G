@@ -284,6 +284,8 @@ class CSAccelDictionary(CSCachedDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
         K,Nt,Nd,Na = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
+        # parentDic = CSCachedDictionary.createHDic(self, dimH=(1,1,Na,Nd),dimPhi=(1,La,Ld) )
+        # rework the result and return
         TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))
@@ -412,7 +414,7 @@ class OMPCachedRunner:
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))      
     
         r=vflat
-        Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex64)
+        Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex128)
         delay_supp=np.zeros(Nsym*K*Nrfr)
         aod_supp=np.zeros(Nsym*K*Nrfr)
         aoa_supp=np.zeros(Nsym*K*Nrfr)
