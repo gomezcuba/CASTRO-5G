@@ -49,6 +49,7 @@ confAlgs = [
         ("OMPx1m",'runGreedy',1.0,1.0,1.0,1.0,dicMult),
         # ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBasic),
         ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBasic),
+        ("OMPx4m",'runGreedy',4.0,4.0,4.0,1.0,dicMult),
         ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBasic),
         ("OMPx4a",'runGreedy',4.0,4.0,4.0,1.0,dicAcc),
         # ("ISTAx1",'runShrink',1.0,1.0,1.0,'ISTA',dicBasic),
@@ -81,7 +82,7 @@ for ialg in range(Nalg):
         if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
             sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
         else:
-            sizeHDic[ialg] = np.prod([x.size for x in dicObj.currHDic.mPhiH])
+            sizeHDic[ialg] = np.sum([x.size for x in dicObj.currHDic.mPhiH])
     prepHTime[ialg] = time.time()-t0            
     
 #-------------------------------------------------------------------------------
@@ -108,7 +109,7 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
             if isinstance(dicObj.currYDic.mPhiY,np.ndarray):
                 sizeYDic[ialg] = dicObj.currYDic.mPhiY.size
             else:
-                sizeYDic[ialg] = np.prod([x.size for x in dicObj.currYDic.mPhiY])
+                sizeYDic[ialg] = np.sum([x.size for x in dicObj.currYDic.mPhiY])
         prepYTime[ichan,ialg] = time.time()-t0            
     #--------------------------------------------------------------------------
     for isnr in range(Nsnr):
