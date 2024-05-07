@@ -65,6 +65,8 @@ def simplifiedAMP(v,xi,Niter):
     e=et
     return(e)
 
+#------------------------------------------------------------------------------
+# Baseline Dictionary with default behavior
 class CSCachedDictionary:
     typeHCacheItem = col.namedtuple( "typeHCacheItem",[
             "TDoAdic",
@@ -220,7 +222,63 @@ class CSCachedDictionary:
             return(res)
         else: 
             return(self.getYCols(inds)@coef)
+        
+#------------------------------------------------------------------------------
+# An FFT-accelerated improvement of the baseline Dictionary, with default behavior in AoA and AoD
+class CSBasicFFTDictionary(CSCachedDictionary):
+    def createHDic(self,dimH=None,dimPhi=None):                
+        K,Nt,Nd,Na = dimH if dimH else self.dimH
+        Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
+        TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
+        AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
+        AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))
+        mPhiH=self.createHCols(
+            np.zeros((Ld*La,)),
+            np.tile( AoAdic.reshape(La,1) , (1,Ld) ).reshape((Ld*La,)),
+            np.tile( AoDdic.reshape(1,Ld) , (La,1) ).reshape((Ld*La,)),
+            dimH
+            )
+        return( self.typeHCacheItem(TDoAdic,AoDdic,AoAdic,mPhiH,{}) )
+    def getHCols(self,inds=None):
+        inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
+        Ncol=len(inds)
+        K,Nt,Na,Nd = self.dimH
+        Lt,La,Ld = self.dimPhi
+        ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
+        TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
+        #the factor 1/sqrt(K) is already contained in mPhiH, which has K subcarriers with amplitude 1/sqrt(k) each
+        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_vals)  
+        col_angles=self.currHDic.mPhiH[:,ind_angles].reshape(K,Na*Nd,Ncol)
+        col_tot= (col_tdoa*col_angles).reshape(K*Na*Nd,Ncol)  
+        return(col_tot)
+    def getYCols(self,inds=None):
+        inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
+        Ncol=len(inds)
+        Nsym,K,Nrfr=self.currYDic.dimY
+        K,Nt,Na,Nd = self.dimH
+        Lt,La,Ld = self.dimPhi
+        ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
+        TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
+        #the factor 1/sqrt(K) is already contained in mPhiH, which has K subcarriers with amplitude 1/sqrt(k) each
+        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_vals)
+        col_angles=self.currYDic.mPhiY[:,ind_angles].reshape(Nsym,K,Nrfr,Ncol)
+        col_tot= (col_tdoa*col_angles).reshape(Nsym*K*Nrfr,Ncol)  
+        return(col_tot)
+    def projY(self,vSamples):
+        # Delay domain projection complexity K*Xt*(1+log(Nt*Xt))
+        K,Nt,Na,Nd = self.dimH
+        Lt,La,Ld = self.dimPhi
+        Nsym,K,Nrfr=self.currYDic.dimY
+        Ncomb=K//Nt
+        Ccorr=self.currYDic.mPhiY.conj()*vSamples
+        Ccomb=np.sum(Ccorr.reshape(Nsym,Nt,Ncomb,Nrfr,Ld*La),axis=(0,3))
+        Cfft=np.fft.ifft(Ccomb,Lt,axis=0)*Lt#fft conj
+        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Nt,Nt/Lt).reshape(Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1))
+        c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
+        return( c )
 
+#------------------------------------------------------------------------------
+# A multi dimensional dictionary without acceleration, but significant memory saving
 class CSMultiDictionary(CSCachedDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
         K,Nt,Nd,Na = dimH if dimH else self.dimH
@@ -245,7 +303,6 @@ class CSMultiDictionary(CSCachedDictionary):
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(K*Na*Nd,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot)    
     def createYDic(self,pilotPattern):
-        #TODO encapsulate in an "applyPilot" function
         wp,vp=pilotPattern
         Nsym,K,Nrfr=wp.shape[0:3]
         dimY=(Nsym,K,Nrfr)
@@ -263,9 +320,6 @@ class CSMultiDictionary(CSCachedDictionary):
         col_tdoa = self.currYDic.mPhiY[0][None,:,None,None,ind_tdoa]
         col_aoa = self.currYDic.mPhiY[1][:,:,:,None,ind_aoa]
         col_aod = self.currYDic.mPhiY[2][:,:,None,:,ind_aod]
-        # print(col_tdoa.shape)
-        # print(col_aoa.shape)
-        # print(col_aod.shape)
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot) 
     def projY(self,vSamples):        
@@ -279,72 +333,78 @@ class CSMultiDictionary(CSCachedDictionary):
         v4 = np.matmul(mPhiY_tdoa.T.conj(), v3.reshape(Nsym,K,La*Ld) )
         c  = np.sum(v4,axis=0).reshape((Lt*La*Ld,1))
         return(c)
-        
-class CSAccelDictionary(CSCachedDictionary):    
+
+
+#------------------------------------------------------------------------------
+# A multi dimensional dictionary with FFT acceleration in all axes
+class CSMultiFFTDictionary(CSMultiDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
         K,Nt,Nd,Na = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
-        # parentDic = CSCachedDictionary.createHDic(self, dimH=(1,1,Na,Nd),dimPhi=(1,La,Ld) )
-        # rework the result and return
         TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))
-        mPhiH=self.createHCols(
-            np.zeros((Ld*La,)),
-            np.tile( AoAdic.reshape(La,1) , (1,Ld) ).reshape((Ld*La,)),
-            np.tile( AoDdic.reshape(1,Ld) , (La,1) ).reshape((Ld*La,)),
-            dimH
-            )
-        return( self.typeHCacheItem(TDoAdic,AoDdic,AoAdic,mPhiH,{}) )
+        mPhiH_aoa=self.funAoAh(AoAdic,Na)
+        mPhiH_aod=self.funAoDh(AoDdic,Nd)
+        mPhiH=(mPhiH_aoa,mPhiH_aod)
+        return( self.typeHCacheItem(TDoAdic,AoDdic,AoAdic,mPhiH,{}) )    
     def getHCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
         K,Nt,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
-        ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
-        TDoA_cols=self.currHDic.TDoAdic[ind_tdoa]
-        #the factor 1/sqrt(K) is already contained in mPhiH, which has K subcarriers with amplitude 1/sqrt(k) each
-        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_cols)  
-        # col_tdoa=self.funTDoAh(TDoA_cols,Nt,K).reshape(1,K,1,Ncol)
-        # col_tdoa=col_tdoa*np.sqrt(K)/np.linalg.norm(col_tdoa,axis=1)
-        col_angles=self.currHDic.mPhiH[:,ind_angles].reshape(K,Na*Nd,Ncol)
-        col_tot= (col_tdoa*col_angles).reshape(K*Na*Nd,Ncol)  
+        ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
+        TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
+        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(K,1,1,1)*TDoA_vals) /np.sqrt(K)
+        # col_tdoa = self.funTDoAh(TDoA_vals,Nt,K)[:,None,None,:]
+        col_aoa = self.currHDic.mPhiH[0][None,:,None,ind_aoa]
+        # AoA_vals=self.currHDic.AoAdic[ind_aoa]
+        # col_aoa = self.funAoAh(AoA_vals,Na)
+        col_aod = self.currHDic.mPhiH[1][None,None,:,ind_aod]
+        # AoD_vals=self.currHDic.AoDdic[ind_aod]
+        # col_aod = self.funAoDh(AoD_vals,Nd)
+        col_tot= (col_tdoa*col_aoa*col_aod).reshape(K*Na*Nd,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot)
+    def createYDic(self,pilotPattern):
+        wp,vp=pilotPattern
+        Nsym,K,Nrfr=wp.shape[0:3]
+        dimY=(Nsym,K,Nrfr)
+        mPhiY_aoa=np.matmul(wp , self.currHDic.mPhiH[0])
+        mPhiY_aod=np.matmul(self.currHDic.mPhiH[1].T,vp).transpose((0,1,3,2))
+        mPhiY=(mPhiY_aoa,mPhiY_aod)
+        return( self.typeYCacheItem( dimY, pilotPattern, mPhiY ) )  
     def getYCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
-        Nsym,K,Nrfr=self.currYDic.dimY
-        K,Nt,Na,Nd = self.dimH
+        Nsym,K,Nrfr = self.currYDic.dimY
         Lt,La,Ld = self.dimPhi
-        ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
-        TDoA_cols=self.currHDic.TDoAdic[ind_tdoa]
-        #the factor 1/sqrt(K) is already contained in mPhiH, which has K subcarriers with amplitude 1/sqrt(k) each
-        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1)*TDoA_cols)
-        # col_tdoa=self.funTDoAh(TDoA_cols,Nt,K).reshape(1,K,1,Ncol)
-        # col_tdoa=col_tdoa*np.sqrt(K)/np.linalg.norm(col_tdoa,axis=1)
-        col_angles=self.currYDic.mPhiY[:,ind_angles].reshape(Nsym,K,Nrfr,Ncol)
-        col_tot= (col_tdoa*col_angles).reshape(Nsym*K*Nrfr,Ncol)  
-        # col_tot=col_tot*np.linalg.norm(col_angles.reshape(Nsym*K*Nrfr,Ncol)  ,axis=0)/np.linalg.norm(col_tot,axis=0)
-        return(col_tot)
+        ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
+        TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
+        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1,1)*TDoA_vals)/np.sqrt(K)
+        # col_tdoa = self.funTDoAh(TDoA_vals,Nt,K)[None,:,None,None,:]
+        col_aoa = self.currYDic.mPhiY[0][:,:,:,None,ind_aoa]
+        # AoA_vals=self.currHDic.AoAdic[ind_aoa]
+        # col_aoa = matmul wp self.funAoAh(AoA_vals,Na) 
+        col_aod = self.currYDic.mPhiY[1][:,:,None,:,ind_aod]
+        # AoD_vals=self.currHDic.AoDdic[ind_aod]
+        # col_aod = matmul self.funAoDh(AoD_vals,Nd) .transpose(0 1 3 2) vp -> sum axis=3
+        col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
+        return(col_tot)   
     def projY(self,vSamples):
         # Delay domain projection complexity K*Xt*(1+log(Nt*Xt))
         K,Nt,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         Nsym,K,Nrfr=self.currYDic.dimY
-        # Tk=(vSamples*self.currYDic.mPhiY.conj()).reshape(Nsym,K,Nrfr,Ld*La)#tensor indices [OFDMsymbol, k, RFport, AoA&AoD]
-        # Td=np.fft.fft(Tk,Lk,axis=1,norm="ortho")#tensor indices [OFDMsymbol, TDoA, RFport, AoA&AoD indices]
-        # Md=np.sum(Td,axis=(0,2))#matrix indices [TDoA, AoA&AoD]
-        # c=Md.reshape(-1,1)#colum index [TDoA&AoA&AoD]        
-        # Call=(self.currYDic.mPhiY.T.conj()*vSamples.T).reshape(Ld*La,Nsym,K,Nrfr)
-        # c=np.sum(np.fft.ifft(Call,Lt,axis=2)*Lt,axis=(1,3)).T.reshape(-1,1)
+        mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY
+        vSamples = vSamples.reshape((Nsym,K,Nrfr,1))
+        v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
+        v3 = np.matmul(v2,mPhiY_aod.conj())
         Ncomb=K//Nt
-        Ccomb=(self.currYDic.mPhiY.T.conj()*vSamples.T).reshape(Ld*La,Nsym,Nt,Ncomb,Nrfr)
-        Cfft=np.fft.ifft(Ccomb,Lt,axis=2)*Lt#fft conj
-        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Nt,Nt/Lt).reshape(1,1,Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,1,1,Ncomb,1))
-        # Cperi=np.sum(Ccomb,axis=3)
-        c=np.sum(Cbutterfly,axis=(1,3,4)).T.reshape(-1,1)
-        # c2=self.getYCols().T.conj()@vSamples
-        # print(f'FFTs are the same: {np.all(np.isclose(c,c2))}')
+        Ccorr=v3.reshape(Nsym,Nt,Ncomb,La,Ld)#sum of Nrfr done by matmul
+        Ccomb=np.sum(Ccorr,axis=0)
+        Cfft=np.fft.ifft(Ccomb,Lt,axis=0)*Lt/np.sqrt(K)#fft conj
+        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Nt,Nt/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
+        c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
         return( c )
 
 OMPInfoSet = col.namedtuple( "OMPInfoSet",[

@@ -10,19 +10,19 @@ from matplotlib import cm
 import numpy as np
 
 import time
-from progress.bar import Bar
+from tqdm import tqdm
 
 plt.close('all')
 
-Nchan=5
+Nchan=10
 #()
-Nd=16 #Nt (Ntv*Nth) con Ntv=1
-Na=16 #Nr (Nrv*Nrh) con Ntv=1
-Nt=128
-Nsym=1
+Nd=8 #Nt (Ntv*Nth) con Ntv=1
+Na=8 #Nr (Nrv*Nrh) con Ntv=1
+Nt=64
+Nsym=3
 Nrft=1
 Nrfr=2
-K=512
+K=128
 #Ts=2.5
 Ts=320/Nt
 Ds=Ts*Nt
@@ -30,8 +30,10 @@ SNRs=10**(np.arange(-1,2.01,1.0))
 #SNRs=10**(np.arange(1,1.01,1.0))
 
 omprunner = oc.OMPCachedRunner()
-dicBasic=oc.CSCachedDictionary()
-dicAcc=oc.CSAccelDictionary()
+dicBase=oc.CSCachedDictionary()
+dicMult=oc.CSMultiDictionary()
+dicFFT=oc.CSBasicFFTDictionary()
+dicFast=oc.CSMultiFFTDictionary()
 pilgen = ch.MIMOPilotChannel("IDUV")
 chgen = mp3g.ThreeGPPMultipathChannelModel()
 chgen.bLargeBandwidthOption=True
@@ -40,14 +42,20 @@ x0=np.random.rand(Nchan)*100-50
 y0=np.random.rand(Nchan)*100-50
 
 confAlgs=[#Xt Xd Xa Xmu accel legend string name
-    # (1.0,1.0,1.0,1.0,dicBasic,'OMPx1'),
-    (1.0,1.0,1.0,1.0,dicAcc,'OMPx1a'),
-    # (4.0,1.0,1.0,1.0,dicBasic,'OMPx4T'),
-    # (4.0,1.0,1.0,1.0,dicAcc,'OMPx4Ta'),
-    # (4.0,4.0,4.0,1.0,dicBasic,'OMPx4'),
-    (4.0,4.0,4.0,1.0,dicAcc,'OMPx4a'),
-    # (1.0,1.0,1.0,100.0,dicBasic,'OMPBR'),
-    (1.0,1.0,1.0,10.0,dicAcc,'OMPBRa'),
+    (1.0,1.0,1.0,1.0,dicBase,'OMPx1',':','o','b'),
+    # (4.0,1.0,1.0,1.0,dicBase,'OMPx4T',':','p','y'),
+    # (4.0,1.0,1.0,1.0,dicFFT,'OMPx4Ta',':','d','kb'),
+    # (4.0,4.0,4.0,1.0,dicBase,'OMPx4',':','*','r'),
+    (1.0,1.0,1.0,100.0,dicBase,'OMPBR',':','^','g'),
+    (1.0,1.0,1.0,1.0,dicFFT,'OMPx1a','-.','o','b'),
+    (4.0,4.0,4.0,1.0,dicFFT,'OMPx4a','-.','*','r'),
+    (1.0,1.0,1.0,10.0,dicFFT,'OMPBRa','-.','^','g'),
+    (1.0,1.0,1.0,1.0,dicMult,'OMPx1m','--','o','b'),
+    (4.0,4.0,4.0,1.0,dicMult,'OMPx4m','--','*','r'),
+    (1.0,1.0,1.0,10.0,dicMult,'OMPBRm','--','^','g'),
+    (1.0,1.0,1.0,1.0,dicFast,'OMPx1f','-','o','b'),
+    (4.0,4.0,4.0,1.0,dicFast,'OMPx4f','-','*','r'),
+    (1.0,1.0,1.0,10.0,dicFast,'OMPBRf','-','^','g'),
     ]
 
 legStrAlgs=[x[-1] for x in confAlgs]
@@ -55,11 +63,29 @@ Nalgs=len(confAlgs)
 Nsnr=len(SNRs)
 MSE=np.zeros((Nchan,Nsnr,Nalgs))
 Npaths=np.zeros((Nchan,Nsnr,Nalgs))
-dicPrepTime=np.zeros((Nchan,Nalgs))
+prepYTime=np.zeros((Nchan,Nalgs))
+prepHTime=np.zeros((Nalgs))
+sizeYDic=np.zeros((Nalgs))
+sizeHDic=np.zeros((Nalgs))
 runTimes=np.zeros((Nchan,Nsnr,Nalgs))
-bar = Bar("CS sims", max=Nchan)
-bar.check_tty = False
-for ichan in range(0,Nchan):
+
+
+#-------------------------------------------------------------------------------
+#pregenerate the H dics (pilot independen)
+for ialg in tqdm(range(Nalgs),desc="Dictionary Preconfig: "):
+    t0 = time.time()
+    Xt,Xa,Xd,_,dicObj,_,_,_,_ = confAlgs[ialg]
+    Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
+    dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
+    if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
+        sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
+    else:
+        sizeHDic[ialg] = np.sum([x.size for x in dicObj.currHDic.mPhiH])
+    prepHTime[ialg] = time.time()-t0            
+    
+#-------------------------------------------------------------------------------
+
+for ichan in  tqdm(range(Nchan),desc="CS Sims: "):
     
     model = mp3g.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
     plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
@@ -81,17 +107,22 @@ for ichan in range(0,Nchan):
     yp_noiseless=pilgen.applyPilotChannel(hk,wp,vp,None)
     
     
-    for nalg in range(0,Nalgs):
+    for ialg in range(0,Nalgs):
         t0 = time.time()
-        Xt,Xd,Xa,Xmu,confDic,label = confAlgs[nalg]        
-        confDic.setHDic((K,Nt,Na,Nd),(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))) 
+        Xt,Xd,Xa,Xmu,confDic,label,_,_,_ = confAlgs[ialg]
+        Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
+        confDic.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# should be cached at this point
         confDic.setYDic(ichan,(wp,vp))
-        dicPrepTime[ichan,nalg] = time.time()-t0
+        if isinstance(confDic.currYDic.mPhiY,np.ndarray):
+            sizeYDic[ialg] = confDic.currYDic.mPhiY.size
+        else:
+            sizeYDic[ialg] = np.sum([x.size for x in confDic.currYDic.mPhiY])
+        prepYTime[ichan,ialg] = time.time()-t0         
     for isnr in range(0,Nsnr):
         sigma2=1.0/SNRs[isnr]
         yp=yp_noiseless+zp_bb*np.sqrt(sigma2)
         for nalg in range(0,Nalgs):
-            Xt,Xd,Xa,Xmu,confDic,label = confAlgs[nalg]
+            Xt,Xd,Xa,Xmu,confDic,label,_,_,_ = confAlgs[nalg]
             t0 = time.time()
             omprunner.setDictionary(confDic)
             hest,paths=omprunner.OMPBR(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Nt)
@@ -100,30 +131,62 @@ for ichan in range(0,Nchan):
             Npaths[ichan,isnr,nalg] = len(paths.delays)
     #for large Nsims the pilot cache grows too much so we free the memory when not needed
     for nalg in range(0,Nalgs):
-        Xt,Xd,Xa,Xmu,confDic,label = confAlgs[nalg]
+        Xt,Xd,Xa,Xmu,confDic,label,_,_,_ = confAlgs[nalg]
         confDic.freeCacheOfPilot(ichan,(Nt,Na,Nd),(int(Nt*Xt),int(Na*Xa),int(Nd*Xd)))
-    bar.next()
-bar.finish()
-print(np.mean(MSE,axis=0))
-print(np.mean(runTimes,axis=0))
-plt.semilogy(10*np.log10(SNRs),np.mean(MSE,axis=0))
-plt.legend(legStrAlgs)
+        
+outputFileTag=f'{Nsym}-{K}-{Nt}-{Nrfr}-{Na}-{Nd}-{Nrfr}'
+bytesPerFloat = np.array([0],dtype=np.complex128).itemsize
+algLegendList = [x[5] for x in confAlgs]
+
+plt.figure()
+plt.yscale("log")
+barwidth= 0.9/2
+offset=(-1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,bytesPerFloat*sizeHDic*(2.0**-20),width=barwidth,label='H dict')
+offset=(+1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,bytesPerFloat*sizeYDic*(2.0**-20),width=barwidth,label='Y dict')
+plt.xticks(ticks=np.arange(len(algLegendList)),labels=algLegendList)
+plt.xlabel('Algoritm')
+plt.ylabel('Dictionary size MByte')
+plt.legend()
+plt.savefig(f'./Figures/3gpp_DicMBvsAlg-{outputFileTag}.svg')
+plt.figure()
+plt.yscale("log")
+barwidth= 0.9/2
+offset=(-1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,prepHTime,width=barwidth,label='H dict')
+offset=(+1/2)*barwidth
+plt.bar(np.arange(len(algLegendList))+offset,np.mean(prepYTime[:,:],axis=0),width=barwidth,label='Y dict')
+plt.xticks(ticks=np.arange(len(algLegendList)),labels=algLegendList)
+plt.xlabel('Algoritm')
+plt.ylabel('precomputation time')
+plt.legend()
+plt.savefig(f'./Figures/3gpp_DicCompvsAlg-{outputFileTag}.svg')
+plt.figure()
+for ialg in range(Nalgs):
+    Xt,Xd,Xa,Xmu,confDic,label,lin,mrk,clr = confAlgs[ialg][:]
+    plt.semilogy(10*np.log10(SNRs),np.mean(MSE[:,:,ialg],axis=0),color=clr,marker=mrk,linestyle=lin,label=label)
+plt.legend()
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
+plt.savefig(f'./Figures/3gpp_MSEvsSNR-{outputFileTag}.svg')
 plt.figure()
-barwidth=0.9/Nalgs * np.mean(np.diff(10*np.log10(SNRs)))
+plt.yscale("log")
+barwidth= 0.9/Nalgs * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
 for ialg in range(Nalgs):
     offset=(ialg-(Nalgs-1)/2)*barwidth
-    plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[:,:,ialg],axis=0),width=barwidth,label=legStrAlgs[ialg])
+    plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[:,:,ialg],axis=0),width=barwidth,label=algLegendList[ialg])
 plt.xlabel('SNR(dB)')
 plt.ylabel('runtime')
-plt.legend(legStrAlgs)
-plt.figure()
+plt.legend(algLegendList)
+plt.savefig(f'./Figures/3gpp_CSCompvsSNR-{outputFileTag}.svg')
+plt.figure(5)
 barwidth=0.9/Nalgs * np.mean(np.diff(10*np.log10(SNRs)))
-for ialg in range(Nalgs):
+for ialg in range(0,Nalgs):
     offset=(ialg-(Nalgs-1)/2)*barwidth
-    plt.bar(10*np.log10(SNRs)+offset,np.mean(Npaths[:,:,ialg],axis=0),width=barwidth,label=legStrAlgs[ialg])
+    plt.bar(10*np.log10(SNRs)+offset,np.mean(Npaths[:,:,ialg],axis=0),width=barwidth,label=algLegendList[ialg])
 plt.xlabel('SNR(dB)')
 plt.ylabel('N paths')
-plt.legend(legStrAlgs)
+plt.legend()
+plt.savefig(f'./Figures/3gpp_NpathvsSNR-{outputFileTag}.svg')
 plt.show()
