@@ -95,12 +95,12 @@ class CSCachedDictionary:
     # Functions that depend only on DEC simensions  
     # generally all children will use these functions without need to redefine
     def createHCols(self, delays,aoas,aods,dimH=None):        
-        K,Nt,Nd,Na = dimH if dimH else self.dimH
+        K,Nt,Na,Nd = dimH if dimH else self.dimH
         #TODO add support for comb pilots
         vt=self.funTDoAh(delays,Nt,K)[:,None,None,:]
         va=self.funAoAh(aoas,Na)[None,:,None,:]
         vd=self.funAoDh(aods,Nd)[None,None,:,:]
-        vall=(vt*va*vd).reshape((K*Nd*Na,-1))#second dimension can be arbitrary, even a single column
+        vall=(vt*va*vd).reshape((K*Na*Nd,-1))#second dimension can be arbitrary, even a single column
         vall=vall/np.sqrt(np.sum(np.abs(vall)**2,axis=0)) #if vectors are not normalized, correlation-comparison is not valid        
         return( vall )
     
@@ -170,7 +170,7 @@ class CSCachedDictionary:
     # Functions that create MATRIX dictionaries explicitly, DEC simensions x DIC dimensions
     # generally children will not use these functions and do not need to redefine
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Nd,Na = dimH if dimH else self.dimH
+        K,Nt,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
         TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
@@ -227,7 +227,7 @@ class CSCachedDictionary:
 # An FFT-accelerated improvement of the baseline Dictionary, with default behavior in AoA and AoD
 class CSBasicFFTDictionary(CSCachedDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Nd,Na = dimH if dimH else self.dimH
+        K,Nt,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
         TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
@@ -281,7 +281,7 @@ class CSBasicFFTDictionary(CSCachedDictionary):
 # A multi dimensional dictionary without acceleration, but significant memory saving
 class CSMultiDictionary(CSCachedDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Nd,Na = dimH if dimH else self.dimH
+        K,Nt,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
         TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))   
@@ -339,14 +339,15 @@ class CSMultiDictionary(CSCachedDictionary):
 # A multi dimensional dictionary with FFT acceleration in all axes
 class CSMultiFFTDictionary(CSMultiDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Nd,Na = dimH if dimH else self.dimH
+        K,Nt,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
         TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
-        AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
-        AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))
-        mPhiH_aoa=self.funAoAh(AoAdic,Na)
-        mPhiH_aod=self.funAoDh(AoDdic,Nd)
-        mPhiH=(mPhiH_aoa,mPhiH_aod)
+        AoAdic=np.fft.fftshift(np.arcsin(np.arange(-1.0,1.0,2.0/La)))
+        AoDdic=np.fft.fftshift(np.arcsin(np.arange(-1.0,1.0,2.0/Ld)))
+        # mPhiH_aoa=self.funAoAh(AoAdic,Na)
+        # mPhiH_aod=self.funAoDh(AoDdic,Nd)
+        # mPhiH=(mPhiH_aoa,mPhiH_aod)
+        mPhiH=None
         return( self.typeHCacheItem(TDoAdic,AoDdic,AoAdic,mPhiH,{}) )    
     def getHCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
@@ -357,37 +358,33 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
         col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(K,1,1,1)*TDoA_vals) /np.sqrt(K)
         # col_tdoa = self.funTDoAh(TDoA_vals,Nt,K)[:,None,None,:]
-        col_aoa = self.currHDic.mPhiH[0][None,:,None,ind_aoa]
-        # AoA_vals=self.currHDic.AoAdic[ind_aoa]
-        # col_aoa = self.funAoAh(AoA_vals,Na)
-        col_aod = self.currHDic.mPhiH[1][None,None,:,ind_aod]
-        # AoD_vals=self.currHDic.AoDdic[ind_aod]
-        # col_aod = self.funAoDh(AoD_vals,Nd)
+        AoA_vals=self.currHDic.AoAdic[ind_aoa]
+        col_aoa = self.funAoAh(AoA_vals,Na)[None,:,None,:]
+        AoD_vals=self.currHDic.AoDdic[ind_aod]
+        col_aod = self.funAoDh(AoD_vals,Nd)[None,None,:,:]
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(K*Na*Nd,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot)
     def createYDic(self,pilotPattern):
         wp,vp=pilotPattern
         Nsym,K,Nrfr=wp.shape[0:3]
         dimY=(Nsym,K,Nrfr)
-        mPhiY_aoa=np.matmul(wp , self.currHDic.mPhiH[0])
-        mPhiY_aod=np.matmul(self.currHDic.mPhiH[1].T,vp).transpose((0,1,3,2))
-        mPhiY=(mPhiY_aoa,mPhiY_aod)
+        mPhiY = None
         return( self.typeYCacheItem( dimY, pilotPattern, mPhiY ) )  
     def getYCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
         Nsym,K,Nrfr = self.currYDic.dimY
+        wp,vp = self.currYDic.pilotPattern
         Lt,La,Ld = self.dimPhi
+        K,Nt,Na,Nd = self.dimH
         ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
         TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
         col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1,1)*TDoA_vals)/np.sqrt(K)
         # col_tdoa = self.funTDoAh(TDoA_vals,Nt,K)[None,:,None,None,:]
-        col_aoa = self.currYDic.mPhiY[0][:,:,:,None,ind_aoa]
-        # AoA_vals=self.currHDic.AoAdic[ind_aoa]
-        # col_aoa = matmul wp self.funAoAh(AoA_vals,Na) 
-        col_aod = self.currYDic.mPhiY[1][:,:,None,:,ind_aod]
-        # AoD_vals=self.currHDic.AoDdic[ind_aod]
-        # col_aod = matmul self.funAoDh(AoD_vals,Nd) .transpose(0 1 3 2) vp -> sum axis=3
+        AoA_vals=self.currHDic.AoAdic[ind_aoa]
+        col_aoa = np.matmul( wp, self.funAoAh(AoA_vals,Na))[:,:,:,None,:]
+        AoD_vals=self.currHDic.AoDdic[ind_aod]
+        col_aod = np.matmul( self.funAoDh(AoD_vals,Nd).T ,vp ).transpose(0,1,3,2)[:,:,None,:,:]
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot)   
     def projY(self,vSamples):
@@ -395,10 +392,10 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         K,Nt,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         Nsym,K,Nrfr=self.currYDic.dimY
-        mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY
-        vSamples = vSamples.reshape((Nsym,K,Nrfr,1))
-        v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
-        v3 = np.matmul(v2,mPhiY_aod.conj())
+        wp,vp = self.currYDic.pilotPattern
+        vSamples = vSamples.reshape((Nsym,K,Nrfr,1))        
+        v2 = np.fft.ifft(np.matmul(wp.transpose(0,1,3,2).conj(),vSamples),La,axis=2,norm='ortho')*np.sqrt(La/Na)
+        v3 = np.fft.ifft(np.matmul(v2,vp.transpose(0,1,3,2).conj()),Ld,axis=3,norm='ortho')*np.sqrt(Ld/Nd)
         Ncomb=K//Nt
         Ccorr=v3.reshape(Nsym,Nt,Ncomb,La,Ld)#sum of Nrfr done by matmul
         Ccomb=np.sum(Ccorr,axis=0)
@@ -470,7 +467,7 @@ class OMPCachedRunner:
         Na=np.shape(wp)[3]
         vflat=v.reshape(Nsym*K*Nrfr,1)
         
-        self.dictionaryEngine.setHDic((K,Nt,Na,Nd),(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))) 
+        self.dictionaryEngine.setHDic((K,Nt,Na,Nd),(int(Nt*Xt),int(Na*Xa),int(Nd*Xd))) 
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))      
     
         r=vflat

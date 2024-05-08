@@ -18,11 +18,11 @@ Nchan=10
 #()
 Nd=8 #Nt (Ntv*Nth) con Ntv=1
 Na=8 #Nr (Nrv*Nrh) con Ntv=1
-Nt=64
+Nt=32
 Nsym=3
 Nrft=1
 Nrfr=2
-K=128
+K=64
 #Ts=2.5
 Ts=320/Nt
 Ds=Ts*Nt
@@ -42,19 +42,21 @@ x0=np.random.rand(Nchan)*100-50
 y0=np.random.rand(Nchan)*100-50
 
 confAlgs=[#Xt Xd Xa Xmu accel legend string name
-    (1.0,1.0,1.0,1.0,dicBase,'OMPx1',':','o','b'),
+    # (1.0,1.0,1.0,1.0,dicBase,'OMPx1',':','o','b'),
     # (4.0,1.0,1.0,1.0,dicBase,'OMPx4T',':','p','y'),
     # (4.0,1.0,1.0,1.0,dicFFT,'OMPx4Ta',':','d','kb'),
     # (4.0,4.0,4.0,1.0,dicBase,'OMPx4',':','*','r'),
-    (1.0,1.0,1.0,100.0,dicBase,'OMPBR',':','^','g'),
-    (1.0,1.0,1.0,1.0,dicFFT,'OMPx1a','-.','o','b'),
-    (4.0,4.0,4.0,1.0,dicFFT,'OMPx4a','-.','*','r'),
-    (1.0,1.0,1.0,10.0,dicFFT,'OMPBRa','-.','^','g'),
+    # (1.0,1.0,1.0,100.0,dicBase,'OMPBR',':','^','g'),
+    # (1.0,1.0,1.0,1.0,dicFFT,'OMPx1a','-.','o','b'),
+    # (4.0,4.0,4.0,1.0,dicFFT,'OMPx4a','-.','*','r'),
+    # (1.0,1.0,1.0,10.0,dicFFT,'OMPBRa','-.','^','g'),
     (1.0,1.0,1.0,1.0,dicMult,'OMPx1m','--','o','b'),
     (4.0,4.0,4.0,1.0,dicMult,'OMPx4m','--','*','r'),
+    # (8.0,8.0,8.0,1.0,dicMult,'OMPx8m','--','*','r'),
     (1.0,1.0,1.0,10.0,dicMult,'OMPBRm','--','^','g'),
     (1.0,1.0,1.0,1.0,dicFast,'OMPx1f','-','o','b'),
     (4.0,4.0,4.0,1.0,dicFast,'OMPx4f','-','*','r'),
+    # (8.0,8.0,8.0,1.0,dicFast,'OMPx8f','-','*','r'),
     (1.0,1.0,1.0,10.0,dicFast,'OMPBRf','-','^','g'),
     ]
 
@@ -75,12 +77,15 @@ runTimes=np.zeros((Nchan,Nsnr,Nalgs))
 for ialg in tqdm(range(Nalgs),desc="Dictionary Preconfig: "):
     t0 = time.time()
     Xt,Xa,Xd,_,dicObj,_,_,_,_ = confAlgs[ialg]
-    Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
+    Lt,La,Ld=(int(Nt*Xt),int(Na*Xa),int(Nd*Xd))
     dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
     if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
         sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
     else:
-        sizeHDic[ialg] = np.sum([x.size for x in dicObj.currHDic.mPhiH])
+        if dicObj.currHDic.mPhiH:
+            sizeHDic[ialg] = np.sum([x.size for x in dicObj.currHDic.mPhiH])
+        else:
+            sizeHDic[ialg] = 0
     prepHTime[ialg] = time.time()-t0            
     
 #-------------------------------------------------------------------------------
@@ -91,7 +96,12 @@ for ichan in  tqdm(range(Nchan),desc="CS Sims: "):
     plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
     tau,powC,AOA,AOD,ZOA,ZOD = clusters.T.to_numpy()
     los, PLfree, SF = plinfo
-    tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 = subpaths.T.to_numpy()
+    if los:
+        #disregard los channels in this case
+        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 = subpaths.drop(index=(0,40)).T.to_numpy()
+        pow_sp=pow_sp/np.sum(pow_sp)
+    else:
+        tau_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,XPR_sp,phase00,phase01,phase10,phase11 = subpaths.T.to_numpy()
 
     mpch = ch.MultipathChannel((0,0,10),(40,0,1.5),[])
     Npath = tau_sp.size
@@ -109,20 +119,23 @@ for ichan in  tqdm(range(Nchan),desc="CS Sims: "):
     
     for ialg in range(0,Nalgs):
         t0 = time.time()
-        Xt,Xd,Xa,Xmu,confDic,label,_,_,_ = confAlgs[ialg]
-        Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
+        Xt,Xa,Xd,Xmu,confDic,label,_,_,_ = confAlgs[ialg]
+        Lt,La,Ld=(int(Nt*Xt),int(Na*Xa),int(Nd*Xd))
         confDic.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# should be cached at this point
         confDic.setYDic(ichan,(wp,vp))
         if isinstance(confDic.currYDic.mPhiY,np.ndarray):
             sizeYDic[ialg] = confDic.currYDic.mPhiY.size
         else:
-            sizeYDic[ialg] = np.sum([x.size for x in confDic.currYDic.mPhiY])
+            if confDic.currYDic.mPhiY:
+                sizeYDic[ialg] = np.sum([x.size for x in confDic.currYDic.mPhiY])
+            else:
+                sizeYDic[ialg] = 0    
         prepYTime[ichan,ialg] = time.time()-t0         
     for isnr in range(0,Nsnr):
         sigma2=1.0/SNRs[isnr]
         yp=yp_noiseless+zp_bb*np.sqrt(sigma2)
         for nalg in range(0,Nalgs):
-            Xt,Xd,Xa,Xmu,confDic,label,_,_,_ = confAlgs[nalg]
+            Xt,Xa,Xd,Xmu,confDic,label,_,_,_ = confAlgs[nalg]
             t0 = time.time()
             omprunner.setDictionary(confDic)
             hest,paths=omprunner.OMPBR(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Nt)
@@ -131,7 +144,7 @@ for ichan in  tqdm(range(Nchan),desc="CS Sims: "):
             Npaths[ichan,isnr,nalg] = len(paths.delays)
     #for large Nsims the pilot cache grows too much so we free the memory when not needed
     for nalg in range(0,Nalgs):
-        Xt,Xd,Xa,Xmu,confDic,label,_,_,_ = confAlgs[nalg]
+        Xt,Xa,Xd,Xmu,confDic,label,_,_,_ = confAlgs[nalg]
         confDic.freeCacheOfPilot(ichan,(Nt,Na,Nd),(int(Nt*Xt),int(Na*Xa),int(Nd*Xd)))
         
 outputFileTag=f'{Nsym}-{K}-{Nt}-{Nrfr}-{Na}-{Nd}-{Nrfr}'

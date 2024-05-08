@@ -14,12 +14,12 @@ plt.close('all')
 
 Nchan=10
 Nd=4
-Na=4
-Nt=32
+Na=8
+Nt=16
 Nsym=3
 Nrft=1
 Nrfr=2
-K=64
+K=32
 Ts=2.5
 Ds=Ts*Nt
 SNRs=10**(np.arange(-1,2.01,1.0))
@@ -85,7 +85,7 @@ for ialg in tqdm(range(Nalg),desc="Dictionary Preconfig: "):
     behavior = algParam[1]
     if behavior in ["runGreedy","runShrink"]:     
         Xt,Xa,Xd,_,dicObj,_,_,_ = algParam[2:]
-        Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
+        Lt,La,Ld=(int(Nt*Xt),int(Na*Xa),int(Nd*Xd))
         dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
         if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
             sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
@@ -111,7 +111,7 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
         behavior = algParam[1]          
         if behavior in ["runGreedy","runShrink"]:        
             Xt,Xa,Xd,_,dicObj,_,_,_ = algParam[2:]
-            Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
+            Lt,La,Ld=(int(Nt*Xt),int(Na*Xa),int(Nd*Xd))
             dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# should be cached here
             dicObj.setYDic(ichan,(wp,vp))
             if isinstance(dicObj.currYDic.mPhiY,np.ndarray):
