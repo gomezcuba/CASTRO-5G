@@ -37,8 +37,8 @@ tau=(np.abs(y/np.sin(theta))+np.abs((y-y0)/np.sin(phi)))/c
 Tserr=2.5e-9
 Nanterr=256
 AoD = np.mod(theta+np.random.rand(Npath,Nsims)*2*np.pi/Nanterr,2*np.pi)
-phi0=np.random.rand(1,Nsims)*2*np.pi #receiver angular measurement offset
-AoA = np.mod(phi-phi0+np.random.rand(Npath,Nsims)*2*np.pi/Nanterr,2*np.pi)
+AoA0=np.random.rand(1,Nsims)*2*np.pi #receiver angular measurement offset
+AoA = np.mod(phi-AoA0+np.random.rand(Npath,Nsims)*2*np.pi/Nanterr,2*np.pi)
 clock_error=(40/c)*np.random.rand(1,Nsims) #delay estimation error
 del_error=(Tserr)*np.random.randn(Npath,Nsims) #delay estimation error
 dels = tau-tau0+clock_error+del_error
@@ -47,7 +47,7 @@ loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=100,RootMethod=
 
 
 t_start_b = time.time()
-phi0_b=np.zeros((1,Nsims))
+AoA0_b=np.zeros((1,Nsims))
 x0_b=np.zeros((1,Nsims))
 y0_b=np.zeros((1,Nsims))
 x_b=np.zeros((Npath,Nsims))
@@ -55,7 +55,7 @@ y_b=np.zeros((Npath,Nsims))
 bar = Bar("bisec", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],_,x_b[:,nsim],y_b[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='brute', group_method='3path')
+    (AoA0_b[:,nsim],x0_b[:,nsim],y0_b[:,nsim],_,x_b[:,nsim],y_b[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],AoA0_method='brute', group_method='3path')
     bar.next()
 bar.finish()
 error_bisec=np.sqrt(np.abs(x0-x0_b)**2+np.abs(y0-y0_b))
@@ -64,7 +64,7 @@ plt.figure(1)
 plt.semilogx(np.sort(error_bisec).T,np.linspace(0,1,error_bisec.size),'b')
 #
 t_start_r= time.time()
-phi0_r=np.zeros((1,Nsims))
+AoA0_r=np.zeros((1,Nsims))
 x0_r=np.zeros((1,Nsims))
 y0_r=np.zeros((1,Nsims))
 x_r=np.zeros((Npath,Nsims))
@@ -72,7 +72,7 @@ y_r=np.zeros((Npath,Nsims))
 bar = Bar("froot", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],_,x_r[:,nsim],y_r[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='3path')
+    (AoA0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],_,x_r[:,nsim],y_r[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],AoA0_method='fsolve', group_method='3path')
     bar.next()
 bar.finish()
 error_root=np.sqrt(np.abs(x0-x0_r)**2+np.abs(y0-y0_r))
@@ -82,7 +82,7 @@ plt.semilogx(np.sort(error_root).T,np.linspace(0,1,error_root.size),'-.r')
 
 #
 t_start_r2= time.time()
-phi0_r2=np.zeros((1,Nsims))
+AoA0_r2=np.zeros((1,Nsims))
 x0_r2=np.zeros((1,Nsims))
 y0_r2=np.zeros((1,Nsims))
 x_r2=np.zeros((Npath,Nsims))
@@ -90,7 +90,7 @@ y_r2=np.zeros((Npath,Nsims))
 bar = Bar("froot_linear", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (phi0_r2[:,nsim],x0_r2[:,nsim],y0_r2[:,nsim],_,x_r2[:,nsim],y_r2[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='drop1')
+    (AoA0_r2[:,nsim],x0_r2[:,nsim],y0_r2[:,nsim],_,x_r2[:,nsim],y_r2[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],AoA0_method='fsolve', group_method='drop1')
     bar.next()
 bar.finish()
 error_root2=np.sqrt(np.abs(x0-x0_r2)**2+np.abs(y0-y0_r2))
@@ -100,16 +100,16 @@ plt.semilogx(np.sort(error_root2).T,np.linspace(0,1,error_root2.size),'-.g')
 
 #
 t_start_h= time.time()
-phi0_h=np.zeros((1,Nsims))
+AoA0_h=np.zeros((1,Nsims))
 x0_h=np.zeros((1,Nsims))
 y0_h=np.zeros((1,Nsims))
 x_h=np.zeros((Npath,Nsims))
 y_h=np.zeros((Npath,Nsims))
 bar = Bar("froot_linear hint", max=Nsims)
 bar.check_tty = False
-phi0_coarse=np.round(phi0*256/np.pi/2)*np.pi*2/256
+AoA0_coarse=np.round(AoA0*256/np.pi/2)*np.pi*2/256
 for nsim in range(Nsims):
-    (phi0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],_,x_h[:,nsim],y_h[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0_method='fsolve', group_method='drop1',hint_phi0=phi0_coarse[:,nsim])
+    (AoA0_h[:,nsim],x0_h[:,nsim],y0_h[:,nsim],_,x_h[:,nsim],y_h[:,nsim],_)= loc.computeAllLocationsFromPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],AoA0_method='fsolve', group_method='drop1',hint_AoA0=AoA0_coarse[:,nsim])
     bar.next()
 bar.finish()
 error_rooth=np.sqrt(np.abs(x0-x0_h)**2+np.abs(y0-y0_h))
@@ -130,7 +130,7 @@ tauEall=np.zeros((Nsims,Npath-2))
 
 for nsim in range(Nsims):
     for gr in range(Npath-2):
-        (x0all[nsim,gr],y0all[nsim,gr],tauEall[nsim,gr],_,_)= loc.computeAllPaths(AoD[gr:gr+3,nsim],AoA[gr:gr+3,nsim],dels[gr:gr+3,nsim],phi0[:,nsim])
+        (x0all[nsim,gr],y0all[nsim,gr],tauEall[nsim,gr],_,_)= loc.computeAllPaths(AoD[gr:gr+3,nsim],AoA[gr:gr+3,nsim],dels[gr:gr+3,nsim],AoA0[:,nsim])
     bar.next()    
 x0_k=np.mean(x0all,axis=1)
 y0_k=np.mean(y0all,axis=1)
@@ -148,7 +148,7 @@ y_k2=np.zeros((Npath,Nsims))
 bar = Bar("know phi linear method", max=Nsims)
 bar.check_tty = False
 for nsim in range(Nsims):
-    (x0_k2[:,nsim],y0_k2[:,nsim],_,x_k2[:,nsim],y_k2[:,nsim])=loc.computeAllPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],phi0[:,nsim])
+    (x0_k2[:,nsim],y0_k2[:,nsim],_,x_k2[:,nsim],y_k2[:,nsim])=loc.computeAllPaths(AoD[:,nsim],AoA[:,nsim],dels[:,nsim],AoA0[:,nsim])
     bar.next()
 bar.finish()
 error_k2=np.sqrt(np.abs(x0-x0_k2)**2+np.abs(y0-y0_k2))
@@ -183,18 +183,18 @@ plt.legend(temp.values(), temp.keys(), loc='best')
 plt.savefig('errormap.eps')
 
 plt.figure(3)
-plt.semilogx(np.sort(phi0-phi0_b).T,np.linspace(0,1,phi0.size),'r')
-plt.semilogx(np.sort(phi0-phi0_r).T,np.linspace(0,1,phi0.size),'-.b')
-plt.semilogx(np.sort(phi0-phi0_r2).T,np.linspace(0,1,phi0.size),':xg')
+plt.semilogx(np.sort(AoA0-AoA0_b).T,np.linspace(0,1,AoA0.size),'r')
+plt.semilogx(np.sort(AoA0-AoA0_r).T,np.linspace(0,1,AoA0.size),'-.b')
+plt.semilogx(np.sort(AoA0-AoA0_r2).T,np.linspace(0,1,AoA0.size),':xg')
 plt.xlabel('$\psi_o-\hat{\psi}_0$ (rad)')
 plt.ylabel('C.D.F.')
 plt.legend(['brute force $\hat\psi_o$ 3path','fzero $\psi_o$ 3path','fzero $\psi_o$ linear'])
 plt.savefig('cdfpsi0err.eps')
 
 plt.figure(4)
-plt.loglog(np.abs(np.mod(phi0.T,2*np.pi)-np.mod(phi0_b.T,2*np.pi)),error_bisec.T,'xr')
-plt.loglog(np.abs(np.mod(phi0.T,2*np.pi)-np.mod(phi0_r.T,2*np.pi)),error_root.T,'ob')
-plt.loglog(np.abs(np.mod(phi0.T,2*np.pi)-np.mod(phi0_r2.T,2*np.pi)),error_root2.T,'sg')
+plt.loglog(np.abs(np.mod(AoA0.T,2*np.pi)-np.mod(AoA0_b.T,2*np.pi)),error_bisec.T,'xr')
+plt.loglog(np.abs(np.mod(AoA0.T,2*np.pi)-np.mod(AoA0_r.T,2*np.pi)),error_root.T,'ob')
+plt.loglog(np.abs(np.mod(AoA0.T,2*np.pi)-np.mod(AoA0_r2.T,2*np.pi)),error_root2.T,'sg')
 plt.xlabel('$\psi_o-\hat{\psi}_0$ (rad)')
 plt.ylabel('Location error (m)')
 plt.legend(['brute force $\hat\psi_o$ 3path','fzero $\psi_o$ 3path','fzero $\psi_o$ linear'])

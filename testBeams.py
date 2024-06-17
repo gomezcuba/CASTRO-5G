@@ -11,7 +11,7 @@ from CASTRO5G import multipathChannel as mc
 
 fig_ctr=0
 
-Nant = 32
+Nant = 16
 Nrf = 1
 mindBpolar = -30
 Nplotpoint =1000

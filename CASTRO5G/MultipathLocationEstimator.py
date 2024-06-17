@@ -200,7 +200,55 @@ class MultipathLocationEstimator:
         vxest = np.where(tgD!=0, vyest/tgD, d0xest - d0yest/tgA)
             
         return(d0xest, d0yest, tauEest, vxest, vyest)
-    
+    def uVector(self,A,Z=None):
+        if Z is None:
+            return( np.column_stack([np.cos(A),np.sin(A)]) )
+        else:
+            return( np.column_stack([np.cos(A)*np.sin(Z),np.sin(A)*np.sin(Z),np.cos(Z)]) )
+    def rMatrix2D(self,A):
+            return( np.array([
+                [np.cos(A),-np.sin(A)],
+                [np.sin(A),np.cos(A)]
+                ]) )
+    def rMatrix3D(self,A,ax=2):
+        basis=self.rMatrix2D(A)
+        R=np.insert(basis,ax,np.zeros(2),axis=0)
+        R=np.insert(R,ax,np.zeros(3),axis=1)
+        R[ax,ax]=1
+        return(R)
+    def rMatrix(self,A,Z=None,Y=None):
+        if Z is None:
+            return( self.rMatrix2D(A) )
+        elif Y is None:
+            return( self.rMatrix3D(Z,1)@self.rMatrix3D(A,2) )
+        else:
+            return( self.rMatrix3D(Y,0)@self.rMatrix3D(Z,1)@self.rMatrix3D(A,2) )
+    def computeAllPathsV2(self, AoD, DAoA, TDoA, ZoD=None, DZoA=None, rotation=None):       
+        Npath=len(AoD)    
+        #TODO choose a library to provide uVector globally to the project
+        DoD = self.uVector(AoD,ZoD)
+        if rotation is None:
+            DoA = self.uVector(DAoA,DZoA)
+        else:
+            if (ZoD is None) and (DZoA is None):
+                AoA0_est=rotation
+                Rm=self.rMatrix(AoA0_est)
+            else:
+                AoA0_est,ZoA0_est,YoA0_est=rotation
+                Rm=self.rMatrix(AoA0_est,AoA0_est,ZoA0_est,YoA0_est)
+            DoA = Rm@self.uVector(DAoA,DZoA)
+        C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
+        c=3e8
+        M=np.column_stack([(DoD-DoA)/(1+C12),-np.ones((Npath,1))])
+        result_est=np.linalg.lstsq(M, TDoA*c, rcond=None)[0]
+        d0_est = result_est[0:-1]
+        ToA0_est = result_est[-1]/c
+        Vi=(DoD+C12*DoA)/(1-C12**2)
+        liD_est=Vi@d0_est
+        d_est=liD_est[:,None]*DoD
+        return(d0_est,ToA0_est,d_est)
+        
+        
     def gen3PathGroup(self, Npath):
         """Returns the table with the path groups using the 3-path method.
         

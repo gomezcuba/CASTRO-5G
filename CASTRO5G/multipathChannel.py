@@ -12,6 +12,14 @@ def fULA(incidAngle , Nant = 4, dInterElement = .5):
                         
     return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)
 
+
+def fUCA(incidAngle , Nant = 5, dInterElement = .5):
+    R=Nant*dInterElement/(2*np.pi)
+    phiAnt=2*np.pi*np.arange(0,1,1/Nant)
+    a=np.exp(-2j*np.pi*R*np.cos(incidAngle[...,None,None]-phiAnt[:,None])) /np.sqrt(1.0*Nant)
+    return(a)
+    
+
 class DiscreteMultipathChannelModel:
     def __init__(self,dims=(128,4,4),fftaxes=(1,2)):
         self.dims=dims

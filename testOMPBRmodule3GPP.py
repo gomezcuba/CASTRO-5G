@@ -81,11 +81,10 @@ for ialg in tqdm(range(Nalgs),desc="Dictionary Preconfig: "):
     dicObj.setHDic((K,Nt,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
     if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
         sizeHDic[ialg] = dicObj.currHDic.mPhiH.size
+    elif isinstance(dicObj.currHDic.mPhiH,tuple):
+        sizeHDic[ialg] = np.sum([x.size for x in dicObj.currHDic.mPhiH])
     else:
-        if dicObj.currHDic.mPhiH:
-            sizeHDic[ialg] = np.sum([x.size for x in dicObj.currHDic.mPhiH])
-        else:
-            sizeHDic[ialg] = 0
+        sizeHDic[ialg] = 0
     prepHTime[ialg] = time.time()-t0            
     
 #-------------------------------------------------------------------------------
@@ -125,11 +124,10 @@ for ichan in  tqdm(range(Nchan),desc="CS Sims: "):
         confDic.setYDic(ichan,(wp,vp))
         if isinstance(confDic.currYDic.mPhiY,np.ndarray):
             sizeYDic[ialg] = confDic.currYDic.mPhiY.size
+        elif isinstance(confDic.currYDic.mPhiY,tuple):
+            sizeYDic[ialg] = np.sum([x.size for x in confDic.currYDic.mPhiY])
         else:
-            if confDic.currYDic.mPhiY:
-                sizeYDic[ialg] = np.sum([x.size for x in confDic.currYDic.mPhiY])
-            else:
-                sizeYDic[ialg] = 0    
+            sizeYDic[ialg] = 0    
         prepYTime[ichan,ialg] = time.time()-t0         
     for isnr in range(0,Nsnr):
         sigma2=1.0/SNRs[isnr]
@@ -138,7 +136,7 @@ for ichan in  tqdm(range(Nchan),desc="CS Sims: "):
             Xt,Xa,Xd,Xmu,confDic,label,_,_,_ = confAlgs[nalg]
             t0 = time.time()
             omprunner.setDictionary(confDic)
-            hest,paths=omprunner.OMPBR(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Nt)
+            hest,paths,_,_=omprunner.OMPBR(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Nt)
             MSE[ichan,isnr,nalg] = np.mean(np.abs(hk-hest)**2)/np.mean(np.abs(hk)**2)
             runTimes[ichan,isnr,nalg] = time.time()-t0
             Npaths[ichan,isnr,nalg] = len(paths.delays)

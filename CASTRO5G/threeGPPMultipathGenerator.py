@@ -926,7 +926,7 @@ class ThreeGPPMultipathChannelModel:
       
         plinfo = (los,PLconst,sfdB)
 
-        clusters,subpaths = self.get_small_from_location(txPos,rxPos,plinfo,macro)
+        clusters,subpaths = self.getSmallFromLocation(txPos,rxPos,plinfo,macro)
         
         return(plinfo,macro,clusters,subpaths)
     
@@ -938,7 +938,7 @@ class ThreeGPPMultipathChannelModel:
         rxPosGrid[0:2] = np.array(key[2:4]) * corrDist
         return(key,txPosGrid,rxPosGrid)
         
-    def get_small_from_location(self, txPos, rxPos, plinfo, macro):
+    def getSmallFromLocation(self, txPos, rxPos, plinfo, macro):
 
         if self.smallCorrDist:
             key,genTxPos,genRxPos = self.getRefLocationParams(txPos,rxPos,self.smallCorrDist)

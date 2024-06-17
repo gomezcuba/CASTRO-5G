@@ -1,10 +1,11 @@
 import numpy as np
 import collections as col
+import pandas as pd
 
 #SIMPLIFIED algorithms assume that observation matrix is the identity, v is directly the sparse vector and dictionary columns are orthonormal
 def simplifiedOMP(v,xi):
     #assumes v is explicitly sparse and returns its N largest coefficients where rho(N)<xi
-    (Nt,Nd,Na)=np.shape(v)
+    (Ncp,Nd,Na)=np.shape(v)
     r=v
     et=1j*np.zeros(np.shape(r))
     #at least one iteration
@@ -23,7 +24,7 @@ def simplifiedOMP(v,xi):
     
 def simplifiedISTA(v,xi,Niter):
     #assumes v is explicitly sparse and returns N iterations of ISTA 
-    (Nt,Nd,Na)=np.shape(v)
+    (Ncp,Nd,Na)=np.shape(v)
     r=v
     et=np.zeros(np.shape(r))
     beta=.5
@@ -36,7 +37,7 @@ def simplifiedISTA(v,xi,Niter):
     
 def simplifiedFISTA(v,xi,Niter):
     #assumes v is explicitly sparse and returns N iterations of FISTA 
-    (Nt,Nd,Na)=np.shape(v)
+    (Ncp,Nd,Na)=np.shape(v)
     r=v
     et=np.zeros(np.shape(r))
     old_et=et
@@ -51,14 +52,14 @@ def simplifiedFISTA(v,xi,Niter):
 
 def simplifiedAMP(v,xi,Niter):
     #assumes v is explicitly sparse and returns N iterations of AMP 
-    (Nt,Nd,Na)=np.shape(v)
+    (Ncp,Nd,Na)=np.shape(v)
     r=v
     et=np.zeros(np.shape(r))
     old_r=r
     for n in range(Niter):
-        bt=np.sum(np.abs(et)>0)/(Nt*Nd*Na)
+        bt=np.sum(np.abs(et)>0)/(Ncp*Nd*Na)
         c=et+r
-        ldt = xi*np.sqrt(np.sum(np.abs(r)**2)/(Nt*Nd*Na))
+        ldt = xi*np.sqrt(np.sum(np.abs(r)**2)/(Ncp*Nd*Na))
         et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-ldt,0)
         old_r=r
         r=v-et+bt*old_r
@@ -83,7 +84,7 @@ class CSCachedDictionary:
         ])
     def __init__(self,dimH=None,dimPhi=None):
         #TODO add K here
-        self.funTDoAh= lambda delays,Nt,K: np.fft.fft(np.sinc( np.arange(0.0,Nt,1.0)[:,None] - delays ),K,axis=0,norm="ortho")
+        self.funTDoAh= lambda TDoA,Ncp,K: np.fft.fft(np.sinc( np.arange(0.0,Ncp,1.0)[:,None] - TDoA ),K,axis=0,norm="ortho")
         self.funAoAh= lambda aoas,Na: np.exp( -1j*np.pi * np.arange(0.0,Na,1.0)[:,None] * np.sin(aoas) ) /np.sqrt(1.0*Na)
         self.funAoDh= lambda aods,Nd: np.exp( -1j*np.pi * np.arange(0.0,Nd,1.0)[:,None] * np.sin(aods) ) /np.sqrt(1.0*Nd)        
         self.dimH = dimH if dimH else None
@@ -94,10 +95,10 @@ class CSCachedDictionary:
     ###########################################################################
     # Functions that depend only on DEC simensions  
     # generally all children will use these functions without need to redefine
-    def createHCols(self, delays,aoas,aods,dimH=None):        
-        K,Nt,Na,Nd = dimH if dimH else self.dimH
+    def createHCols(self, TDoA,aoas,aods,dimH=None):        
+        K,Ncp,Na,Nd = dimH if dimH else self.dimH
         #TODO add support for comb pilots
-        vt=self.funTDoAh(delays,Nt,K)[:,None,None,:]
+        vt=self.funTDoAh(TDoA,Ncp,K)[:,None,None,:]
         va=self.funAoAh(aoas,Na)[None,:,None,:]
         vd=self.funAoDh(aods,Nd)[None,None,:,:]
         vall=(vt*va*vd).reshape((K*Na*Nd,-1))#second dimension can be arbitrary, even a single column
@@ -106,7 +107,7 @@ class CSCachedDictionary:
     
     def createYFromH(self, Hcols, pilotPattern=None):
         pilotPattern = pilotPattern if pilotPattern  else self.currYDic.pilotPattern
-        K,Nt,Na,Nd = self.dimH
+        K,Ncp,Na,Nd = self.dimH
         Ncolumns = Hcols.shape[1]
         Haux = Hcols.T.reshape(Ncolumns,1,K,Na,Nd)
         #TODO encapsulate in an "applyPilot" function
@@ -117,21 +118,21 @@ class CSCachedDictionary:
         # vref=vref/np.linalg.norm(vref,axis=0)
         return( vref )
     
-    def createYCols(self, delays,aoas,aods, pilotPattern=None, dimH=None):
+    def createYCols(self, TDoA,aoas,aods, pilotPattern=None, dimH=None):
         pilotPattern = pilotPattern if pilotPattern else self.currYDic.pilotPattern
-        Hcols = self.createHCols(delays, aoas, aods, dimH)
+        Hcols = self.createHCols(TDoA, aoas, aods, dimH)
         return ( self.createYFromH(Hcols,pilotPattern) )
     
-    def evalHCols(self,delays,aoas,aods,coefs, dimH=None):
-        Hcols = self.createHCols(delays, aoas, aods, dimH)
+    def evalHCols(self,TDoA,aoas,aods,coefs, dimH=None):
+        Hcols = self.createHCols(TDoA, aoas, aods, dimH)
         return(Hcols @ coefs)
     
-    def evalYCols(self,delays,aoas,aods,coefs,pilotPattern, dimH=None):
-        Ycols = self.createYCols(delays, aoas, aods,pilotPattern, dimH)
+    def evalYCols(self,TDoA,aoas,aods,coefs,pilotPattern, dimH=None):
+        Ycols = self.createYCols(TDoA, aoas, aods,pilotPattern, dimH)
         return(Ycols @ coefs)
     
-    def param2Ind(self,delays,aoas,aods):
-        t_ind = np.where(self.currHDic.TDoAdic == delays)
+    def param2Ind(self,TDoA,aoas,aods):
+        t_ind = np.where(self.currHDic.TDoAdic == TDoA)
         a_ind = np.where(self.currHDic.AoAdic == aoas)
         d_ind = np.where(self.currHDic.AoDdic == aods)
         ind=np.ravel_multi_index((t_ind,a_ind,d_ind),self.dimPhi)
@@ -170,9 +171,9 @@ class CSCachedDictionary:
     # Functions that create MATRIX dictionaries explicitly, DEC simensions x DIC dimensions
     # generally children will not use these functions and do not need to redefine
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Na,Nd = dimH if dimH else self.dimH
+        K,Ncp,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
-        TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
+        TDoAdic=np.arange(0.0,Ncp,float(Ncp)/Lt)#in discrete samples Ds = Ts*Ncp, fractional TDoA supported
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))
         mPhiH=self.createHCols(
@@ -200,8 +201,8 @@ class CSCachedDictionary:
         inds = np.arange(np.prod(self.dimPhi),dtype=int) if inds is None else inds
         return(self.currYDic.mPhiY[:,inds])    
     def projY(self,vSamples):
-        # Delay domain projection complexity K*Xt*Nt
-        return(self.currYDic.mPhiY.T.conj() @ vSamples)
+        # Delay domain projection complexity K*Xt*Ncp
+        return((vSamples.T.conj() @ self.currYDic.mPhiY ).T.conj())
     def evalHDic(self,coef,inds=None):
         if inds is None:
             Nvec=coef.shape[1]
@@ -227,9 +228,9 @@ class CSCachedDictionary:
 # An FFT-accelerated improvement of the baseline Dictionary, with default behavior in AoA and AoD
 class CSBasicFFTDictionary(CSCachedDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Na,Nd = dimH if dimH else self.dimH
+        K,Ncp,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
-        TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
+        TDoAdic=np.arange(0.0,Ncp,float(Ncp)/Lt)#in discrete samples Ds = Ts*Ncp, fractional TDoA supported
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))
         mPhiH=self.createHCols(
@@ -242,7 +243,7 @@ class CSBasicFFTDictionary(CSCachedDictionary):
     def getHCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
-        K,Nt,Na,Nd = self.dimH
+        K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
         TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
@@ -255,7 +256,7 @@ class CSBasicFFTDictionary(CSCachedDictionary):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
         Nsym,K,Nrfr=self.currYDic.dimY
-        K,Nt,Na,Nd = self.dimH
+        K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_angles=np.unravel_index(inds, (Lt,La*Ld))
         TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
@@ -265,15 +266,15 @@ class CSBasicFFTDictionary(CSCachedDictionary):
         col_tot= (col_tdoa*col_angles).reshape(Nsym*K*Nrfr,Ncol)  
         return(col_tot)
     def projY(self,vSamples):
-        # Delay domain projection complexity K*Xt*(1+log(Nt*Xt))
-        K,Nt,Na,Nd = self.dimH
+        # Delay domain projection complexity K*Xt*(1+log(Ncp*Xt))
+        K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         Nsym,K,Nrfr=self.currYDic.dimY
-        Ncomb=K//Nt
+        Ncomb=K//Ncp
         Ccorr=self.currYDic.mPhiY.conj()*vSamples
-        Ccomb=np.sum(Ccorr.reshape(Nsym,Nt,Ncomb,Nrfr,Ld*La),axis=(0,3))
+        Ccomb=np.sum(Ccorr.reshape(Nsym,Ncp,Ncomb,Nrfr,Ld*La),axis=(0,3))
         Cfft=np.fft.ifft(Ccomb,Lt,axis=0)*Lt#fft conj
-        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Nt,Nt/Lt).reshape(Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1))
+        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1))
         c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
         return( c )
 
@@ -281,12 +282,12 @@ class CSBasicFFTDictionary(CSCachedDictionary):
 # A multi dimensional dictionary without acceleration, but significant memory saving
 class CSMultiDictionary(CSCachedDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Na,Nd = dimH if dimH else self.dimH
+        K,Ncp,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
-        TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
+        TDoAdic=np.arange(0.0,Ncp,float(Ncp)/Lt)#in discrete samples Ds = Ts*Ncp, fractional TDoA supported
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))   
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))     
-        mPhiH_tdoa=self.funTDoAh(TDoAdic,Nt,K)
+        mPhiH_tdoa=self.funTDoAh(TDoAdic,Ncp,K)
         mPhiH_aoa=self.funAoAh(AoAdic,Na)
         mPhiH_aod=self.funAoDh(AoDdic,Nd)
         mPhiH=(mPhiH_tdoa,mPhiH_aoa,mPhiH_aod)
@@ -294,7 +295,7 @@ class CSMultiDictionary(CSCachedDictionary):
     def getHCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
-        K,Nt,Na,Nd = self.dimH
+        K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
         col_tdoa = self.currHDic.mPhiH[0][:,None,None,ind_tdoa]
@@ -324,7 +325,7 @@ class CSMultiDictionary(CSCachedDictionary):
         return(col_tot) 
     def projY(self,vSamples):        
         Nsym,K,Nrfr = self.currYDic.dimY
-        K,Nt,Na,Nd = self.dimH
+        K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         mPhiY_tdoa,mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY
         vSamples = vSamples.reshape((Nsym,K,Nrfr,1))
@@ -339,9 +340,9 @@ class CSMultiDictionary(CSCachedDictionary):
 # A multi dimensional dictionary with FFT acceleration in all axes
 class CSMultiFFTDictionary(CSMultiDictionary):
     def createHDic(self,dimH=None,dimPhi=None):                
-        K,Nt,Na,Nd = dimH if dimH else self.dimH
+        K,Ncp,Na,Nd = dimH if dimH else self.dimH
         Lt,La,Ld =dimPhi if dimPhi else self.dimPhi
-        TDoAdic=np.arange(0.0,Nt,float(Nt)/Lt)#in discrete samples Ds = Ts*Nt, fractional delays supported
+        TDoAdic=np.arange(0.0,Ncp,float(Ncp)/Lt)#in discrete samples Ds = Ts*Ncp, fractional TDoA supported
         AoAdic=np.fft.fftshift(np.arcsin(np.arange(-1.0,1.0,2.0/La)))
         AoDdic=np.fft.fftshift(np.arcsin(np.arange(-1.0,1.0,2.0/Ld)))
         # mPhiH_aoa=self.funAoAh(AoAdic,Na)
@@ -352,12 +353,12 @@ class CSMultiFFTDictionary(CSMultiDictionary):
     def getHCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
         Ncol=len(inds)
-        K,Nt,Na,Nd = self.dimH
+        K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
         TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
         col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(K,1,1,1)*TDoA_vals) /np.sqrt(K)
-        # col_tdoa = self.funTDoAh(TDoA_vals,Nt,K)[:,None,None,:]
+        # col_tdoa = self.funTDoAh(TDoA_vals,Ncp,K)[:,None,None,:]
         AoA_vals=self.currHDic.AoAdic[ind_aoa]
         col_aoa = self.funAoAh(AoA_vals,Na)[None,:,None,:]
         AoD_vals=self.currHDic.AoDdic[ind_aod]
@@ -376,11 +377,11 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         Nsym,K,Nrfr = self.currYDic.dimY
         wp,vp = self.currYDic.pilotPattern
         Lt,La,Ld = self.dimPhi
-        K,Nt,Na,Nd = self.dimH
+        K,Ncp,Na,Nd = self.dimH
         ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
         TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
         col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1,1)*TDoA_vals)/np.sqrt(K)
-        # col_tdoa = self.funTDoAh(TDoA_vals,Nt,K)[None,:,None,None,:]
+        # col_tdoa = self.funTDoAh(TDoA_vals,Ncp,K)[None,:,None,None,:]
         AoA_vals=self.currHDic.AoAdic[ind_aoa]
         col_aoa = np.matmul( wp, self.funAoAh(AoA_vals,Na))[:,:,:,None,:]
         AoD_vals=self.currHDic.AoDdic[ind_aod]
@@ -388,29 +389,30 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot)   
     def projY(self,vSamples):
-        # Delay domain projection complexity K*Xt*(1+log(Nt*Xt))
-        K,Nt,Na,Nd = self.dimH
+        # Delay domain projection complexity K*Xt*(1+log(Ncp*Xt))
+        K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         Nsym,K,Nrfr=self.currYDic.dimY
         wp,vp = self.currYDic.pilotPattern
         vSamples = vSamples.reshape((Nsym,K,Nrfr,1))        
         v2 = np.fft.ifft(np.matmul(wp.transpose(0,1,3,2).conj(),vSamples),La,axis=2,norm='ortho')*np.sqrt(La/Na)
         v3 = np.fft.ifft(np.matmul(v2,vp.transpose(0,1,3,2).conj()),Ld,axis=3,norm='ortho')*np.sqrt(Ld/Nd)
-        Ncomb=K//Nt
-        Ccorr=v3.reshape(Nsym,Nt,Ncomb,La,Ld)#sum of Nrfr done by matmul
+        Ncomb=K//Ncp
+        Ccorr=v3.reshape(Nsym,Ncp,Ncomb,La,Ld)#sum of Nrfr done by matmul
         Ccomb=np.sum(Ccorr,axis=0)
         Cfft=np.fft.ifft(Ccomb,Lt,axis=0)*Lt/np.sqrt(K)#fft conj
-        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Nt,Nt/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
+        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
         c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
+        # Cfft2=Ccomb*np.exp(2j*np.pi*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
+        # Cfft2=np.fft.ifft(Cfft2,Lt,axis=0)*Lt/np.sqrt(K)#fft conj
+        # Cbutterfly2=Cfft2*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1))
+        # print(f'Same result {np.max(np.abs(Cbutterfly2-Cbutterfly))}')
         return( c )
 
 OMPInfoSet = col.namedtuple( "OMPInfoSet",[
-        "coefs",
-        "delays",
-        "AoDs",
-        "AoAs",
-        "observations",
-        "outputs",
+        "multipaths",
+        "Ycols",
+        "Hcols",
     ])
 
 class OMPCachedRunner:
@@ -431,13 +433,13 @@ class OMPCachedRunner:
         return(s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new)
     def getBestProjBR(self,vSamples,Xmu):
         s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new=self.getBestProjDicInd(vSamples)
-        K,Nt,Na,Nd = self.dictionaryEngine.dimH
+        K,Ncp,Na,Nd = self.dictionaryEngine.dimH
         Lt,La,Ld = self.dictionaryEngine.dimPhi
         boolTable=np.unpackbits(np.arange(8,dtype=np.uint8).reshape(-1,1),axis=1,count=3,bitorder='little')
         muTable=boolTable-.5
         mid_mu=np.array([0,0,0],dtype=np.double)    
         while ( np.any(np.abs(mid_mu-muTable)>(.5/Xmu)) ):
-            TDoA_mu = TDoA_new + muTable[:,0]*Nt/Lt             
+            TDoA_mu = TDoA_new + muTable[:,0]*Ncp/Lt             
             AoA_mu = np.arcsin(np.mod( np.sin(AoA_new) - muTable[:,1]*2.0/La +1,2)-1)
             AoD_mu = np.arcsin(np.mod( np.sin(AoD_new) - muTable[:,2]*2.0/Ld +1,2)-1)
             vref=self.dictionaryEngine.createYCols(TDoA_mu,AoA_mu,AoD_mu)
@@ -457,19 +459,20 @@ class OMPCachedRunner:
             c_max = corr_mu[bestInd,0]
         return(s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new)
                 
-    def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0, Nt=None):
+    def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0, Ncp=None):
         Nsym=np.shape(vp)[0]
         K=np.shape(v)[1]
-        Nt = K if Nt is None else Nt
+        Ncp = K if Ncp is None else Ncp
         Nd=np.shape(vp)[2]
 #        Nrft=np.shape(vp)[3]
         Nrfr=np.shape(wp)[2]
         Na=np.shape(wp)[3]
         vflat=v.reshape(Nsym*K*Nrfr,1)
         
-        self.dictionaryEngine.setHDic((K,Nt,Na,Nd),(int(Nt*Xt),int(Na*Xa),int(Nd*Xd))) 
-        self.dictionaryEngine.setYDic(pilotsID,(wp,vp))      
-    
+        Lt,La,Ld=(int(Ncp*Xt),int(Nd*Xd),int(Na*Xa))
+        self.dictionaryEngine.setHDic((K,Ncp,Na,Nd),(Lt,La,Ld)) 
+        self.dictionaryEngine.setYDic(pilotsID,(wp,vp))        
+            
         r=vflat
         Rsupp=np.zeros(shape=(Nsym*K*Nrfr,Nsym*K*Nrfr),dtype=np.complex128)
         delay_supp=np.zeros(Nsym*K*Nrfr)
@@ -494,22 +497,28 @@ class OMPCachedRunner:
             ctr=ctr+1
 #        print('OMPBR ctr %d'%ctr)        
         Hsupp = self.dictionaryEngine.createHCols(delay_supp[0:ctr] , aoa_supp[0:ctr], aod_supp[0:ctr])
-        Isupp=OMPInfoSet(vflat_proj,delay_supp[0:ctr] , aod_supp[0:ctr], aoa_supp[0:ctr], Rsupp[:,0:ctr] , Hsupp)
+        multipath = pd.DataFrame({
+            "coefs" : vflat_proj[:,0],
+            "TDoA"  : delay_supp[0:ctr],
+            "AoA"   : aoa_supp[0:ctr],
+            "AoD"   : aod_supp[0:ctr]
+            })
         hest= Hsupp @ vflat_proj
-        return( hest.reshape(K,Na,Nd), Isupp )
+        return( hest.reshape(K,Na,Nd), multipath , Rsupp[:,0:ctr] , Hsupp )
         
-    def Shrinkage(self,v,shrinkageParams,Nit,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, shrinkageAlg = "ISTA"):
+    def Shrinkage(self,v,shrinkageParams,Nit,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, shrinkageAlg = "ISTA", Ncp=None):
         Nsym=np.shape(vp)[0]
-        Nt=np.shape(v)[1]
+        K=np.shape(v)[1]
+        Ncp = K if Ncp is None else Ncp
         Nd=np.shape(vp)[2]
 #        Nrft=np.shape(vp)[3]
         Nrfr=np.shape(wp)[2]
         Na=np.shape(wp)[3]
-        vflat=v.reshape(Nsym*Nt*Nrfr,1)
+        vflat=v.reshape(Nsym*K*Nrfr,1)
         r=vflat
         
-        Lt,La,Ld=(int(Nt*Xt),int(Nd*Xd),int(Na*Xa))
-        self.dictionaryEngine.setHDic((Nt,Nt,Na,Nd),(Lt,La,Ld)) 
+        Lt,La,Ld=(int(Ncp*Xt),int(Nd*Xd),int(Na*Xa))
+        self.dictionaryEngine.setHDic((K,Ncp,Na,Nd),(Lt,La,Ld)) 
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))        
         
 #        print("max beta %f"%(1.0/np.sum(np.abs(outputDic)**2)))
@@ -541,9 +550,9 @@ class OMPCachedRunner:
                 r=vflat-self.dictionaryEngine.evalYDic(et)
             elif  shrinkageAlg == "AMP":
                 alpha=shrinkageParams[0]
-                bt=np.sum(np.abs(et)>0)/(Nsym*Nt*Nrfr)
+                bt=np.sum(np.abs(et)>0)/(Nsym*Ncp*Nrfr)
                 c=et+self.dictionaryEngine.projY( r )
-                lamb = alpha*np.sqrt(np.sum(np.abs(r)**2)/(Nsym*Nt*Nrfr))
+                lamb = alpha*np.sqrt(np.sum(np.abs(r)**2)/(Nsym*Ncp*Nrfr))
                 et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-lamb,0)
                 old_r=r
                 r=vflat-self.dictionaryEngine.evalYDic(et)+bt*old_r
@@ -554,26 +563,31 @@ class OMPCachedRunner:
 #                if np.any(np.isnan(np.matmul(M1,vflat)+np.matmul(M2,r_mmse))) or  np.any(np.isinf(np.matmul(M1,vflat)+np.matmul(M2,r_mmse))):
 #                    print("aqui")
 #                et_mmse=np.matmul(Vh.T.conj(),np.linalg.lstsq(M3,np.matmul(M1,vflat)+np.matmul(M2,r_mmse),rcond=None)[0])
-                M3_diagInv=( 1/(S**2+sigma2w/sigma2t_mmse) ).reshape((Nsym*Nt*Nrfr,1))
+                M3_diagInv=( 1/(S**2+sigma2w/sigma2t_mmse) ).reshape((Nsym*Ncp*Nrfr,1))
                 et_mmse=np.matmul(Vh.T.conj(), M3_diagInv * np.matmul(M1,vflat)+np.matmul(M2,r_mmse) )
-                vt_mmse=np.sum(1.0/((S**2)*sigma2t_mmse/sigma2w+1))/(Nt*Nd*Na)
+                vt_mmse=np.sum(1.0/((S**2)*sigma2t_mmse/sigma2w+1))/(Ncp*Nd*Na)
                 r=et_mmse-vt_mmse*r_mmse//(1-vt_mmse)
                 sigma2t=sigma2t_mmse*vt_mmse/(1-vt_mmse)
                 #Shrinkage stage
-                lamb=alpha*np.sqrt(sigma2t/(Nsym*Nt*Nrfr))
+                lamb=alpha*np.sqrt(sigma2t/(Nsym*Ncp*Nrfr))
                 et=np.exp(1j*np.angle(r))*np.maximum(np.abs(r)-lamb,0)
-                vt=np.sum(np.abs(et)>0)/(Nsym*Nt*Nrfr)
+                vt=np.sum(np.abs(et)>0)/(Nsym*Ncp*Nrfr)
                 r_mmse=(et-vt*r)/(1-vt)
                 sigma2t_mmse=sigma2t*vt/(1-vt)
             else:
                 print("Unknown algoritm")
                 return((0,0))
             
-        lInds=np.where(et>0)[0]        
+        lInds=np.where(et>0)[0]                
         TDoA,AoA,AoD = self.dictionaryEngine.ind2Param(lInds)
         Hsupp = self.dictionaryEngine.createHCols(TDoA,AoA,AoD)
         Ysupp = self.dictionaryEngine.createYFromH(Hsupp)
-        Isupp=OMPInfoSet( et[lInds], TDoA,AoA,AoD , Ysupp ,Hsupp)
+        multipath = pd.DataFrame({
+            "coefs" : et[lInds],
+            "TDoA"  : TDoA,
+            "AoA"   : AoA,
+            "AoD"   : AoD
+            })
         hest= Hsupp @ et[lInds]
-        return( hest.reshape(Nt,Na,Nd), Isupp )
+        return( hest.reshape(Ncp,Na,Nd), multipath , Ysupp , Hsupp )
             

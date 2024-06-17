@@ -273,7 +273,7 @@ if EST_CHANS:
     bar = Bar("estchans", max=Nsims)
     bar.check_tty = False
     for nsim in range(Nsims):    
-        mpch=chgen.dChansGenerated[(0,0,x0[nsim],y0[nsim])]
+        mpch=chgen.dChansGenerated[(0,0,10,x0[nsim],y0[nsim], 1.5)]
         (w,v)=pilgen.generatePilots((K,Nxp,Nrfr,Na,Nd,Nrft),"UPhase")
         zp=(np.random.randn(K,Nxp,Na,1)+1j*np.random.randn(K,Nxp,Na,1))/np.sqrt(2)
         ht=mpch.getDEC(Na,Nd,Nt,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
