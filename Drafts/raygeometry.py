@@ -53,50 +53,30 @@ plt.title("All angles of a multipath channel with correct tau0, random phi0")
 loc=MultipathLocationEstimator.MultipathLocationEstimator()
 phi0_search=np.linspace(0,2*np.pi,1000).reshape(-1,1)
 
-x0all=np.zeros((1000,Npath-2))
-y0all=np.zeros((1000,Npath-2))
-tauEall=np.zeros((1000,Npath-2))
+d0_3path=np.zeros((1000,Npath-2,2))
+tauE_3path=np.zeros((1000,Npath-2))
 
 for ct in range(phi0_search.size):
     for gr in range(Npath-2):
-        (x0all[ct,gr],y0all[ct,gr],tauEall[ct,gr],vxest,vyest)= loc.computeAllPaths(AoD[gr:gr+3],AoA[gr:gr+3],dels[gr:gr+3],phi0_search[ct])
+        (d0_3path[ct,gr,:],tauE_3path[ct,gr],_)= loc.computeAllPathsV1(AoD[gr:gr+3],AoA[gr:gr+3],dels[gr:gr+3],rotation=phi0_search[ct])
 
 plt.figure(2)
 
-#with open('BStower.svg', 'r') as f:
-#    img_svg = f.read()
-#img_png = cairosvg.svg2png(bytestring=img_svg.encode('utf-8'))
-#img_tower = OffsetImage(Image.open(BytesIO(img_png)), zoom=.1)
-#with open('m2mapplications_logistics.svg', 'r') as f:
-#    img_svg = f.read()
-#img_png = cairosvg.svg2png(bytestring=img_svg.encode('utf-8'))
-#img_mobile = OffsetImage(Image.open(BytesIO(img_png)), zoom=.075)
-
 plt.plot([0,x0_true],[0,y0_true],':g', label='_nolegend_')
-plt.plot(x0all,y0all,':', label='_nolegend_')
+plt.plot(d0_3path[:,:,0],d0_3path[:,:,1],':', label='_nolegend_')
 plt.plot(0,0,'sb',markersize=10)
-#img_tower.image.axes=plt.gca()
-#abt = AnnotationBbox(img_tower, (0,0), frameon=False, pad=0.0,)
-#plt.gca().add_artist(abt)
 plt.plot(x0_true,y0_true,'^g',markersize=10)
-#img_mobile.image.axes=plt.gca()
-#abm = AnnotationBbox(img_mobile, (x0_true,y0_true), frameon=False, pad=0.0,)
-#plt.gca().add_artist(abm)
 plt.axis([-50,50,-50,50])
 plt.xlabel('$d_{ox}$ (m)')
 plt.ylabel('$d_{oy}$ (m)')
 plt.legend(['Transmitter','Receiver'])
 plt.savefig('../Figures/graphsol%d.eps'%(Npath))
 
-
-from mpl_toolkits import mplot3d
-X0e=np.zeros((1000,Npath))
-Y0e=np.zeros((1000,Npath))
-TauEe=np.zeros((1000,Npath))
+d0_drop1=np.zeros((1000,Npath,2))
+tauE_drop1=np.zeros((1000,Npath))
 for ct in range(phi0_search.size):
     for gr in range(Npath):
-        (X0e[ct,gr],Y0e[ct,gr],TauEe[ct,gr],vxest,vyest)=loc.computeAllPaths(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],phi0_search[ct])
-
+        (d0_drop1[ct,gr,:],tauE_drop1[ct,gr],_)=loc.computeAllPathsV1(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],rotation=phi0_search[ct])
 
 (phi0_bisec,x0_bisec,y0_bisec,_,x_bisec,y_bisec,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,AoA0_method='brute', group_method='3path')
 print(np.mod(phi0_bisec,2*np.pi),phi0_true[0])
@@ -160,7 +140,7 @@ print(error_bisec,error_root)
 
 
 plt.figure(5)
-plt.plot(X0e,Y0e,':', label='_nolegend_')
+plt.plot(d0_drop1[:,:,0],d0_drop1[:,:,1],':', label='_nolegend_')
 plt.plot(0,0,'sb',markersize=10)
 plt.plot(x0_true,y0_true,'^g',markersize=10)
 plt.axis([-50,50,-50,50])
@@ -172,12 +152,12 @@ plt.savefig('../Figures/graphsoldrop1%d.eps'%(Npath))
 plt.figure(6)
 ax = plt.axes(projection='3d')
 for gr in range(Npath):
-    ax.plot3D(X0e[:,gr],Y0e[:,gr],tau0_true*c+c*TauEe[:,gr], ':', label='_nolegend_')
+    ax.plot3D(d0_drop1[:,gr,0],d0_drop1[:,gr,1],tau0_true*c+c*tauE_drop1[:,gr], ':', label='_nolegend_')
 ax.plot3D([0],[0],[0],'sb',markersize=10)
 ax.plot3D(x0_true,y0_true,tau0_true*c*np.ones_like(y0_true),'^g',markersize=10)
 ax.set_xlim(-50,50)
 ax.set_ylim(-50,50)
-ax.set_zlim(0,np.max(tau0_true*c+c*TauEe[TauEe>0]))
+ax.set_zlim(0,np.max(tau0_true*c+c*tauE_drop1[tauE_drop1>0]))
 ax.set_xlabel('$d_{ox}$ (m)')
 ax.set_ylabel('$d_{oy}$ (m)')
 ax.set_zlabel('$\\ell_e$ (m)')
@@ -189,12 +169,12 @@ plt.savefig('../Figures/graph3Dsoldrop1%d.eps'%(Npath))
 plt.figure(7)
 ax = plt.axes(projection='3d')
 for gr in range(Npath-2):
-    ax.plot3D(x0all[:,gr],y0all[:,gr],tau0_true*c+c*tauEall[:,gr], ':', label='_nolegend_')
+    ax.plot3D(d0_3path[:,gr,0],d0_3path[:,gr,1],tau0_true*c+c*tauE_3path[:,gr], ':', label='_nolegend_')
 ax.plot3D([0],[0],[0],'sb',markersize=10)
 ax.plot3D(x0_true,y0_true,tau0_true*c*np.ones_like(y0_true),'^g',markersize=10)
 ax.set_xlim(-50,50)
 ax.set_ylim(-50,50)
-ax.set_zlim(0,np.max(tau0_true*c+3e8*TauEe[TauEe>0]))
+ax.set_zlim(0,np.max(tau0_true*c+3e8*tauE_3path[tauE_3path>0]))
 ax.set_xlabel('$d_{ox}$ (m)')
 ax.set_ylabel('$d_{oy}$ (m)')
 ax.set_zlabel('$\\ell_e$ (m)')

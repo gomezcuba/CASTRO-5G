@@ -45,7 +45,6 @@ dels = tau-tau0+clock_error+del_error
 
 loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=100,RootMethod='lm')
 
-
 t_start_b = time.time()
 AoA0_b=np.zeros((1,Nsims))
 x0_b=np.zeros((1,Nsims))

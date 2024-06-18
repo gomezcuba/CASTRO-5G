@@ -19,7 +19,6 @@ def fUCA(incidAngle , Nant = 5, dInterElement = .5):
     a=np.exp(-2j*np.pi*R*np.cos(incidAngle[...,None,None]-phiAnt[:,None])) /np.sqrt(1.0*Nant)
     return(a)
     
-
 class DiscreteMultipathChannelModel:
     def __init__(self,dims=(128,4,4),fftaxes=(1,2)):
         self.dims=dims
@@ -36,6 +35,21 @@ class DiscreteMultipathChannelModel:
         for a in self.Faxes:
             h=np.fft.fft(h,axis=a,norm="ortho")    
         return h
+
+class ReflectedMultipathChannelModel:
+    def __init__(self,Npath=20,bounds=np.array(((0,1),(0,1),(0,1))),mode3D=True):
+        self.Npath=20
+        self.bounds=bounds
+        self.mode3D=mode3D        
+    def create_channel(self, txPos, rxPos):
+        d0=np.array(rxPos)-np.array(txPos)
+        Ndim= 3 if self.mode3D else 2
+        d=np.zeros((Ndim,self.Npath))
+        for m in range(Ndim):
+            d[m,:]=np.random.uniform(self.bounds[m,0],self.bounds[m,1],self.Npath)
+        # df = pd.DataFrame(data=d,columns=['posX','posY','posZ'])
+        return (d)
+        
 
 class MIMOPilotChannel:
     def __init__(self, defAlgorithm="Eye"):

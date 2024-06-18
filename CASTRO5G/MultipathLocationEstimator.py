@@ -1,14 +1,12 @@
 #!/usr/bin/python
 
-
 import numpy as np
 import scipy.optimize as opt
 import argparse
 import pandas as pd
 
-
 class MultipathLocationEstimator:
-    """Class used to perform the calculation and estimation of the UE (User Equipment) position in 2D. 
+    """Class used to calculate 5G UE (User Equipment) location in 2D and 3D. 
     
     The main goal of the MultipathLocationEstimator class is try to recover the UE position trigonometrically, defined as 
     (d0x, d0y), estimating the value of user offset orientation (phi_0) from the knowledge of the set of the Angles of Departure 
@@ -18,8 +16,6 @@ class MultipathLocationEstimator:
     and orientation error.
     
     ...
-    
-
 
     Attributes
     ---------
@@ -31,144 +27,61 @@ class MultipathLocationEstimator:
         ** lm (Levenberg–Marquardt algorithm): specified for solving non-linear least squares problem.
         ** hybr (Hybrid method): it uses Powell's dog leg method, an iterative optimization algorithm for the solution of 
         non-linear least squares problem.
-
-
-    Methods
-    -------
-    computeAllPaths(AoD, DAoA, TDoA, AoA0_est)
-        Performs the calculation of the possible UE vector positions using the linear method.
-     
-    gen3PathGroup(Npath)
-        Returns the table with the path groups using the 3-path method.
-    
-    genDrop1Group(Npath)
-        Returns the table with the path groups using the drop1 method.
-    
-    genRandomGroup(Npath, Nlines)
-        Returns the table with the path groups using the random method.
-    
-    feval_wrapper_AllPathsByGroupsFun(x, AoD, DAoA, TDoA, group_method='drop1')
-        Defines the minimum mean squared (MSE) distance function to solve all the possible UE vector positions using the 
-        linear method by grouping the paths into sets defined by the group_method.
-    
-    bruteAoA0ForAllPaths(self, AoD, DAoA, TDoA, Npoint, group_method='drop1')
-        Performs the estimation of the value of AoA0 using the brute force method.
-    
-    solveAoA0ForAllPaths(self, AoD, DAoA, TDoA, init_AoA0, group_method='drop1', RootMethod='lm')
-        Performs the estimation of the value of AoA0 using the scipy.optimize.root function.
-    
-    computeAllLocationsFromPaths(self, AoD, DAoA, TDoA, Npoint, hint_AoA0=None, AoA0_method='fsolve', group_method='drop1', RootMethod='lm')
-        Performs the estimation of the phi_0 specified by the parameter method, and returns the position of the UE for this angle.
     
     """
    
     def __init__(self, Npoint=100, RootMethod='lm'):
-        """Constructs all the attributes for the MultipathLocationEstimator object.
-
-
+        """ MultipathLocationEstimator constructor.
+        
         Parameters
         ----------
 
-
         Npoint : int, optional
-            Total point divisions in the minimization range of search.
-
+            Total points in the search range for brute-force orientation finding.
 
         RootMethod: str, optional
-            Type of solver.
-            ** lm (Levenberg–Marquardt algorithm): specified for solving non-linear least squares problems.
-            ** hybr (Hybrid method): it uses Powell's dog leg method, an iterative optimization algorithm for the solution of 
-            non-linear least squares problem.
+            Type of solver algorithm for scipy.optimize.root() LS orientation finding.
+            ** lm : Levenberg–Marquardt algorithm for solving non-linear least squares problems.
+            ** hybr : Hybrid method using Powell's dog leg method, an iterative optimization algorithm for solving non-linear least squares problem.
             
         """
-
-
         self.NLinePointsPerIteration = Npoint
         self.RootMethod = RootMethod
         self.c = 3e8
     
-    def computeAllPaths(self, AoD, DAoA, TDoA, AoA0_est):
-        """Performs the calculation of the possible UE vector positions using the linear method.
-        
-        The value of the UE position is obtained by using the linear algorithm estimation. For this purpose the 
-        algorithm takes the sets of the DAoA, AoD and delays values of the all the NLOS Npaths and obtained all 
-        the possibles position vectors (d0x, d0y) of the UE, for the value specified by AoA0_est.
-        
-        
-        ----------------------------------    GENERALIZED LINEAR METHOD    -------------------------------------
-
-
-        Considering having the DAoA, AoD and delays values for Npaths: {1,2,3, . . . , Npath}, generalized linear method 
-        is divided into the following steps:
-        
-        STEP (1):
-            Obtain the unknown values for P, Q and Dl unknowns for the Npaths.
-        
-        STEP (2): 
-            With Npaths, it can be written the following system of linear equations:
-            
-                                                            A @ x = b      (1)
-            
-            
-                                    | P{1}     Q{1}     -1|              |  Dl[1]  |
-                                    | P{2}     Q{1}     -1|              |  Dl[2]  |
-                                    | P{3}     Q{1}     -1|   |d0xest|   |  Dl[3]  |
-                                    | P{4}     Q{1}     -1| @ |d0yest| = |  Dl[4]  |  (2)
-                                    |                     |   |l0err |   |         |
-                                    |           ...       |              |   ...   |
-                                    |                     |              |         |
-                                    | P{Npath} P{Npath} -1|              |Dl[Npath]|
-
-
-
-
-        STEP (3):
-            Compute the minimum least-squares solution.
-            
-            *** The method "numpy.linalg.lstsq" computes the least-squares solution. What means that obtains the vector x that 
-            approximately solves the equation (1). 
-            In this case, the system is over-determined (the number of linearly independent rows of a can be less than, 
-            equal to, or greater than its number of linearly independent columns). So if there are multiple minimizing 
-            solutions, the one with the smallest euclidean 2-norm (min|b - A x|) is returned.
+    def computeAllPathsV1(self, AoD, DAoA, TDoA, rotation=None):
+        """Calculates the possible UE vector positions in 2D using the LS method.
         
         ----------------------------------------------------------------------------------------------------------
         
         Parameters
         ----------
         AoD  : ndarray
-            Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
+            Azimuths of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
             non-clockwise.
             
-        DAoA  : ndarray
-            Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
+        DAoA : ndarray
+            Azimuths of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
             non-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
             
         TDoA : ndarray
             Delays introduced by the NLOS ray propagations.
             
-        AoA0_est: ndarray
-            Offset angle of the UE orientation in the non-clockwise sense.
-
+        rotation: ndarray
+            Offset AoA of the UE orientation in the counter-clockwise sense.
 
         Returns
         -------
-        d0xest : ndarray
-            x-coordinate of the UE estimated position.
-            
-        d0yest : ndarray
-            y-coordinate of the UE estimated position.
+        d0_est : ndarray
+            x,y-coordinates of the UE estimated position.
             
         tauEest : ndarray
             initial delay difference between the LOS path and the NLOS path propagation.
             
-        vyest : ndarray
-           x-coordinate of the scatter estimated position.
-            
-        vxest : ndarray
-           y-coordinate of the scatter estimated position.
-          
+        d_est : ndarray
+           x,y-coordinates of the scatter estimated position.
         """
-    
+        AoA0_est = 0 if rotation is None else rotation
         tgD = np.tan(AoD)
         tgA = np.tan(DAoA + AoA0_est)
         sinD = np.sin(AoD)
@@ -181,25 +94,24 @@ class MultipathLocationEstimator:
         P = P*P_mask
         P[np.isnan(P)] = 1
 
-
         Q = (cosA + cosD)/(sinD*cosA - cosD*sinA)
         Q_mask = np.invert((np.isinf(Q) + np.isnan(Q)), dtype=bool)
         Q = Q*Q_mask
         Q[np.isnan(Q)] = 1
 
-
         Dl = TDoA*self.c
         
         result = np.linalg.lstsq(np.column_stack([P, Q, -np.ones_like(P)]), Dl, rcond=None)
-        (d0xest, d0yest, l0err) = result[0]
+        d0_est = result[0][0:-1]
+        l0_err = result[0][-1]        
+        l0_est = np.linalg.norm(d0_est)
+        ToA0_est = (l0_est - l0_err)/self.c
         
-        l0est = np.sqrt(d0xest**2 + d0yest**2)
-        tauEest = (l0est - l0err)/self.c
-        
-        vyest = np.where(tgD!=0, (-tgA*d0xest + d0yest)/(-tgA/tgD + 1), 0)
-        vxest = np.where(tgD!=0, vyest/tgD, d0xest - d0yest/tgA)
+        vyest = np.where(tgD!=0, (-tgA*d0_est[0] + d0_est[1])/(-tgA/tgD + 1), 0)
+        vxest = np.where(tgD!=0, vyest/tgD, d0_est[0] - d0_est[1]/tgA)
+        d_est=np.vstack([vxest,vyest])
             
-        return(d0xest, d0yest, tauEest, vxest, vyest)
+        return(d0_est, ToA0_est, d_est)
     def uVector(self,A,Z=None):
         if Z is None:
             return( np.column_stack([np.cos(A),np.sin(A)]) )
@@ -223,7 +135,7 @@ class MultipathLocationEstimator:
             return( self.rMatrix3D(Z,1)@self.rMatrix3D(A,2) )
         else:
             return( self.rMatrix3D(Y,0)@self.rMatrix3D(Z,1)@self.rMatrix3D(A,2) )
-    def computeAllPathsV2(self, AoD, DAoA, TDoA, ZoD=None, DZoA=None, rotation=None):       
+    def computeAllPaths(self, AoD, DAoA, TDoA, ZoD=None, DZoA=None, rotation=None):       
         Npath=len(AoD)    
         #TODO choose a library to provide uVector globally to the project
         DoD = self.uVector(AoD,ZoD)
@@ -250,49 +162,34 @@ class MultipathLocationEstimator:
         
         
     def gen3PathGroup(self, Npath):
-        """Returns the table with the path groups using the 3-path method.
+        """Returns a Npath-2 x Npath boolean table representing paths belonging to 3-path groups.
         
-        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
-        groups of paths G1(1, 2, 3), G2(2, 3, 4) , G3(3, 4, 5), . . ., Gm(Npath-2, Npath-1, Npath). Each group is defined as 
-        the result of combination of 3 paths in a total of (Npath-2) groups.
-          
+        Divides the set {1, 2, 3, . . ., Npath} into Npath-2 groups of paths G1={1, 2, 3},
+        G2={2, 3, 4} , G3{3, 4, 5}, . . ., Gm={Npath-2, Npath-1, Npath}. 
+        
         E.g.:
-        The total number of paths, Npath = 10, so groups includes paths as:
-        
-                                                G1 = {1,2,3}       G5 = {5,6,7}
-                                                G2 = {2,3,4}       G6 = {6,7,8}
-                                                G3 = {3,4,5}       G7 = {7,8,9}
-                                                G4 = {4,5,6}       G8 = {8,9,10}
-        
+        Npath = 5, the groups includes paths as:        
+                                                G1 = {1,2,3}
+                                                G2 = {2,3,4}
+                                                G3 = {3,4,5}        
         For this examples, the table is generated as:
-        
-                                 |True  True  True False False False False False False False|
-                                 |False True  True  True False False False False False False|
-                                 |False False True  True  True False False False False False|
-                                 |False False False True  True  True False False False False|
-                                 |False False False False True  True  True False False False|
-                                 |False False False False False True  True  True False False|
-                                 |False False False False False False True  True  True False|
-                                 |False False False False False False False True  True  True|
-        
+                                 |True  True  True False False|
+                                 |False True  True  True False|
+                                 |False False True  True  True|
+                                 
         ---------------------------------------------------------------------------------------------------------
-
 
         Parameters
         ----------
         Npath  : int
-            Total number of NLOS paths.
-
+            Total number of paths.
 
         Returns
         -------
         table_group : ndarray
             Boolean array that contains all the 3-path groups.
-           
-        """
-        
+        """        
         table_group = np.empty((Npath-2, Npath), dtype=bool)
-
 
         for gr in range(Npath-2):
             path_indices = [gr, gr+1, gr+2]
@@ -302,50 +199,35 @@ class MultipathLocationEstimator:
 
 
     def genDrop1Group(self, Npath):
-        """Returns the table with the path groups using the drop1 method.
+        """Returns a Npath x Npath boolean table representing paths belonging to drop-1 groups.
         
-        This function divides the set {1, 2, 3, . . ., Npath}, where Npath is the total number of NLOS paths into several 
-        groups of paths of paths G1, G2 , G3, . . ., Gm. Each group is defined as the group of all paths except de m-th one.
-        So the Gm group will inclue: Gm = {1, . . . ,m-1 , m+1, . . ., Npath}
-          
+        Divides the set {1, 2, 3, . . ., Npath} into Npath groups of paths G1={2, 3,...,Npath},
+        G2={1,3,...,Npath}, G3={1,2,4,...,Npath}, . . . , Gm={1,...,Npath-2, Npath-1}. 
         E.g.:
-        The total number of paths, Npath = 10, so groups includes paths as:
-        
-                                    G1 = {2,3,4,5,6,7,8,9,10}       G6 = {1,2,3,4,5,7,8,9,10}
-                                    G2 = {1,3,4,5,6,7,8,9,10}       G7 = {1,2,3,4,5,6,8,9,10}
-                                    G3 = {1,2,4,5,6,7,8,9,10}       G8 = {1,2,3,4,5,6,7,9,10}
-                                    G4 = {1,2,3,5,6,7,8,9,10}       G9 = {1,2,3,4,5,6,7,8,10}
-                                    G5 = {1,2,3,4,6,7,8,9,10}       G10 = {1,2,3,4,5,6,7,8,9}
-        
+        Npath = 5, the groups include paths as:      
+                                    G1 = {2,3,4,5}     G4 = {1,2,3,5}
+                                    G2 = {1,3,4,5}     G5 = {1,2,3,4}
+                                    G3 = {1,2,4,5}       
         For this example, the table is generated as:
-        
-                                 |False  True  True  True  True  True  True  True  True  True|
-                                 |True  False  True  True  True  True  True  True  True  True|
-                                 |True  True  False  True  True  True  True  True  True  True|
-                                 |True  True  True  False  True  True  True  True  True  True|
-                                 |True  True  True  True  False  True  True  True  True  True|
-                                 |True  True  True  True  True  False  True  True  True  True|
-                                 |True  True  True  True  True  True  False  True  True  True|
-                                 |True  True  True  True  True  True  True  False  True  True|
-                                 |True  True  True  True  True  True  True  True  False  True|
-                                 |True  True  True  True  True  True  True  True  True  False|
+                                 |False  True  True  True  True|
+                                 |True  False  True  True  True|
+                                 |True  True  False  True  True|
+                                 |True  True  True  False  True|
+                                 |True  True  True  True  False|
                               
         ---------------------------------------------------------------------------------------------------------
                          
         Parameters
         ----------
         Npath  : int
-            Total number of NLOS paths.
-
+            Total number of paths.
 
         Returns
         -------
         table_group : ndarray
-            Boolean array that contains all the drop1 groups.
-           
+            Boolean array that contains all the drop1 groups.     
         """
         table_group = np.empty((Npath, Npath), dtype=bool)
-
 
         for gr in range(Npath):
             table_group[gr,:] = np.isin(np.arange(Npath), [gr], invert=True)
@@ -354,46 +236,28 @@ class MultipathLocationEstimator:
 
 
     def genRandomGroup(self, Npath, Ngroups, Nmembers):
-        """Returns the table with the path groups using the random method.
+        """Returns a Ngroup x Npath boolean table representing paths belonging to random groups.
         
-        This function divides the set {1, 2, 3, .Npath}, where Npath is the total number of NLOS paths into several 
-        groups of paths G1(1, 2, 7), G2(2, 3, 4) , G3(3, 4, 5), . . ., Gm(Npath-2, Npath-1, Npath). Each group is defined as 
-        the result of a random choice picking Nmembers out of Npath with uniform distribution.
+        Divides the set {1, 2, 3, . . ., Npath} into Ngroup groups of Nmembers paths uniformly
+        selected at random.
           
-        E.g.:
-        The total number of paths, Npath = 10, Ngroups=6, Nmembers=4 so groups look like:
-        
-                                                G1 = {3,4,6,8}       G4 = {3,5,6,7}
-                                                G2 = {1,3,6,8}       G5 = {3,4,5,8}
-                                                G3 = {1,4,5,10}      G6 = {1,2,4,6}
-        
-        For this example, the table is generated as:
-        
-                                  |False False  True  True False  True False False  True False|
-                                  | True False  True False False  True False False  True False|
-                                  | True False False  True  True False False False False  True|
-                                  |False False  True False  True  True  True False False False|
-                                  |False False  True  True  True False False  True False False|
-                                  | True  True False  True False  True False False False False|
-        
         ---------------------------------------------------------------------------------------------------------
-
 
         Parameters
         ----------
         Npath  : int
-            Total number of NLOS paths.
-
+            Total number of paths.        
+        Ngroup : int
+            Number of groups to make
+        Nmembers : int
+            Number of members per group.
 
         Returns
         -------
         table_group : ndarray
             Boolean array that contains all the random groups.
-           
         """
-        
         table_group = np.empty((Ngroups, Npath), dtype=bool)
-
 
         for gr in range(Ngroups):
             path_indices = np.random.choice(Npath,Nmembers,replace=False)
@@ -402,19 +266,9 @@ class MultipathLocationEstimator:
         return table_group
 
 
-    def feval_wrapper_AllPathsByGroupsFun(self, x, AoD, DAoA, TDoA, group_method='drop1'):
-        """Determines the minimum mean squared (MSE) distance function of solving all the possible UE vector positions using the 
-        linear method by grouping the paths into sets defined by the group_method.
-        
-        The group_method method calls:
-        - '3path' : 
-            gen3PathGroup() to create the path groups.
-
-        - 'drop1' : 
-            genDrop1Group() to create the path groups.
-
-        - 'random' : 
-            genRandomGroup() to create the path groups.
+    def feval_wrapper_AllPathsByGroupsFunV1(self, x, AoD, DAoA, TDoA, group_method='drop1'):
+        """Evaluates the minimum mean squared (MSE) distance among all linear location solutions
+        obtained by multiple groups of paths, as a function of the AoA0 of the receiver.
             
         ---------------------------------------------------------------------------------------------------------
    
@@ -446,29 +300,25 @@ class MultipathLocationEstimator:
         """
 
         Npath = AoD.size
-
         if group_method == '3path':
-            table_group = self.gen3PathGroup(Npath)
-            
+            table_group = self.gen3PathGroup(Npath)            
         elif group_method == 'drop1':
-            table_group = self.genDrop1Group(Npath)
-            
+            table_group = self.genDrop1Group(Npath)            
         elif group_method == 'random':
             Ngroups = Npath
             Nmembers = Npath//2
             table_group = self.genRandomGroup(Npath, Ngroups, Nmembers)
-
         else:
             table_group = group_method
 
         Ngroup = table_group.shape[0]
-        d0xall = np.zeros(Ngroup)
-        d0yall = np.zeros(Ngroup)
-        tauEall = np.zeros(Ngroup)
+        d0_all = np.zeros((Ngroup,3))
 
         for gr in range(Ngroup):
-            (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPaths(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], x)
-        return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
+            (d0_all[gr,0:2], d0_all[gr,2],_) = self.computeAllPathsV1(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], rotation=x)
+        d0_all[:,2]*=self.c
+        d0_all-=np.mean(d0_all,axis=0,keepdims=True)
+        return( np.sum( np.abs(d0_all)**2 ) )
 
     def bruteAoA0ForAllPaths(self, AoD, DAoA, TDoA, Npoint, group_method='drop1'):
         """Performs the estimation of the value of AoA0 using the brute force method.
@@ -522,7 +372,7 @@ class MultipathLocationEstimator:
         dist = np.zeros(Npoint)
 
         for npoint in range(Npoint):
-            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFun(interval[npoint], AoD, DAoA, TDoA, group_method)
+            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFunV1(interval[npoint], AoD, DAoA, TDoA, group_method)
         
         distint = np.argmin(dist)
 
@@ -535,31 +385,7 @@ class MultipathLocationEstimator:
         minimum mean square error (MMSE) equation defined by feval_wrapper_AllPathsByGroups. For this purpose, it is used
         the method root() to find the solutions of this function.
 
-
-        ---------------------------------    MULTIDIMENSIONAL ROOT METHOD    ------------------------------------
-        
         In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.
-        
-        TO USE THE METHOD:
-        sol = scipy.optimize.root(fun, x0, args=(), method='lm').
-        
-        Parameters
-        ----------
-        fun : callable
-            The vector function to find a root of.
-        
-        x0 : ndarray
-            Initial guess.
-    
-        args : tuple, optional
-            Extra arguments passed to the objective function and its Jacobian. These are other variables 
-            that we aren't finding the roots for. The parameters have to appear in the same order as the function.
-            
-        method : str
-            Type of solver.
-            *** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problem.
-        
-        
         ---------------------------------------------------------------------------------------------------------
         
         Parameters
@@ -596,12 +422,12 @@ class MultipathLocationEstimator:
                   
         """
        
-        res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=init_AoA0, args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
+        res = opt.root(self.feval_wrapper_AllPathsByGroupsFunV1, x0=init_AoA0, args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
         if not res.success:
         #print("Attempting to correct initialization problem")
             niter = 0 
             while (not res.success) and (niter<1000):
-                res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=2*np.pi*np.random.rand(1), args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
+                res = opt.root(self.feval_wrapper_AllPathsByGroupsFunV1, x0=2*np.pi*np.random.rand(1), args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
                 niter += 1
         #print("Final Niter %d"%niter)
         if res.success:
@@ -693,9 +519,9 @@ class MultipathLocationEstimator:
             print("unsupported method")
             return(None)
         
-        (d0x, d0y, tauerr, vx, vy) = self.computeAllPaths(AoD, DAoA, TDoA, AoA0_est)
+        (d0, tauerr, d) = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
 
-        return(AoA0_est, d0x, d0y, tauerr, vx, vy, cov_AoA0)
+        return(AoA0_est, d0[0],  d0[1], tauerr, d[0], d[1], cov_AoA0)
         
     def getTParamToLoc(self,x0,y0,tauE,AoA0,x,y,dAxes,vAxes):
         dfun={
