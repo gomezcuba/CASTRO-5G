@@ -58,28 +58,30 @@ class MultipathLocationEstimator:
         ----------
         AoD  : ndarray
             Azimuths of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            non-clockwise.
+            counter-clockwise sense.
             
         DAoA : ndarray
-            Azimuths of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            non-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            Azimuths of Arrival of the NLOS ray propagation, measured in the UE from the positive x'-axis in the 
+            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
             
         TDoA : ndarray
-            Delays introduced by the NLOS ray propagations.
+            Time-diference of arrival introduced by the NLOS ray propagations. The absolute light travel time of
+            first path is unknown, TDoAs are measured w.r.t. an arbitrary 'zero instant' of the receiver clock.
             
-        rotation: ndarray
+        AoA0_est: ndarray
             Offset AoA of the UE orientation in the counter-clockwise sense.
 
         Returns
         -------
-        d0_est : ndarray
+        x0_est, y0_est : ndarray
             x,y-coordinates of the UE estimated position.
             
         tauEest : ndarray
-            initial delay difference between the LOS path and the NLOS path propagation.
+            initial receiver clock offset measured as difference between the TDoA 'measurement zero' and the light
+            travel time in the LoS direction l0 := √(x0_est² + y0_est²)
             
-        d_est : ndarray
-           x,y-coordinates of the scatter estimated position.
+        x_est,y_est : ndarray
+           x,y-coordinates of the scatterers' estimated positions.
         """
         tgD = np.tan(AoD)
         tgA = np.tan(DAoA + AoA0_est)
@@ -110,17 +112,6 @@ class MultipathLocationEstimator:
         vxest = np.where(tgD!=0, vyest/tgD, d0xest - d0yest/tgA)
             
         return(d0xest, d0yest, ToA0_est, vxest, vyest)
-
-    def computeAllPathsV1wrap(self, AoD, DAoA, TDoA, rotation=None):
-        """Computes computeAllPathsV1 with the input-output format of the new version
-        
-        ----------------------------------------------------------------------------------------------------------
-        """
-        AoA0_est = 0 if rotation is None else rotation
-        d0xest, d0yest, ToA0_est, vxest, vyest = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
-        d0_est = np.array([d0xest,d0yest])
-        d_est = np.vstack([vxest,vyest]).T
-        return(d0_est, ToA0_est, d_est)
     
     #TODO implement these functions from a common library in all classes
     def uVectorT(self,A,Z=None):
@@ -240,6 +231,17 @@ class MultipathLocationEstimator:
         liD_est=Vi@d0_est
         d_est=liD_est[:,None]*DoD
         return(d0_est,ToA0_est,d_est)
+    
+    def computeAllPathsV1wrap(self, AoD, DAoA, TDoA, rotation=None):
+        """Computes computeAllPathsV1 with the input-output convention of the new version
+        
+        ----------------------------------------------------------------------------------------------------------
+        """
+        AoA0_est = 0 if rotation is None else rotation
+        d0xest, d0yest, ToA0_est, vxest, vyest = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
+        d0_est = np.array([d0xest,d0yest])
+        d_est = np.vstack([vxest,vyest]).T
+        return(d0_est, ToA0_est, d_est)
         
     def gen3PathGroup(self, Npath):
         """Returns a Npath-2 x Npath boolean table representing paths belonging to 3-path groups.
@@ -357,11 +359,11 @@ class MultipathLocationEstimator:
             
         AoD  : ndarray
             Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            non-clockwise.
+            counter-clockwise.
             
         DAoA  : ndarray
             Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            non-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
             
         TDoA : ndarray
             Delays introduced by the NLOS ray propagations.
@@ -376,7 +378,6 @@ class MultipathLocationEstimator:
         Returns the mathematical polinomial function based in the minimum mean square error (MMSE) equation.
 
         """
-
         Npath = AoD.size
         if group_method == '3path':
             table_group = self.gen3PathGroup(Npath)            
@@ -390,32 +391,25 @@ class MultipathLocationEstimator:
             table_group = group_method
 
         Ngroup = table_group.shape[0]
-        # d0xall = np.zeros(Ngroup)
-        # d0yall = np.zeros(Ngroup)
-        # tauEall = np.zeros(Ngroup)
-        # for gr in range(Ngroup):
-        #     (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPathsV1(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], x)
-        # return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
-        Ndim = 2 if (ZoD is None) or (DZoA is None) else 3
-        d0_all = np.zeros((Ngroup,Ndim))
+        d0xall = np.zeros(Ngroup)
+        d0yall = np.zeros(Ngroup)
         tauEall = np.zeros(Ngroup)
         for gr in range(Ngroup):
-            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], rotation=x)
-        v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=0)
-        v_all-=np.mean(v_all,axis=0)
-        return( np.sum( np.abs(v_all)**2 ) )
+            (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPathsV1(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], x)
+        return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
+        # Ndim = 2 if (ZoD is None) or (DZoA is None) else 3
+        # d0_all = np.zeros((Ngroup,Ndim))
+        # tauEall = np.zeros(Ngroup)
+        # for gr in range(Ngroup):
+        #     (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], rotation=x)
+        # v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)
+        # v_all-=np.mean(v_all,axis=0)
+        # return( np.sum( np.abs(v_all)**2 ) )
 
-    def bruteAoA0ForAllPaths(self, AoD, DAoA, TDoA, Npoint, group_method='drop1'):
-        """Performs the estimation of the value of AoA0 using the brute force method.
-        
-        The value of the estimated offset angle of the UE orientation is obtained by using the bisection algorithm.
-        For this purpose the method divides the range of the possible values of phi_0, among 0 and 2pi into Npoints 
-        and minimize the error. The method reduces recurrently the range till minimize the error in phi_0 estimation.
-        
-        ----------------------------------------   BRUTE FORCE SEARCH    ----------------------------------------
-        
-        The brute force solution generates thousands os points in the interval (0, 2pi) and picks the one with the
-        lowest minimun square error (MSE).
+    def bruteAoA0ForAllPaths(self, AoD, DAoA, TDoA, Npoint=None, group_method='drop1'):
+        """Estimates the value of the receiver Azimuth AoA0 by brute force by minimizing the
+        mean squared distance between location solutions of multiple groups. Finds the best
+        of Npoints between 0 and 2π
         
         ---------------------------------------------------------------------------------------------------------
         
@@ -423,18 +417,19 @@ class MultipathLocationEstimator:
         ----------
         AoD  : ndarray
             Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            non-clockwise.
+            counter-clockwise.
             
         DAoA  : ndarray
             Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            non-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
             
         TDoA : ndarray
             Delays introduced by the NLOS ray propagations.
             
         Npoint : int, optional
             Total point divisions in the minimization range of search.
-            ** The range of search is [0-2pi]
+            *** The range of search is [0-2pi]
+            *** Default value is 100
             
         group_method : ndarray, optional
             Path grouping strategy.
@@ -444,24 +439,18 @@ class MultipathLocationEstimator:
         Returns
         -------
         AoA0_est: ndarray
-            Offset angle estimated of the UE orientation.
+            Receiver UE Azimuth orientation angle
 
-        """
-        
-        if not Npoint:
-            Npoint = self.NLinePointsPerIteration
-            
-        philow = 0
-        phihigh = 2*np.pi
-        interval = np.linspace(philow, phihigh, Npoint).reshape(-1,1)
+        """        
+        if Npoint is None:
+            Npoint = self.NLinePointsPerIteration            
+        interval = np.linspace(0,  2*np.pi, Npoint)
         dist = np.zeros(Npoint)
-
         for npoint in range(Npoint):
-            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFun(interval[npoint], AoD, DAoA, TDoA, group_method)
-        
-        distint = np.argmin(dist)
+            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFun(interval[npoint], AoD, DAoA, TDoA, group_method)        
+        distind = np.argmin(dist)
 
-        return(interval[distint])
+        return(interval[distind])
     
     def solveAoA0ForAllPaths(self, AoD, DAoA, TDoA, init_AoA0, group_method='drop1', RootMethod='lm'):
         """Performs the estimation of the value of AoA0 using the scipy.optimize.root function.
@@ -477,11 +466,11 @@ class MultipathLocationEstimator:
         ----------
         AoD  : ndarray
             Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            non-clockwise.
+            counter-clockwise.
             
         DAoA  : ndarray
             Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            non-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
             
         TDoA : ndarray
             Delays introduced by the NLOS ray propagations.
@@ -538,11 +527,11 @@ class MultipathLocationEstimator:
          ----------
         AoD  : ndarray
             Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            non-clockwise.
+            counter-clockwise.
             
         DAoA  : ndarray
             Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            non-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
+            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
             
         TDoA : ndarray
             Delays introduced by the NLOS ray propagations.
