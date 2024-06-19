@@ -49,7 +49,7 @@ class MultipathLocationEstimator:
         self.RootMethod = RootMethod
         self.c = 3e8
     
-    def computeAllPathsV1(self, AoD, DAoA, TDoA, rotation=None):
+    def computeAllPathsV1(self, AoD, DAoA, TDoA, AoA0_est):
         """Calculates the possible UE vector positions in 2D using the LS method.
         
         ----------------------------------------------------------------------------------------------------------
@@ -81,7 +81,6 @@ class MultipathLocationEstimator:
         d_est : ndarray
            x,y-coordinates of the scatter estimated position.
         """
-        AoA0_est = 0 if rotation is None else rotation
         tgD = np.tan(AoD)
         tgA = np.tan(DAoA + AoA0_est)
         sinD = np.sin(AoD)
@@ -102,64 +101,145 @@ class MultipathLocationEstimator:
         Dl = TDoA*self.c
         
         result = np.linalg.lstsq(np.column_stack([P, Q, -np.ones_like(P)]), Dl, rcond=None)
-        d0_est = result[0][0:-1]
-        l0_err = result[0][-1]        
-        l0_est = np.linalg.norm(d0_est)
-        ToA0_est = (l0_est - l0_err)/self.c
+        (d0xest, d0yest, l0err) = result[0]
+
+        l0est = np.sqrt(d0xest**2 + d0yest**2)
+        ToA0_est = (l0est - l0err)/self.c
         
-        vyest = np.where(tgD!=0, (-tgA*d0_est[0] + d0_est[1])/(-tgA/tgD + 1), 0)
-        vxest = np.where(tgD!=0, vyest/tgD, d0_est[0] - d0_est[1]/tgA)
-        d_est=np.vstack([vxest,vyest])
+        vyest = np.where(tgD!=0, (-tgA*d0xest + d0yest)/(-tgA/tgD + 1), 0)
+        vxest = np.where(tgD!=0, vyest/tgD, d0xest - d0yest/tgA)
             
+        return(d0xest, d0yest, ToA0_est, vxest, vyest)
+
+    def computeAllPathsV1wrap(self, AoD, DAoA, TDoA, rotation=None):
+        """Computes computeAllPathsV1 with the input-output format of the new version
+        
+        ----------------------------------------------------------------------------------------------------------
+        """
+        AoA0_est = 0 if rotation is None else rotation
+        d0xest, d0yest, ToA0_est, vxest, vyest = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
+        d0_est = np.array([d0xest,d0yest])
+        d_est = np.vstack([vxest,vyest]).T
         return(d0_est, ToA0_est, d_est)
-    def uVector(self,A,Z=None):
+    
+    #TODO implement these functions from a common library in all classes
+    def uVectorT(self,A,Z=None):
+        """Computes unitary directional ROW transposed vectors. 
+        
+        ----------------------------------------------------------------------------------------------------------
+        
+        Parameters
+        ----------
+        A  : ndarray
+            N Azimuths of the desired vectors
+            
+        Z : ndarray or None
+            if None, the outputs are 2D row vectors, otherwise the N Zeniths of the desired vectors
+
+        Returns
+        -------
+        D : ndarray
+            2xN or 3xN matrix with row values given by
+            [cos(A), sin(A)] if Z is None
+            [cos(A)*sin(Z), sin(A)sin(Z), np.cos(Z)]
+        """
         if Z is None:
             return( np.column_stack([np.cos(A),np.sin(A)]) )
         else:
             return( np.column_stack([np.cos(A)*np.sin(Z),np.sin(A)*np.sin(Z),np.cos(Z)]) )
     def rMatrix2D(self,A):
-            return( np.array([
-                [np.cos(A),-np.sin(A)],
-                [np.sin(A),np.cos(A)]
-                ]) )
+        """Computes a 2D rotation matrix 
+        
+        ----------------------------------------------------------------------------------------------------------
+        
+        Parameters
+        ----------
+        A  : float
+            N Angle of rotation
+
+        Returns
+        -------
+        R : 2x2
+            Rotation matrix
+        """
+        return( np.array([
+            [np.cos(A),-np.sin(A)],
+            [np.sin(A),np.cos(A)]
+            ]) )
     def rMatrix3D(self,A,ax=2):
+        """Computes a 3D single-axis rotation matrix 
+        
+        ----------------------------------------------------------------------------------------------------------
+        
+        Parameters
+        ----------
+        A  : float
+            Angle of rotation
+        ax  : int, optional, default = 2
+            Axis were the rotation should take place
+
+        Returns
+        -------
+        R : 3x3
+            Rotation matrix that leaves axis 'ax' unchanged and rotates the
+            other 2 axes
+        """
         basis=self.rMatrix2D(A)
         R=np.insert(basis,ax,np.zeros(2),axis=0)
         R=np.insert(R,ax,np.zeros(3),axis=1)
         R[ax,ax]=1
         return(R)
-    def rMatrix(self,A,Z=None,Y=None):
+    def rMatrix(self,A,Z=None,S=None):
+        """Computes a 2D or 3D full rotation matrix 
+        
+        ----------------------------------------------------------------------------------------------------------
+        
+        Parameters
+        ----------
+        A  : float
+            Azimuth, "bearing" yaw of rotation measured counterclockwise from the X axis, around the Z axis
+        Z  : float, optional, default = None
+            Zenith, "downtilt" pitch of rotation measured downwards from the Z axis, around the "facing-to-A" horizontal axis. If None, a 2D matrix is returned
+        S  : float, optional, default = None
+            "Slant" roll of rotation measured form up from the Y axis, around the "facing-to-AZ" axis). If None, a 3D matrix rotated in A,Z is returned
+
+        Returns
+        -------
+        R : 3x3
+            3 Axis Rotation matrix with azimuth A, zenith Z and slant S
+        """
         if Z is None:
             return( self.rMatrix2D(A) )
-        elif Y is None:
-            return( self.rMatrix3D(Z,1)@self.rMatrix3D(A,2) )
+        elif S is None:
+            return( self.rMatrix3D(A,2)@self.rMatrix3D(Z,1) )
         else:
-            return( self.rMatrix3D(Y,0)@self.rMatrix3D(Z,1)@self.rMatrix3D(A,2) )
+            return( self.rMatrix3D(A,2)@self.rMatrix3D(Z,1)@self.rMatrix3D(S,0) )
     def computeAllPaths(self, AoD, DAoA, TDoA, ZoD=None, DZoA=None, rotation=None):       
         Npath=len(AoD)    
         #TODO choose a library to provide uVector globally to the project
-        DoD = self.uVector(AoD,ZoD)
+        DoD = self.uVectorT(AoD,ZoD)
         if rotation is None:
-            DoA = self.uVector(DAoA,DZoA)
+            DoA = self.uVectorT(DAoA,DZoA)
         else:
             if (ZoD is None) and (DZoA is None):
                 AoA0_est=rotation
                 Rm=self.rMatrix(AoA0_est)
             else:
-                AoA0_est,ZoA0_est,YoA0_est=rotation
-                Rm=self.rMatrix(AoA0_est,AoA0_est,ZoA0_est,YoA0_est)
-            DoA = Rm@self.uVector(DAoA,DZoA)
+                AoA0_est,ZoA0_est,SoA0_est=rotation
+                Rm=self.rMatrix(AoA0_est,ZoA0_est,SoA0_est)
+            DoA = self.uVectorT(DAoA,DZoA)@Rm.T
+            
         C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
-        c=3e8
         M=np.column_stack([(DoD-DoA)/(1+C12),-np.ones((Npath,1))])
-        result_est=np.linalg.lstsq(M, TDoA*c, rcond=None)[0]
+        result_est=np.linalg.lstsq(M, TDoA*self.c, rcond=None)[0]
         d0_est = result_est[0:-1]
-        ToA0_est = result_est[-1]/c
+        l0err = result_est[-1]
+        l0est = np.linalg.norm(d0_est)
+        ToA0_est = (l0est - l0err)/self.c
         Vi=(DoD+C12*DoA)/(1-C12**2)
         liD_est=Vi@d0_est
         d_est=liD_est[:,None]*DoD
         return(d0_est,ToA0_est,d_est)
-        
         
     def gen3PathGroup(self, Npath):
         """Returns a Npath-2 x Npath boolean table representing paths belonging to 3-path groups.
@@ -197,7 +277,6 @@ class MultipathLocationEstimator:
         
         return table_group
 
-
     def genDrop1Group(self, Npath):
         """Returns a Npath x Npath boolean table representing paths belonging to drop-1 groups.
         
@@ -234,7 +313,6 @@ class MultipathLocationEstimator:
         
         return table_group
 
-
     def genRandomGroup(self, Npath, Ngroups, Nmembers):
         """Returns a Ngroup x Npath boolean table representing paths belonging to random groups.
         
@@ -266,7 +344,7 @@ class MultipathLocationEstimator:
         return table_group
 
 
-    def feval_wrapper_AllPathsByGroupsFunV1(self, x, AoD, DAoA, TDoA, group_method='drop1'):
+    def feval_wrapper_AllPathsByGroupsFun(self, x, AoD, DAoA, TDoA, ZoD=None, DZoA=None, group_method='drop1'):
         """Evaluates the minimum mean squared (MSE) distance among all linear location solutions
         obtained by multiple groups of paths, as a function of the AoA0 of the receiver.
             
@@ -312,13 +390,20 @@ class MultipathLocationEstimator:
             table_group = group_method
 
         Ngroup = table_group.shape[0]
-        d0_all = np.zeros((Ngroup,3))
-
+        # d0xall = np.zeros(Ngroup)
+        # d0yall = np.zeros(Ngroup)
+        # tauEall = np.zeros(Ngroup)
+        # for gr in range(Ngroup):
+        #     (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPathsV1(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], x)
+        # return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
+        Ndim = 2 if (ZoD is None) or (DZoA is None) else 3
+        d0_all = np.zeros((Ngroup,Ndim))
+        tauEall = np.zeros(Ngroup)
         for gr in range(Ngroup):
-            (d0_all[gr,0:2], d0_all[gr,2],_) = self.computeAllPathsV1(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], rotation=x)
-        d0_all[:,2]*=self.c
-        d0_all-=np.mean(d0_all,axis=0,keepdims=True)
-        return( np.sum( np.abs(d0_all)**2 ) )
+            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], rotation=x)
+        v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=0)
+        v_all-=np.mean(v_all,axis=0)
+        return( np.sum( np.abs(v_all)**2 ) )
 
     def bruteAoA0ForAllPaths(self, AoD, DAoA, TDoA, Npoint, group_method='drop1'):
         """Performs the estimation of the value of AoA0 using the brute force method.
@@ -372,7 +457,7 @@ class MultipathLocationEstimator:
         dist = np.zeros(Npoint)
 
         for npoint in range(Npoint):
-            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFunV1(interval[npoint], AoD, DAoA, TDoA, group_method)
+            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFun(interval[npoint], AoD, DAoA, TDoA, group_method)
         
         distint = np.argmin(dist)
 
@@ -422,12 +507,12 @@ class MultipathLocationEstimator:
                   
         """
        
-        res = opt.root(self.feval_wrapper_AllPathsByGroupsFunV1, x0=init_AoA0, args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
+        res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=init_AoA0, args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
         if not res.success:
         #print("Attempting to correct initialization problem")
             niter = 0 
             while (not res.success) and (niter<1000):
-                res = opt.root(self.feval_wrapper_AllPathsByGroupsFunV1, x0=2*np.pi*np.random.rand(1), args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
+                res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=2*np.pi*np.random.rand(1), args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
                 niter += 1
         #print("Final Niter %d"%niter)
         if res.success:
@@ -519,7 +604,7 @@ class MultipathLocationEstimator:
             print("unsupported method")
             return(None)
         
-        (d0, tauerr, d) = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
+        (d0, tauerr, d) = self.computeAllPathsV1wrap(AoD, DAoA, TDoA, AoA0_est)
 
         return(AoA0_est, d0[0],  d0[1], tauerr, d[0], d[1], cov_AoA0)
         

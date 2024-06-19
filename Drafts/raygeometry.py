@@ -58,7 +58,7 @@ tauE_3path=np.zeros((1000,Npath-2))
 
 for ct in range(phi0_search.size):
     for gr in range(Npath-2):
-        (d0_3path[ct,gr,:],tauE_3path[ct,gr],_)= loc.computeAllPathsV1(AoD[gr:gr+3],AoA[gr:gr+3],dels[gr:gr+3],rotation=phi0_search[ct])
+        (d0_3path[ct,gr,:],tauE_3path[ct,gr],_)= loc.computeAllPathsV1wrap(AoD[gr:gr+3],AoA[gr:gr+3],dels[gr:gr+3],rotation=phi0_search[ct])
 
 plt.figure(2)
 
@@ -76,7 +76,7 @@ d0_drop1=np.zeros((1000,Npath,2))
 tauE_drop1=np.zeros((1000,Npath))
 for ct in range(phi0_search.size):
     for gr in range(Npath):
-        (d0_drop1[ct,gr,:],tauE_drop1[ct,gr],_)=loc.computeAllPathsV1(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],rotation=phi0_search[ct])
+        (d0_drop1[ct,gr,:],tauE_drop1[ct,gr],_)=loc.computeAllPathsV1wrap(AoD[np.arange(Npath)!=gr],AoA[np.arange(Npath)!=gr],dels[np.arange(Npath)!=gr],rotation=phi0_search[ct])
 
 (phi0_bisec,x0_bisec,y0_bisec,_,x_bisec,y_bisec,_)= loc.computeAllLocationsFromPaths(AoD,AoA,dels,AoA0_method='brute', group_method='3path')
 print(np.mod(phi0_bisec,2*np.pi),phi0_true[0])
