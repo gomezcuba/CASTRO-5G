@@ -140,7 +140,7 @@ MultiPathChannel %s ---> %s
                     self.txLocation,
                     self.rxLocation,
                     ''.join( [ '%s'%x for x in self.channelPaths] )
-                    )                
+                    )
     
 #    def insertPathFromParameters (self, gain, delay, aod, aoa, zod, zoa, dopp ):
 #        self.channelPaths.append( ParametricPath(gain, delay, aod, aoa, zod, zoa, dopp ) )

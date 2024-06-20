@@ -4,6 +4,8 @@ import numpy as np
 import scipy.optimize as opt
 import argparse
 import pandas as pd
+from collections.abc import Iterable
+
 
 class MultipathLocationEstimator:
     """Class used to calculate 5G UE (User Equipment) location in 2D and 3D. 
@@ -114,8 +116,8 @@ class MultipathLocationEstimator:
         return(d0xest, d0yest, ToA0_est, vxest, vyest)
     
     #TODO implement these functions from a common library in all classes
-    def uVectorT(self,A,Z=None):
-        """Computes unitary directional ROW transposed vectors. 
+    def uVector(self,A,Z=None):
+        """Computes unitary directional column vectors. 
         
         ----------------------------------------------------------------------------------------------------------
         
@@ -135,9 +137,9 @@ class MultipathLocationEstimator:
             [cos(A)*sin(Z), sin(A)sin(Z), np.cos(Z)]
         """
         if Z is None:
-            return( np.column_stack([np.cos(A),np.sin(A)]) )
+            return( np.vstack([np.cos(A),np.sin(A)]) )
         else:
-            return( np.column_stack([np.cos(A)*np.sin(Z),np.sin(A)*np.sin(Z),np.cos(Z)]) )
+            return( np.vstack([np.cos(A)*np.sin(Z),np.sin(A)*np.sin(Z),np.cos(Z)]) )
     def rMatrix2D(self,A):
         """Computes a 2D rotation matrix 
         
@@ -205,24 +207,25 @@ class MultipathLocationEstimator:
             return( self.rMatrix3D(A,2)@self.rMatrix3D(Z,1) )
         else:
             return( self.rMatrix3D(A,2)@self.rMatrix3D(Z,1)@self.rMatrix3D(S,0) )
-    def computeAllPaths(self, AoD, DAoA, TDoA, ZoD=None, DZoA=None, rotation=None):       
-        Npath=len(AoD)    
+    def computeAllPaths(self, paths , rotation=None):       
+        Npath=paths.shape[0]
         #TODO choose a library to provide uVector globally to the project
-        DoD = self.uVectorT(AoD,ZoD)
-        if rotation is None:
-            DoA = self.uVectorT(DAoA,DZoA)
+        mode3D = ('ZoD' in paths.columns) and ('DZoA' in paths.columns)
+        if mode3D:
+            DoD = self.uVector(paths.AoD,paths.ZoD).T
+            if rotation is None:
+                DoA = ( self.uVector(paths.DAoA,paths.DZoA) ).T
+            elif isinstance(rotation, Iterable):
+                Rm=self.rMatrix(*rotation) 
+                DoA = ( Rm@self.uVector(paths.DAoA,paths.DZoA) ).T
+            else:#if its not iterable it must be a number describing the AoA0
+                DoA = ( self.uVector(paths.DAoA+rotation,paths.DZoA) ).T
         else:
-            if (ZoD is None) and (DZoA is None):
-                AoA0_est=rotation
-                Rm=self.rMatrix(AoA0_est)
-            else:
-                AoA0_est,ZoA0_est,SoA0_est=rotation
-                Rm=self.rMatrix(AoA0_est,ZoA0_est,SoA0_est)
-            DoA = self.uVectorT(DAoA,DZoA)@Rm.T
-            
+            DoD = self.uVector(paths.AoD).T
+            DoA = self.uVector(paths.DAoA+ (rotation if rotation is not None else 0) ).T
         C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
         M=np.column_stack([(DoD-DoA)/(1+C12),-np.ones((Npath,1))])
-        result_est=np.linalg.lstsq(M, TDoA*self.c, rcond=None)[0]
+        result_est=np.linalg.lstsq(M, paths.TDoA*self.c, rcond=None)[0]
         d0_est = result_est[0:-1]
         l0err = result_est[-1]
         l0est = np.linalg.norm(d0_est)
@@ -232,13 +235,13 @@ class MultipathLocationEstimator:
         d_est=liD_est[:,None]*DoD
         return(d0_est,ToA0_est,d_est)
     
-    def computeAllPathsV1wrap(self, AoD, DAoA, TDoA, rotation=None):
+    def computeAllPathsV1wrap(self, paths, rotation=None):
         """Computes computeAllPathsV1 with the input-output convention of the new version
         
         ----------------------------------------------------------------------------------------------------------
         """
         AoA0_est = 0 if rotation is None else rotation
-        d0xest, d0yest, ToA0_est, vxest, vyest = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
+        d0xest, d0yest, ToA0_est, vxest, vyest = self.computeAllPathsV1(paths.AoD, paths.DAoA, paths.TDoA, AoA0_est)
         d0_est = np.array([d0xest,d0yest])
         d_est = np.vstack([vxest,vyest]).T
         return(d0_est, ToA0_est, d_est)
@@ -525,23 +528,15 @@ class MultipathLocationEstimator:
 
         Parameters
          ----------
-        AoD  : ndarray
-            Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            counter-clockwise.
-            
-        DAoA  : ndarray
-            Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
-            
-        TDoA : ndarray
-            Delays introduced by the NLOS ray propagations.
+        AoD, DAoA, TDoA  : ndarray
+            Same as computeAllPaths
             
         Npoint : int, optional
             Total point divisions in the minimization range of search.
             ** The range of search is [0-2pi]
             
         hint_AoA0 : ndarray, optional
-            Hint or guess about the value of AoA0. 
+            Hint, guess or initial search value about AoA0.
     
         AoA0_method: str, optional
             Method used to performs the value estimation of AoA0.
@@ -593,9 +588,9 @@ class MultipathLocationEstimator:
             print("unsupported method")
             return(None)
         
-        (d0, tauerr, d) = self.computeAllPathsV1wrap(AoD, DAoA, TDoA, AoA0_est)
+        (d0x, d0y, tauerr, dx,dy) = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
 
-        return(AoA0_est, d0[0],  d0[1], tauerr, d[0], d[1], cov_AoA0)
+        return(AoA0_est, d0x,  d0y, tauerr, dx, dy, cov_AoA0)
         
     def getTParamToLoc(self,x0,y0,tauE,AoA0,x,y,dAxes,vAxes):
         dfun={
