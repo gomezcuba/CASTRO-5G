@@ -16,23 +16,9 @@ class MultipathLocationEstimator:
     This class includes several algorithms to obtain the value of phi_0, from a brute force searching method to a 
     non-linear system equation solver. Also, different methods have been included to find the UE position dealing with clock
     and orientation error.
-    
-    ...
-
-    Attributes
-    ---------
-    Npoint : int, optional
-        Total point divisions in the minimization range of search.
-        
-    RootMethod: str, optional
-        Type of solver.
-        ** lm (Levenberg–Marquardt algorithm): specified for solving non-linear least squares problem.
-        ** hybr (Hybrid method): it uses Powell's dog leg method, an iterative optimization algorithm for the solution of 
-        non-linear least squares problem.
-    
     """
    
-    def __init__(self, Npoint=100, RootMethod='lm'):
+    def __init__(self, orientationMethod='lm', Npoint=100, groupMethod='drop1'):
         """ MultipathLocationEstimator constructor.
         
         Parameters
@@ -41,15 +27,19 @@ class MultipathLocationEstimator:
         Npoint : int, optional
             Total points in the search range for brute-force orientation finding.
 
-        RootMethod: str, optional
-            Type of solver algorithm for scipy.optimize.root() LS orientation finding.
-            ** lm : Levenberg–Marquardt algorithm for solving non-linear least squares problems.
-            ** hybr : Hybrid method using Powell's dog leg method, an iterative optimization algorithm for solving non-linear least squares problem.
+        orientationMethod: str, optional
+            Type of solver algorithm for non-linear minimum mean squared error orientation finding.
+            ** brute : Brute force search with Npoint uniform samples of the range 0..2π
+            ** lm    : Levenberg–Marquardt algorithm for non-linear least squares provided by scipy.optimize.root()
+            ** hybr  : Powell's dog leg method AKA "hybrid" method  provided by scipy.optimize.root(), an iterative
+                       optimization algorithm for solving non-linear least squares problem.
             
         """
-        self.NLinePointsPerIteration = Npoint
-        self.RootMethod = RootMethod
         self.c = 3e8
+        self.orientationMethod = orientationMethod
+        #default args
+        self.Npoint = Npoint
+        self.groupMethod = groupMethod
     
     def computeAllPathsV1(self, AoD, DAoA, TDoA, AoA0_est):
         """Calculates the possible UE vector positions in 2D using the LS method.
@@ -349,162 +339,90 @@ class MultipathLocationEstimator:
         return table_group
 
 
-    def feval_wrapper_AllPathsByGroupsFun(self, x, AoD, DAoA, TDoA, ZoD=None, DZoA=None, group_method='drop1'):
-        """Evaluates the minimum mean squared (MSE) distance among all linear location solutions
-        obtained by multiple groups of paths, as a function of the AoA0 of the receiver.
+    def locMSEByPathGroups(self, x, paths, groupMethod='drop1'):
+        """Evaluates the mean squared error (MSE) distance among all linear location solutions
+        obtained by multiple groups of paths, as a function of the rotation of the receiver.
             
         ---------------------------------------------------------------------------------------------------------
    
         Parameters
         ----------
         x: ndarray
-            Function unknown (AoA0).
+            Receiver rotation.
             
-        AoD  : ndarray
-            Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            counter-clockwise.
+        paths  : dataframe
+            multipath components
             
-        DAoA  : ndarray
-            Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
-            
-        TDoA : ndarray
-            Delays introduced by the NLOS ray propagations.
-            
-        group_method : ndarray, optional
+        groupMethod : ndarray, optional
             Path grouping strategy.
             *** Options: 'drop1', '3-path', 'random'
             *** Default value is 'drop1'.
             
         Returns
         -------
-        Returns the mathematical polinomial function based in the minimum mean square error (MMSE) equation.
-
+        Returns the value of the mean square error (MSE) between all location solutions and
+        the average        
+                        sum_i sum_d ( d[i,d]-mean_j(d[j,d]) )²
         """
-        Npath = AoD.size
-        if group_method == '3path':
+        Npath = paths.index.size
+        if groupMethod == '3path':
             table_group = self.gen3PathGroup(Npath)            
-        elif group_method == 'drop1':
+        elif groupMethod == 'drop1':
             table_group = self.genDrop1Group(Npath)            
-        elif group_method == 'random':
+        elif groupMethod == 'random':
             Ngroups = Npath
             Nmembers = Npath//2
             table_group = self.genRandomGroup(Npath, Ngroups, Nmembers)
         else:
-            table_group = group_method
+            table_group = groupMethod
 
         Ngroup = table_group.shape[0]
-        d0xall = np.zeros(Ngroup)
-        d0yall = np.zeros(Ngroup)
-        tauEall = np.zeros(Ngroup)
-        for gr in range(Ngroup):
-            (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPathsV1(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], x)
-        return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
-        # Ndim = 2 if (ZoD is None) or (DZoA is None) else 3
-        # d0_all = np.zeros((Ngroup,Ndim))
+        # d0xall = np.zeros(Ngroup)
+        # d0yall = np.zeros(Ngroup)
         # tauEall = np.zeros(Ngroup)
         # for gr in range(Ngroup):
-        #     (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(AoD[table_group[gr, :]], DAoA[table_group[gr, :]], TDoA[table_group[gr, :]], rotation=x)
-        # v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)
-        # v_all-=np.mean(v_all,axis=0)
-        # return( np.sum( np.abs(v_all)**2 ) )
+        #     (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPathsV1(paths.AoD[table_group[gr, :]], paths.DAoA[table_group[gr, :]], paths.TDoA[table_group[gr, :]], x)
+        # return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
+        
+        mode3D = ('ZoD' in paths.columns) and ('DZoA' in paths.columns)    
+        Ndim = 3 if mode3D else 2
+        d0_all = np.zeros((Ngroup,Ndim))
+        tauEall = np.zeros(Ngroup)
+        for gr in range(Ngroup):
+            # (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
+            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
+        v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)
+        v_all-=np.mean(v_all,axis=0)
+        return( np.sum( np.abs(v_all)**2 ) )
 
-    def bruteAoA0ForAllPaths(self, AoD, DAoA, TDoA, Npoint=None, group_method='drop1'):
+    def bruteAoA0ForAllPaths(self, paths, Npoint=None, groupMethod='drop1'):
         """Estimates the value of the receiver Azimuth AoA0 by brute force by minimizing the
         mean squared distance between location solutions of multiple groups. Finds the best
         of Npoints between 0 and 2π
-        
-        ---------------------------------------------------------------------------------------------------------
-        
-        Parameters
-        ----------
-        AoD  : ndarray
-            Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            counter-clockwise.
-            
-        DAoA  : ndarray
-            Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
-            
-        TDoA : ndarray
-            Delays introduced by the NLOS ray propagations.
-            
-        Npoint : int, optional
-            Total point divisions in the minimization range of search.
-            *** The range of search is [0-2pi]
-            *** Default value is 100
-            
-        group_method : ndarray, optional
-            Path grouping strategy.
-            *** Options: 'drop1', '3-path', 'random'
-            *** Default value is 'drop1'.
-
-        Returns
-        -------
-        AoA0_est: ndarray
-            Receiver UE Azimuth orientation angle
-
         """        
         if Npoint is None:
-            Npoint = self.NLinePointsPerIteration            
+            Npoint = self.Npoint            
         interval = np.linspace(0,  2*np.pi, Npoint)
-        dist = np.zeros(Npoint)
+        MSE = np.zeros(Npoint)
         for npoint in range(Npoint):
-            dist[npoint] = self.feval_wrapper_AllPathsByGroupsFun(interval[npoint], AoD, DAoA, TDoA, group_method)        
-        distind = np.argmin(dist)
+            MSE[npoint] = self.locMSEByPathGroups(interval[npoint], paths, groupMethod)        
+        distind = np.argmin(MSE)
 
         return(interval[distind])
     
-    def solveAoA0ForAllPaths(self, AoD, DAoA, TDoA, init_AoA0, group_method='drop1', RootMethod='lm'):
-        """Performs the estimation of the value of AoA0 using the scipy.optimize.root function.
-        
+    def solveAoA0ForAllPaths(self, paths, init_AoA0, groupMethod='drop1', orientationMethod='lm'):
+        """Performs the estimation of the value of AoA0 using the scipy.optimize.root function.        
         The value of the estimated offset angle of the UE orientation is obtained by finding the zeros of the 
         minimum mean square error (MMSE) equation defined by feval_wrapper_AllPathsByGroups. For this purpose, it is used
         the method root() to find the solutions of this function.
-
-        In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.
-        ---------------------------------------------------------------------------------------------------------
-        
-        Parameters
-        ----------
-        AoD  : ndarray
-            Angles of Departure of the NLOS ray propagation, measured in the BS from the positive x-axis in the 
-            counter-clockwise.
-            
-        DAoA  : ndarray
-            Angles of Arrival of the NLOS ray propagation, measured in the UE from the positive x-axis in the 
-            counter-clockwise sense. The value of phi_0 can modify the orientation of the x-axis.
-            
-        TDoA : ndarray
-            Delays introduced by the NLOS ray propagations.
-        
-        init_AoA0 : ndarray
-            Hint or guess about the value of AoA0.
-            
-        group_method : ndarray, optional
-            Path grouping strategy.
-            *** Options: 'drop1', '3-path', 'random'
-            *** Default value is 'drop1'.
-        
-        RootMethod: str, optional
-            Type of solver.
-            ** lm (Levenberg–Marquardt algorithm): especified for solving non-linear least squares problem.
-            ** hybr (Hybrid method): it uses Powell's dog leg method, an iterative optimization algorithm for the solution of 
-            non-linear least squares problem.
-
-        Returns
-        -------
-        AoA0_est: ndarray
-            Offset angle estimated of the UE orientation.
-                  
-        """
-       
-        res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=init_AoA0, args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
+        In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.                  
+        """       
+        res = opt.root(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=self.orientationMethod)
         if not res.success:
         #print("Attempting to correct initialization problem")
             niter = 0 
             while (not res.success) and (niter<1000):
-                res = opt.root(self.feval_wrapper_AllPathsByGroupsFun, x0=2*np.pi*np.random.rand(1), args=(AoD, DAoA, TDoA, group_method), method=self.RootMethod)
+                res = opt.root(self.locMSEByPathGroups, x0=2*np.pi*np.random.rand(1), args=(paths, groupMethod), method=self.orientationMethod)
                 niter += 1
         #print("Final Niter %d"%niter)
         if res.success:
@@ -513,84 +431,76 @@ class MultipathLocationEstimator:
             print("ERROR: AoA0 root not found")
             return (np.array(0.0),np.inf)
 
-    def computeAllLocationsFromPaths(self, AoD, DAoA, TDoA, Npoint=100, hint_AoA0=None, AoA0_method='fsolve', group_method='drop1', RootMethod='lm'):
+    def computeAllLocationsFromPaths(self, paths, orientationMethod=None, orientationMethodArgs={'groupMethod':'drop1','hintRotation':None}):
         """Performs the estimation of the phi_0 especified by the parameter method, and returns the position 
         of the UE for this angle.
-
-        The parameter method calls:
-        - 'fsolve' : 
-            calls solveAoA0ForAllPaths() to estimate AoA0.
-
-        - 'brute' : 
-            calls bisectAoA0ForAllPaths() to estimate AoA0.
             
         ---------------------------------------------------------------------------------------------------------
 
         Parameters
          ----------
-        AoD, DAoA, TDoA  : ndarray
-            Same as computeAllPaths
-            
-        Npoint : int, optional
-            Total point divisions in the minimization range of search.
-            ** The range of search is [0-2pi]
-            
-        hint_AoA0 : ndarray, optional
-            Hint, guess or initial search value about AoA0.
+        paths  : dataframe
+            Containing at least the columns AoD, DAoA and TDoA
+            Same as computeAllPaths                    
     
-        AoA0_method: str, optional
-            Method used to performs the value estimation of AoA0.
-            *** Options: 'fsolve', 'bisec', 'fsolve_linear'
-            *** Default value is 'fsolve'.
-        
-        group_method : ndarray, optional
-            Path grouping strategy.
-            *** Options: 'drop1', '3-path', 'random'
-            *** Default value is 'drop1'.
+        orientationMethod: str, optional
+            Overrides namesake global parameter.
+            
+        orientationMethodArgs : dic, optional
+            dictionally containing key-value pairs defining the arguments of the orientation method
+            ** groupMethod : ndarray, optional Path grouping strategy among 'drop1', '3-path', 'random'.
+                             Applicable to methods lm, hybr and brute
+            ** Npoint: number of points ot divide the range of search [0-2π] in brute force method.
+            ** hintRotation: initialization point for non-linear solvers lm and hybr
             
         Returns
         -------
-        AoA0_est: ndarray
+            
+        d0 : ndarray
+            x,y-coordinate of the possible position of the UE.
+            
+        d : ndarray
+            x,y-coordinate of the reflectors' positions in the NLOS paths.
+            
+        rotation_est: ndarray
             Offset angle estimated of the UE orientation.
             
-        d0x : ndarray
-            x-coordinate of the possible position of the UE.
-            
-        d0y : ndarray
-            y-coordinate of the possible position of the UE.
-            
-        vy : ndarray
-            y-coordinate of the reflector position in the NLOS path.
-            
-        vx : ndarray
-            x-coordinate of the reflector position in the NLOS path.
-            
-        cov_AoA0: ndarray
+        rotation_cov: ndarray
             The inverse of the Hessian matrix of AoA0.
                         
         """
-
-        if AoA0_method == 'fsolve':
-            
-            if (hint_AoA0 == None):
-                #coarse linear approximation for initialization
-                init_AoA0 = self.bruteAoA0ForAllPaths(AoD, DAoA, TDoA, Npoint, group_method)
-                (AoA0_est,cov_AoA0) = self.solveAoA0ForAllPaths(AoD, DAoA, TDoA, init_AoA0, group_method, RootMethod)
-
+        
+        themethod = orientationMethod if orientationMethod is not None else self.orientationMethod
+        if themethod == 'brute':
+            if "groupMethod" in orientationMethodArgs:
+                groupMethod = orientationMethodArgs["groupMethod"]        
             else:
-                init_AoA0 = hint_AoA0
-                (AoA0_est, cov_AoA0) = self.solveAoA0ForAllPaths(AoD, DAoA, TDoA, init_AoA0, group_method, RootMethod)
-            cov_AoA0=None
-        elif AoA0_method == 'brute':
-            AoA0_est = self.bruteAoA0ForAllPaths(AoD, DAoA, TDoA, Npoint, group_method)
-            cov_AoA0 = np.pi/self.NLinePointsPerIteration
+                groupMethod = self.groupMethod
+            if "Npoint" in orientationMethodArgs:
+                Npoint =  orientationMethodArgs["Npoint"]
+            else:
+                Npoint = self.Npoint
+            rotation_est = self.bruteAoA0ForAllPaths(paths, Npoint, groupMethod)
+            rotation_cov = np.pi/Npoint
+        elif themethod in ['lm','hybr']:
+            if "groupMethod" in orientationMethodArgs:
+                groupMethod = orientationMethodArgs["groupMethod"]        
+            else:
+                groupMethod = self.groupMethod    
+            if "hintAoA0" in orientationMethodArgs:
+                initRotation = orientationMethodArgs["hintAoA0"]
+            else:
+                #coarse linear approximation for initialization
+                initRotation = self.bruteAoA0ForAllPaths(paths, 100, groupMethod)
+            (rotation_est, rotation_cov) = self.solveAoA0ForAllPaths(paths, initRotation, groupMethod, themethod)
+            rotation_est=rotation_est[0]
         else:
             print("unsupported method")
             return(None)
         
-        (d0x, d0y, tauerr, dx,dy) = self.computeAllPathsV1(AoD, DAoA, TDoA, AoA0_est)
+        (d0, tauerr, d) = self.computeAllPaths(paths, rotation=rotation_est)
 
-        return(AoA0_est, d0x,  d0y, tauerr, dx, dy, cov_AoA0)
+        return(d0, tauerr, d, rotation_est, rotation_cov)
         
     def getTParamToLoc(self,x0,y0,tauE,AoA0,x,y,dAxes,vAxes):
         dfun={
@@ -641,7 +551,7 @@ if __name__ == '__main__':
         DAoA = args.DAoA
         TDoA = args.TDoA
 
-    loc = MultipathLocationEstimator(Npoint = 100, RootMethod = "lm")
+    loc = MultipathLocationEstimator(Npoint = 100, orientationMethod = "lm")
     (AoA0_fsolve, d_0x_fsolve, d_0y_fsolve,_,_,_,_) = loc.computeAllLocationsFromPaths(AoD, DAoA, TDoA)
     print(AoA0_fsolve, d_0x_fsolve, d_0y_fsolve)
 

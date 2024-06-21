@@ -22,7 +22,7 @@ garray = lambda_fArray(np.array([angle]),Nant,.5)[0,:,:]
 
 fs=10e6
 fc=10e3
-Nsamples=1000
+Nsamples=10
 Px=1
 t=np.arange(Nsamples)*1/fs
 xo=np.exp(2j*np.pi*fc*t)

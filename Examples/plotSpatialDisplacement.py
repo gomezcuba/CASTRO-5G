@@ -33,9 +33,7 @@ los, PLfree, SF = plinfo
 nClusters = clustersNAD.shape[0]
 nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 
-
 # Adaptación canle 1:
-
 
 lsubpaths=[subpathsNAD]
 lClusters=[clustersNAD]
