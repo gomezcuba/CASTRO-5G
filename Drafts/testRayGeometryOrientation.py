@@ -121,7 +121,7 @@ ax.set_zlabel('$\\ell_e$ (m)')
 plt.legend(['Transmitter','Receiver'])
 plt.savefig('../Figures/graph3Dsoldrop1%d.svg'%(Npath))
 
-(d0_bisec,tauE_bisec,d_bisec,AoA0_bisec,covAoA0_bisec)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'3path','Npoint':100})
+(d0_bisec,tauE_bisec,d_bisec,AoA0_bisec,covAoA0_bisec)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
 print(np.mod(AoA0_bisec,2*np.pi),AoA0_true[0])
     
 plt.figure(6)
@@ -148,7 +148,7 @@ for p in range(np.shape(AoD_true)[0]):
 plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with bisec")
 
 loc.orientationMethod='lm'
-(d0_root,tauE_root,d_root,AoA0_root,covAoA0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'3path','Npoint':100})
+(d0_root,tauE_root,d_root,AoA0_root,covAoA0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
 print(np.mod(AoA0_root,np.pi*2),AoA0_true[0])
 
 plt.figure(7)

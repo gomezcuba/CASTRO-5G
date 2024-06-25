@@ -43,7 +43,7 @@ plt.plot(l0,np.zeros_like(l0),'^g')
 plt.plot(x,y,'or')
 scaleguide=np.max(np.abs([y,l0,x]))
 for p in range(np.shape(AoD)[0]):
-    plt.plot([0,x[p],l0[p]],[0,y[p],0],':k')
+    plt.plot([0,x[p,0],l0[p,0]],[0,y[p,0],0],':k')
     t=np.linspace(0,1,21)
     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
     plt.plot(l0[p]-scaleguide*.05*(p+1)*np.cos(AoA[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoA[p]*t),'k')

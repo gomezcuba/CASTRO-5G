@@ -18,18 +18,18 @@ class MultipathLocationEstimator:
     and orientation error.
     """
    
-    def __init__(self, orientationMethod='lm', Npoint=100, groupMethod='drop1'):
+    def __init__(self, orientationMethod='lm', nPoint=100, groupMethod='drop1'):
         """ MultipathLocationEstimator constructor.
         
         Parameters
         ----------
 
-        Npoint : int, optional
+        nPoint : int, optional
             Total points in the search range for brute-force orientation finding.
 
         orientationMethod: str, optional
             Type of solver algorithm for non-linear minimum mean squared error orientation finding.
-            ** brute : Brute force search with Npoint uniform samples of the range 0..2π
+            ** brute : Brute force search with nPoint uniform samples of the range 0..2π
             ** lm    : Levenberg–Marquardt algorithm for non-linear least squares provided by scipy.optimize.root()
             ** hybr  : Powell's dog leg method AKA "hybrid" method  provided by scipy.optimize.root(), an iterative
                        optimization algorithm for solving non-linear least squares problem.
@@ -38,7 +38,7 @@ class MultipathLocationEstimator:
         self.c = 3e8
         self.orientationMethod = orientationMethod
         #default args
-        self.Npoint = Npoint
+        self.nPoint = nPoint
         self.groupMethod = groupMethod
     
     def computeAllPathsV1(self, AoD, DAoA, TDoA, AoA0_est):
@@ -395,17 +395,17 @@ class MultipathLocationEstimator:
         v_all-=np.mean(v_all,axis=0)
         return( np.sum( np.abs(v_all)**2 ) )
 
-    def bruteAoA0ForAllPaths(self, paths, Npoint=None, groupMethod='drop1'):
+    def bruteAoA0ForAllPaths(self, paths, nPoint=None, groupMethod='drop1'):
         """Estimates the value of the receiver Azimuth AoA0 by brute force by minimizing the
         mean squared distance between location solutions of multiple groups. Finds the best
-        of Npoints between 0 and 2π
+        of nPoints between 0 and 2π
         """        
-        if Npoint is None:
-            Npoint = self.Npoint            
-        interval = np.linspace(0,  2*np.pi, Npoint)
-        MSE = np.zeros(Npoint)
-        for npoint in range(Npoint):
-            MSE[npoint] = self.locMSEByPathGroups(interval[npoint], paths, groupMethod)        
+        if nPoint is None:
+            nPoint = self.nPoint            
+        interval = np.linspace(0,  2*np.pi, nPoint)
+        MSE = np.zeros(nPoint)
+        for n in range(nPoint):
+            MSE[n] = self.locMSEByPathGroups(interval[n], paths, groupMethod)        
         distind = np.argmin(MSE)
 
         return(interval[distind])
@@ -450,7 +450,7 @@ class MultipathLocationEstimator:
             dictionally containing key-value pairs defining the arguments of the orientation method
             ** groupMethod : ndarray, optional Path grouping strategy among 'drop1', '3-path', 'random'.
                              Applicable to methods lm, hybr and brute
-            ** Npoint: number of points ot divide the range of search [0-2π] in brute force method.
+            ** nPoint: number of points ot divide the range of search [0-2π] in brute force method.
             ** hintRotation: initialization point for non-linear solvers lm and hybr
             
         Returns
@@ -476,19 +476,19 @@ class MultipathLocationEstimator:
                 groupMethod = orientationMethodArgs["groupMethod"]        
             else:
                 groupMethod = self.groupMethod
-            if "Npoint" in orientationMethodArgs:
-                Npoint =  orientationMethodArgs["Npoint"]
+            if "nPoint" in orientationMethodArgs:
+                nPoint =  orientationMethodArgs["nPoint"]
             else:
-                Npoint = self.Npoint
-            rotation_est = self.bruteAoA0ForAllPaths(paths, Npoint, groupMethod)
-            rotation_cov = np.pi/Npoint
+                nPoint = self.nPoint
+            rotation_est = self.bruteAoA0ForAllPaths(paths, nPoint, groupMethod)
+            rotation_cov = np.pi/nPoint
         elif themethod in ['lm','hybr']:
             if "groupMethod" in orientationMethodArgs:
                 groupMethod = orientationMethodArgs["groupMethod"]        
             else:
                 groupMethod = self.groupMethod    
-            if "hintAoA0" in orientationMethodArgs:
-                initRotation = orientationMethodArgs["hintAoA0"]
+            if "initRotation" in orientationMethodArgs:
+                initRotation = orientationMethodArgs["initRotation"]
             else:
                 #coarse linear approximation for initialization
                 initRotation = self.bruteAoA0ForAllPaths(paths, 100, groupMethod)
@@ -551,7 +551,7 @@ if __name__ == '__main__':
         DAoA = args.DAoA
         TDoA = args.TDoA
 
-    loc = MultipathLocationEstimator(Npoint = 100, orientationMethod = "lm")
+    loc = MultipathLocationEstimator(nPoint = 100, orientationMethod = "lm")
     (AoA0_fsolve, d_0x_fsolve, d_0y_fsolve,_,_,_,_) = loc.computeAllLocationsFromPaths(AoD, DAoA, TDoA)
     print(AoA0_fsolve, d_0x_fsolve, d_0y_fsolve)
 
