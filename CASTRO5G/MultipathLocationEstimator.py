@@ -75,6 +75,8 @@ class MultipathLocationEstimator:
         x_est,y_est : ndarray
            x,y-coordinates of the scatterers' estimated positions.
         """
+        from warnings import warn
+        warn("This is the deprecated OLD V1 2D location algoritm of MultipathLocationEstimator. Please migrate your code to the joint 2D/3D implementation computeAllPaths(...)", DeprecationWarning, stacklevel=2)
         tgD = np.tan(AoD)
         tgA = np.tan(DAoA + AoA0_est)
         sinD = np.sin(AoD)
