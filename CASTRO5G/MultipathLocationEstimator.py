@@ -367,14 +367,17 @@ class MultipathLocationEstimator:
                         sum_i sum_d ( d[i,d]-mean_j(d[j,d]) )²
         """
         Npath = paths.index.size
-        if groupMethod == '3path':
-            table_group = self.gen3PathGroup(Npath)            
-        elif groupMethod == 'drop1':
-            table_group = self.genDrop1Group(Npath)            
-        elif groupMethod == 'random':
-            Ngroups = Npath
-            Nmembers = Npath//2
-            table_group = self.genRandomGroup(Npath, Ngroups, Nmembers)
+        if isinstance(groupMethod,str):
+            if groupMethod == '3path':
+                table_group = self.gen3PathGroup(Npath)            
+            elif groupMethod == 'drop1':
+                table_group = self.genDrop1Group(Npath)            
+            elif groupMethod == 'random':
+                Ngroups = Npath
+                Nmembers = Npath//2
+                table_group = self.genRandomGroup(Npath, Ngroups, Nmembers)
+            else:
+                raise(TypeError("MultipathLocationEstimator requires an explicit boolean group table or a known group method name in str"))
         else:
             table_group = groupMethod
 
@@ -493,7 +496,7 @@ class MultipathLocationEstimator:
                 initRotation = orientationMethodArgs["initRotation"]
             else:
                 #coarse linear approximation for initialization
-                initRotation = self.bruteAoA0ForAllPaths(paths, 100, groupMethod)
+                initRotation = self.bruteAoA0ForAllPaths(paths, 25, groupMethod)
             (rotation_est, rotation_cov) = self.solveAoA0ForAllPaths(paths, initRotation, groupMethod, themethod)
             rotation_est=rotation_est[0]
         else:
