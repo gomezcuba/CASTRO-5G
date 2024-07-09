@@ -1,8 +1,5 @@
 #!/usr/bin/python
 
-from CASTRO5G import OMPCachedRunner as oc
-from CASTRO5G import multipathChannel as mc
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,27 +8,33 @@ from matplotlib import cm
 import time
 from tqdm import tqdm
 
+import sys
+sys.path.append('../')
+from CASTRO5G import compressedSensingTools as cs
+from CASTRO5G import multipathChannel as mc
+
+
 plt.close('all')
 
 Nchan=10
-Nd=32
-Na=32
-Ncp=128
+Nd=8
+Na=8
+Ncp=64
 Nsym=3
 Nrft=1
 Nrfr=2
-K=1024
+K=128
 Ts=2.5
 Ds=Ts*Ncp
 SNRs=10**(np.arange(-1,2.01,1.0))
 #SNRs=10**(np.arange(1,1.01,1.0))
 # SNRs=np.array([100])
 
-omprunner = oc.OMPCachedRunner()
-dicBase=oc.CSCachedDictionary()
-dicMult=oc.CSMultiDictionary()
-dicFFT=oc.CSBasicFFTDictionary()
-dicFast=oc.CSMultiFFTDictionary()
+omprunner = cs.CSDictionaryRunner()
+dicBase=cs.CSCachedDictionary()
+dicMult=cs.CSMultiDictionary()
+dicFFT=cs.CSBasicFFTDictionary()
+dicFast=cs.CSMultiFFTDictionary()
 pilgen = mc.MIMOPilotChannel("IDUV")
 model=mc.DiscreteMultipathChannelModel(dims=(Ncp,Na,Nd),fftaxes=())
 listPreparedChannels = []
@@ -52,29 +55,29 @@ for ichan in range(Nchan):
     listPreparedChannels.append( (pathsparse,hsparse,hk,zp,wp,vp ) )
 
 confAlgs = [
-        # ("dir" ,'AWGN',None,'-.','p','k'),
-        # ("sOMP",'callF',lambda v,xi: oc.simplifiedOMP(v,xi*Ncp*Na*Nd),':','p','k'),
-        # ("sISTA",'callF',lambda v,xi: oc.simplifiedISTA(v,.5*np.sqrt(xi),15),'-','o','b'),
-        # ("sFISTA",'callF',lambda v,xi: oc.simplifiedFISTA(v,.5*np.sqrt(xi),15),'-','o','b'),
-        # ("sAMP",'callF',lambda v,xi: oc.simplifiedAMP(v,.5*np.sqrt(xi),15),'-','o','b'),
-        # ("OMPx1",'runGreedy',1.0,1.0,1.0,1.0,dicBase,':','o','b'),
+        ("dir" ,'AWGN',None,'-.','p','k'),
+        ("sOMP",'callF',lambda v,xi: cs.simplifiedOMP(v,xi*Ncp*Na*Nd),':','p','k'),
+        # ("sISTA",'callF',lambda v,xi: cs.simplifiedISTA(v,.5*np.sqrt(xi),15),'-','o','b'),
+        # ("sFISTA",'callF',lambda v,xi: cs.simplifiedFISTA(v,.5*np.sqrt(xi),15),'-','o','b'),
+        # ("sAMP",'callF',lambda v,xi: cs.simplifiedAMP(v,.5*np.sqrt(xi),15),'-','o','b'),
+        ("OMPx1",'runGreedy',1.0,1.0,1.0,1.0,dicBase,':','o','b'),
         # ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBase,':','o','b'),
-        ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBase,':','*','r'),
-        # ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBase,':','^','g'),
-        # ("OMPx1a",'runGreedy',1.0,1.0,1.0,1.0,dicFFT,'-.','o','b'),
+        # ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBase,':','*','r'),
+        ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBase,':','^','g'),
+        ("OMPx1a",'runGreedy',1.0,1.0,1.0,1.0,dicFFT,'-.','o','b'),
         # ("OMPx4a",'runGreedy',4.0,4.0,4.0,1.0,dicFFT,'-.','*','r'),
-        # ("OMPBRa",'runGreedy',1.0,1.0,1.0,10.0,dicFFT,'-.','^','g'),
-        # ("OMPx1m",'runGreedy',1.0,1.0,1.0,1.0,dicMult,'--','o','b'),
-        # ("OMPx4m",'runGreedy',4.0,4.0,4.0,1.0,dicMult,'--','*','r'),
-        # ("OMPBRm",'runGreedy',1.0,1.0,1.0,10.0,dicMult,'--','^','g'),
-        # ("OMPx1f",'runGreedy',1.0,1.0,1.0,1.0,dicFast,'-','o','b'),
-        # ("OMPx4f",'runGreedy',4.0,4.0,4.0,1.0,dicFast,'-','*','r'),
-        # ("OMPBRf",'runGreedy',1.0,1.0,1.0,10.0,dicFast,'-','^','g'),
-        # ("ISTAx1",'runShrink',1.0,1.0,1.0,'ISTA',dicBase),
-        # ("ISTAx2",'runShrink',2.0,2.0,2.0,'ISTA',dicBase),
-        # ("FISTAx1",'runShrink',1.0,1.0,1.0,'FISTA',dicBase),
-        # ("AMPx1",'runShrink',1.0,1.0,1.0,'AMP',dicBase),
-        # ("VAMPx1",'runShrink',1.0,1.0,1.0,'VAMP',dicBase),
+        ("OMPBRa",'runGreedy',1.0,1.0,1.0,10.0,dicFFT,'-.','^','g'),
+        ("OMPx1m",'runGreedy',1.0,1.0,1.0,1.0,dicMult,'--','o','b'),
+        ("OMPx4m",'runGreedy',4.0,4.0,4.0,1.0,dicMult,'--','*','r'),
+        ("OMPBRm",'runGreedy',1.0,1.0,1.0,10.0,dicMult,'--','^','g'),
+        ("OMPx1f",'runGreedy',1.0,1.0,1.0,1.0,dicFast,'-','o','b'),
+        ("OMPx4f",'runGreedy',4.0,4.0,4.0,1.0,dicFast,'-','*','r'),
+        ("OMPBRf",'runGreedy',1.0,1.0,1.0,10.0,dicFast,'-','^','g'),
+        # ("ISTAx1",'runShrink',1.0,1.0,1.0,'ISTA',dicBase,':','o','r'),
+        # ("ISTAx2",'runShrink',2.0,2.0,2.0,'ISTA',dicBase,':','o','r'),
+        # ("FISTAx1",'runShrink',1.0,1.0,1.0,'FISTA',dicBase,':','o','r'),
+        # ("AMPx1",'runShrink',1.0,1.0,1.0,'AMP',dicBase,':','o','r'),
+        # ("VAMPx1",'runShrink',1.0,1.0,1.0,'VAMP',dicBase,':','o','r'),
     ]
 
 Nalg=len(confAlgs)
@@ -152,11 +155,11 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
             elif behavior == 'runGreedy':
                 Xt,Xa,Xd,Xr,dicObj,_,_,_ = algParam[2:]
                 omprunner.setDictionary(dicObj)
-                hest,paths,_,_=omprunner.OMPBR(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp,Xt,Xa,Xd,Xr,Ncp)
+                hest,paths,_,_=omprunner.OMP(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp,Xt,Xa,Xd,Xr,Ncp)
             elif behavior == 'runShrink':
                 Xt,Xa,Xd,modeName,dicObj,_,_,_ = algParam[2:]
                 omprunner.setDictionary(dicObj)
-                hest,paths,_,_=omprunner.Shrinkage(yp, (.5*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,Xt,Xa,Xd,modeName)                
+                hest,paths,_,_=omprunner.Shrinkage(yp, (.05*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,Xt,Xa,Xd,modeName)                
             pathResults[(ichan,isnr,ialg)]=(hest,paths)
             MSE[ichan,isnr,ialg] = np.mean(np.abs(horig-hest)**2)/np.mean(np.abs(horig)**2)
             runTime[ichan,isnr,ialg] = time.time()-t0            
@@ -189,7 +192,7 @@ plt.xticks(ticks=np.arange(len(algLegendList[:])),labels=algLegendList[:])
 plt.xlabel('Algoritm')
 plt.ylabel('Dictionary size MByte')
 plt.legend()
-plt.savefig(f'./Figures/basic_DicMBvsAlg-{outputFileTag}.svg')
+plt.savefig(f'../Figures/basic_DicMBvsAlg-{outputFileTag}.svg')
 plt.figure()
 plt.yscale("log")
 barwidth= 0.9/2
@@ -201,7 +204,7 @@ plt.xticks(ticks=np.arange(len(algLegendList[:])),labels=algLegendList[:])
 plt.xlabel('Algoritm')
 plt.ylabel('precomputation time')
 plt.legend()
-plt.savefig(f'./Figures/basic_DicCompvsAlg-{outputFileTag}.svg')
+plt.savefig(f'../Figures/basic_DicCompvsAlg-{outputFileTag}.svg')
 plt.figure()
 for ialg in range(Nalg):
     lin,mrk,clr = confAlgs[ialg][-3:]
@@ -209,7 +212,7 @@ for ialg in range(Nalg):
 plt.legend()
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
-plt.savefig(f'./Figures/basic_MSEvsSNR-{outputFileTag}.svg')
+plt.savefig(f'../Figures/basic_MSEvsSNR-{outputFileTag}.svg')
 plt.figure()
 plt.yscale("log")
 barwidth= 0.9/Nalg * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
@@ -219,7 +222,7 @@ for ialg in range(Nalg):
 plt.xlabel('SNR(dB)')
 plt.ylabel('runtime')
 plt.legend(algLegendList)
-plt.savefig(f'./Figures/basic_CSCompvsSNR-{outputFileTag}.svg')
+plt.savefig(f'../Figures/basic_CSCompvsSNR-{outputFileTag}.svg')
 plt.figure()
 barwidth=0.9/Nalg * np.mean(np.diff(10*np.log10(SNRs)))
 for ialg in range(Nalg):
@@ -228,5 +231,5 @@ for ialg in range(Nalg):
 plt.xlabel('SNR(dB)')
 plt.ylabel('N paths')
 plt.legend()
-plt.savefig(f'./Figures/basic_NpathvsSNR-{outputFileTag}.svg')
+plt.savefig(f'../Figures/basic_NpathvsSNR-{outputFileTag}.svg')
 # plt.show()

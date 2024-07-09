@@ -1,6 +1,6 @@
 __all__ = [
     "threeGPPMultipathGenerator",
     "multipathChannel",
-    "OMPCachedRunner",
+    "compressedSensingTools",
     "MultipathLocationEstimator"
     ]

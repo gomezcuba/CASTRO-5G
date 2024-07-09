@@ -13,8 +13,8 @@ plt.close('all')
 import sys
 sys.path.append('../')
 from CASTRO5G import threeGPPMultipathGenerator as mpg
-from CASTRO5G import multipathChannel as ch
-# from CASTRO5G import OMPCachedRunner as oc
+# from CASTRO5G import multipathChannel as ch
+# from CASTRO5G import compressedSensingTools as cs
 
 
 class UIMultipathChannelModel:
@@ -268,9 +268,6 @@ method = 'NpathDisplaced'
 # aoaFlipWeight=np.zeros(Ns)
 
 bGenRand=True
-
-# pilgen = ch.MIMOPilotChannel("IDUV")
-# omprunner = oc.OMPCachedRunner()
 
 # if bGenRand:
     # (w,v)=pilgen.generatePilots((Nk,Nxp,Nrfr,Nr,Nt,Nrft),"IDUV")

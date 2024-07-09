@@ -216,7 +216,7 @@ class CSCachedDictionary:
     def evalYDic(self,coef,inds=None):
         if inds is None:
             Nvec=coef.shape[1]
-            res=np.zeros((np.prod(self.currYDic.dimY),Nvec))
+            res=np.zeros((np.prod(self.currYDic.dimY),Nvec),dtype=complex)
             for v in range(Nvec):
                 inds = np.where(coef[:,v]!=0)[0]
                 res[:,v]=self.getYCols(inds)@coef[inds,v]
@@ -415,7 +415,7 @@ OMPInfoSet = col.namedtuple( "OMPInfoSet",[
         "Hcols",
     ])
 
-class OMPCachedRunner:
+class CSDictionaryRunner:
     def __init__(self, dictionary=None):
         self.cachedDics={}
         self.dictionaryEngine = dictionary if dictionary else CSCachedDictionary()
@@ -431,14 +431,14 @@ class OMPCachedRunner:
         TDoA_new,AoA_new,AoD_new = self.dictionaryEngine.ind2Param(s_ind)            
         vRsupp_new=self.dictionaryEngine.getYCols([s_ind])[:,0]
         return(s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new)
-    def getBestProjBR(self,vSamples,Xmu):
+    def getBestProjBR(self,vSamples,Xrefine):
         s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new=self.getBestProjDicInd(vSamples)
         K,Ncp,Na,Nd = self.dictionaryEngine.dimH
         Lt,La,Ld = self.dictionaryEngine.dimPhi
         boolTable=np.unpackbits(np.arange(8,dtype=np.uint8).reshape(-1,1),axis=1,count=3,bitorder='little')
         muTable=boolTable-.5
         mid_mu=np.array([0,0,0],dtype=np.double)    
-        while ( np.any(np.abs(mid_mu-muTable)>(.5/Xmu)) ):
+        while ( np.any(np.abs(mid_mu-muTable)>(.5/Xrefine)) ):
             TDoA_mu = TDoA_new + muTable[:,0]*Ncp/Lt             
             AoA_mu = np.arcsin(np.mod( np.sin(AoA_new) - muTable[:,1]*2.0/La +1,2)-1)
             AoD_mu = np.arcsin(np.mod( np.sin(AoD_new) - muTable[:,2]*2.0/Ld +1,2)-1)
@@ -459,7 +459,7 @@ class OMPCachedRunner:
             c_max = corr_mu[bestInd,0]
         return(s_ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new)
                 
-    def OMPBR(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xmu=1.0, Ncp=None):
+    def OMP(self,v,xi,pilotsID,vp,wp, Xt=1.0, Xd=1.0, Xa=1.0, Xrefine=1.0, Ncp=None):
         Nsym=np.shape(vp)[0]
         K=np.shape(v)[1]
         Ncp = K if Ncp is None else Ncp
@@ -481,8 +481,8 @@ class OMPCachedRunner:
         et=np.empty(shape=np.shape(r))
         ctr=0        
         while ((ctr<Nsym*K*Nrfr) and (np.sum(np.abs(r)**2)>xi)) or ctr==0:            
-            if Xmu>1.0:
-                ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new = self.getBestProjBR(r,Xmu)
+            if Xrefine>1.0:
+                ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new = self.getBestProjBR(r,Xrefine)
             else:
                 ind,c_max,TDoA_new,AoA_new,AoD_new,vRsupp_new = self.getBestProjDicInd(r)
             # print(ind,c_max,TDoA_new,AoA_new*180/np.pi,AoD_new*180/np.pi)
@@ -515,14 +515,14 @@ class OMPCachedRunner:
         Nrfr=np.shape(wp)[2]
         Na=np.shape(wp)[3]
         vflat=v.reshape(Nsym*K*Nrfr,1)
-        r=vflat
         
         Lt,La,Ld=(int(Ncp*Xt),int(Nd*Xd),int(Na*Xa))
         self.dictionaryEngine.setHDic((K,Ncp,Na,Nd),(Lt,La,Ld)) 
         self.dictionaryEngine.setYDic(pilotsID,(wp,vp))        
         
 #        print("max beta %f"%(1.0/np.sum(np.abs(outputDic)**2)))
-    
+        
+        r=vflat
         et=1j*np.zeros((Lt*La*Ld,1))
         if  shrinkageAlg == "FISTA":
             old_et=et
@@ -535,17 +535,17 @@ class OMPCachedRunner:
             sigma2t_mmse=sigma2w
             alpha=shrinkageParams[1]
         for itctr in range(Nit):
-            if shrinkageAlg == "FISTA":
+            if shrinkageAlg == "ISTA":
+                lamb=shrinkageParams[0]
+                beta=shrinkageParams[1]
+                c=et+beta*self.dictionaryEngine.projY( r )
+                et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-lamb,0)
+                r=vflat-self.dictionaryEngine.evalYDic(et)
+            elif shrinkageAlg == "FISTA":
                 lamb=shrinkageParams[0]
                 beta=shrinkageParams[1]
                 c=et+beta*self.dictionaryEngine.projY( r )+(et-old_et)*(itctr-2.0)/(itctr+1)
                 old_et=et
-                et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-lamb,0)
-                r=vflat-self.dictionaryEngine.evalYDic(et)
-            elif shrinkageAlg == "ISTA":
-                lamb=shrinkageParams[0]
-                beta=shrinkageParams[1]
-                c=et+beta*self.dictionaryEngine.projY( r )
                 et=np.exp(1j*np.angle(c))*np.maximum(np.abs(c)-lamb,0)
                 r=vflat-self.dictionaryEngine.evalYDic(et)
             elif  shrinkageAlg == "AMP":
@@ -577,13 +577,13 @@ class OMPCachedRunner:
             else:
                 print("Unknown algoritm")
                 return((0,0))
-            
-        lInds=np.where(et>0)[0]                
+        
+        lInds=np.where(np.abs(et)>0)[0]
         TDoA,AoA,AoD = self.dictionaryEngine.ind2Param(lInds)
         Hsupp = self.dictionaryEngine.createHCols(TDoA,AoA,AoD)
         Ysupp = self.dictionaryEngine.createYFromH(Hsupp)
         multipath = pd.DataFrame({
-            "coefs" : et[lInds],
+            "coefs" : et[lInds,0],
             "TDoA"  : TDoA,
             "AoA"   : AoA,
             "AoD"   : AoD

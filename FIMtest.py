@@ -3,7 +3,6 @@
 
 from CASTRO5G import threeGPPMultipathGenerator as mp3g
 from CASTRO5G import multipathChannel as ch
-from CASTRO5G import OMPCachedRunner as oc
 import numpy as np
 import pandas as pd
 
@@ -18,7 +17,6 @@ Ts=300/Nt#2.5
 Ds=Ts*Nt
 sigma2=.01
 
-omprunner = oc.OMPCachedRunner()
 pilgen = ch.MIMOPilotChannel("UPhase")
 
 (w,v)=pilgen.generatePilots(K*Nxp,(Nrfr,Na),(Nd,Nrft),"UPhase")
