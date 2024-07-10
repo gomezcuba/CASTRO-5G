@@ -1,16 +1,15 @@
 #!/usr/bin/python
-from progress.bar import Bar
+
+import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
-import scipy.optimize as opt
 
-import numpy as np
 import time
 import os
-import sys
 import argparse
-import ast
+from tqdm import tqdm
 
 import sys
 sys.path.append('../')
@@ -59,10 +58,10 @@ parser.add_argument('--print', help='Save plot files in eps to results folder', 
 
 # args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D 16:16:16,64:64:64,256:256:256,1024:1024:1024,4096:4096:4096,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
 
-args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label newadapt --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:50 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label newadapt --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:50 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
 # args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label test --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:75 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
 # args = parser.parse_args("-N 1000 --nompg --noloc -G Geo:20 --noerror -D=64:64:64,256:256:256,1024:1024:1024 --label test --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:80 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
-#args = parser.parse_args("-N 100 --noerror --label test --show --print".split(' '))
+args = parser.parse_args("-N 100 -G 3gpp --noerror --label test --show --print".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -122,81 +121,67 @@ if not os.path.isdir(outfoldername):
     os.mkdir(outfoldername)
 
 #TODO: create command line arguments for these parameters
-Xmax=100
-Xmin=-100
-Ymax=100
-Ymin=-100
-
+dmax=np.array([100,100])
+dmin=np.array([-100,-100])
 c=3e8
+Ts=1.0/400e6 #2.5ns
+Ds=320e-9 #Ts*128 FIR filter
+sigmaTauE=40e-9
+
 # if this parameter is present we get the mpg data from a known file (better for teset&debug)
-if args.nompg:
-    data=np.load(outfoldername+'/chanGenData.npz') 
-    x=data["x"]         
-    y=data["y"]
-    x0=data["x0"]
-    y0=data["y0"]
-    aod0=np.mod( np.arctan2(y0,x0) , 2*np.pi)
-    aod=data["aod"]
-    aoa0=data["aoa0"]
-    aoa=data["aoa"]
-    c=3e8
-    tau0=y0/np.sin(aod0)/c
-    tdoa=data["tdoa"]
-    tauE=data["tauE"]
-    aod_est=data["aod_est"]
-    aoa_est=data["aoa_est"]
-    tau_est=data["tau_est"]
-    nvalid=data["nvalid"]
-    (Npath,Nsims)=x.shape
+if args.nompg:    
+    allUserData=pd.read_csv(outfoldername+'/userGenData.csv') 
+    allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv') 
 else:        
     t_start_gen=time.time()
     # TODO: this has to be modeled in a separate class
+    d0=np.random.rand(Nsims,2)*(dmax-dmin)+dmin
+    aod0=np.mod( np.arctan2(d0[:,1],d0[:,0]) , 2*np.pi)
+    aoa0=np.random.rand(Nsims)*2*np.pi #receiver angular measurement offset
+    toa0=np.linalg.norm(d0,axis=-1)/c
+    tauE=np.random.rand(Nsims)*sigmaTauE
+    allUserData = pd.DataFrame(index=pd.Index(np.arange(Nsims),name="ue"),
+                               data={
+                                   "X0":d0[:,0],
+                                   "Y0":d0[:,1],
+                                   "AoD0":aod0,
+                                   "AoA0":aoa0,
+                                   "tauE":tauE
+                                   })
     if mpgen == 'Geo':        
         Npath=int(mpgenInfo[1])
         #generate locations and compute multipath 
-        x=np.random.rand(Npath,Nsims)*(Xmax-Xmin)+Xmin
-        y=np.random.rand(Npath,Nsims)*(Ymax-Ymin)+Ymin
-        x0=np.random.rand(Nsims)*(Xmax-Xmin)+Xmin
-        y0=np.random.rand(Nsims)*(Ymax-Ymin)+Ymin
+        d=np.random.rand(Nsims,Npath,2)*(dmax-dmin)+dmin
         #angles from locations
-        aod0=np.mod( np.arctan2(y0,x0) , 2*np.pi)
-        aoa0=np.random.rand(Nsims)*2*np.pi #receiver angular measurement offset
-        aod=np.mod( np.arctan2(y,x) , 2*np.pi)
-        aoa=np.mod( np.arctan2((y-y0),(x-x0)) , 2*np.pi)
+        #TODO 3D
+        aod=np.mod( np.arctan2(d[:,:,1],d[:,:,0]) , 2*np.pi)
+        aoa=np.mod( np.arctan2((d[:,:,1]-d0[:,None,1]),(d[:,:,0]-d0[:,None,0])) , 2*np.pi)
+        daoa=np.mod(aoa-aoa0[:,None],2*np.pi)
         #delays based on distance
-        tau=(np.sqrt(x**2+y**2)+np.sqrt((x-x0)**2+(y-y0)**2))/c
-        tau0=np.sqrt(x0**2+y0**2)/c
-        tauE=np.random.rand(Nsims)*40e-9
-        tdoa=tau-tau0-tauE
-        nvalid=Npath*np.ones(Nsims,dtype=int)
+        li=np.linalg.norm(d,axis=-1)+np.linalg.norm(d-d0[:,None,:],axis=-1)
+        toa=li/c
+        tdoa=toa-toa0[:,None]-tauE[:,None]
+        allPathsData = pd.DataFrame(index=pd.MultiIndex.from_product([np.arange(Nsims),np.arange(Npath)],names=["ue","n"]),
+                                    data={
+                                        "AoD" : aod.reshape(-1),
+                                        "AoA" : daoa.reshape(-1),
+                                        "TDoA" : tdoa.reshape(-1),
+                                        "Xs": d[:,:,0].reshape(-1),
+                                        "Ys": d[:,:,1].reshape(-1)
+                                        })
     elif mpgen == "3gpp":        
         # TODO: introducir param de entrada para regular blargeBW, scenario, etc
         # Tamen mais tarde - Elección de escenario vía param. de entrada
-        model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)
-        x0=np.random.rand(Nsims)*(Xmax-Xmin)+Xmin
-        y0=np.random.rand(Nsims)*(Ymax-Ymin)+Ymin
-        tau0=np.sqrt(x0**2+y0**2)/c
-        aod0=np.mod( np.arctan2(y0,x0) , 2*np.pi)
-        aoa0=np.random.rand(Nsims)*2*np.pi #receiver angular measurement offset
-        tauE=np.random.randn(Nsims)*40e-9
-        
+        model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)        
         txPos = (0,0,10)        
         Nclippaths = 50
-        # Npath = model.maxM*np.max( model.scenarioParams.loc['N'] )                
-        Npath = Nclippaths
-        nvalid = np.zeros(Nsims,dtype=int)
-        tdoa = np.zeros((Npath,Nsims))
-        aod = np.zeros((Npath,Nsims))
-        aoa = np.zeros((Npath,Nsims))
-        x = np.zeros((Npath,Nsims))
-        y = np.zeros((Npath,Nsims))
+        # Nclippaths = model.maxM*np.max( model.scenarioParams.loc['N'] )                
+        lpathDFs = []
         losAll = np.zeros((Nsims),dtype=bool)
-        bar = Bar("Generating %d 3GPP multipath channels"%(Nsims), max=Nsims)
-        bar.check_tty = False
-        for n in range(Nsims):
-            # while nvalid[n]<4:#discard channels with too few paths
-            rxPos = (x0[n],y0[n],1.5)
-            plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)     
+        for n in tqdm(range(Nsims),desc=f'Generating {Nsims} 3GPP multipath channels'):
+            #TODO 3D
+            rxPos = (d0[n,0],d0[n,1],1.5)
+            plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
             losAll[n]=plinfo[0]
             # (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullFitAOA(txPos,rxPos,plinfo,clusters,subpaths)
             (txPos,rxPos,plinfo,clusters,subpaths)  = model.randomFitEpctClusters(txPos,rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=[0,.5,.5,0],mode3D=False)
@@ -204,106 +189,81 @@ else:
             # rxArrayAngle = np.mod(np.pi+np.arctan2(y0[n],x0[n]),2*np.pi)*180/np.pi
             # (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullDeleteBacklobes(txPos,rxPos,plinfo,clusters,subpaths,tAOD=txArrayAngle,rAOA=rxArrayAngle)
             #remove subpaths that have not been converted to first order
-            subpathsDiscarded = subpaths.loc[~np.isinf(subpaths.Xs)]
+            subpathsProcessed = subpaths.loc[~np.isinf(subpaths.Xs)].copy() # must be a hard copy and not a mere "view" of the original DF
             #remove weak subpaths if there are more than 50 for faster computation
-            if ( subpathsDiscarded.shape[0] > Nclippaths ):            
-                srtdP = subpathsDiscarded.P.sort_values(ascending=False)
+            if ( subpathsProcessed.shape[0] > Nclippaths ):            
+                srtdP = subpathsProcessed.P.sort_values(ascending=False)
                 indexStrongest=srtdP.iloc[0:Nclippaths].index
-                subpathsDiscarded = subpathsDiscarded.loc[indexStrongest]
-            nvalid[n]=subpathsDiscarded.shape[0]
+                subpathsProcessed = subpathsProcessed.loc[indexStrongest]
             #     if nvalid[n]<4:
             #         model.dChansGenerated.pop(txPos+rxPos)
             # if not plinfo[0]:#NLOS
-            #     x1stnlos = subpathsDiscarded.sort_values("TDOA").iloc[0].Xs
-            #     y1stnlos = subpathsDiscarded.sort_values("TDOA").iloc[0].Ys
+            #     x1stnlos = subpathsProcessed.sort_values("TDOA").iloc[0].Xs
+            #     y1stnlos = subpathsProcessed.sort_values("TDOA").iloc[0].Ys
             #     lD = np.sqrt(x1stnlos**2+y1stnlos**2)
             #     lA = np.sqrt((x1stnlos-x0[n])**2+(y1stnlos-y0[n])**2)
             #     tau1stlos = (lD+lA)/c
-            #     tauE[n] = tauE[n] - (tau1stlos-tau0[n])
-            tdoa[0:nvalid[n],n] = subpathsDiscarded.TDOA-tauE[n]
-            aod[0:nvalid[n],n] = np.mod( subpathsDiscarded.AOD*np.pi/180 ,2*np.pi)
-            aoa[0:nvalid[n],n] = np.mod( subpathsDiscarded.AOA*np.pi/180 ,2*np.pi)
-            x[0:nvalid[n],n] = subpathsDiscarded.Xs
-            y[0:nvalid[n],n] = subpathsDiscarded.Ys
-            bar.next()
-        bar.finish()
+            #     tauE[n] = tauE[n] - (tau1stlos-toa0[n])
+            # subpathsProcessed.TDOA -= tauE[n]
+            subpathsProcessed.AOD = np.mod( subpathsProcessed["AOD"]*np.pi/180 , 2*np.pi)
+            subpathsProcessed.AOA = np.mod( subpathsProcessed.AOA*np.pi/180 -aoa0[n], 2*np.pi)
+            lpathDFs.append(subpathsProcessed.rename(columns={"AOA":"DAOA"}))
+        allPathsData=pd.concat(lpathDFs,keys=np.arange(Nsims),names=["ue",'n','m'])
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
     
-    aod_est=np.zeros((NerrMod,Npath,Nsims))
-    aoa_est=np.zeros((NerrMod,Npath,Nsims))
-    tau_est=np.zeros((NerrMod,Npath,Nsims))
-    for nv in range(NerrMod):
+    if not args.nosave: 
+        allUserData.to_csv(outfoldername+'/userGenData.csv') 
+        allPathsData.to_csv(outfoldername+'/chanGenData.csv') 
+    print("Total Multipath Generation Time:%s seconds"%(time.time()-t_start_gen))
+    
+    t_start_err = time.time()
+    lErrorPaths = []
+    for nv in tqdm(range(NerrMod),desc='applying error models to paths'):
         (errType,c1,c2,c3)=lErrMod[nv]
         if errType=='no':
-            aod_est[nv,:,:]=np.mod(aod,2*np.pi)
-            aoa_est[nv,:,:]=np.mod(aoa-aoa0,2*np.pi)
-            tau_est[nv,:,:]=tdoa
+            errPathDF = allPathsData.copy()
         elif errType=='std': 
-            aod_est[nv,:,:]=np.mod(aod+float(c1)*2*np.pi*np.random.randn(Npath,Nsims),2*np.pi)
-            aoa_est[nv,:,:]=np.mod(aoa-aoa0+float(c2)*2*np.pi*np.random.randn(Npath,Nsims),2*np.pi)
-            tau_est[nv,:,:]=tdoa+float(c3)*320e-9*np.random.randn(Npath,Nsims)
+            errPathDF = allPathsData.copy()
+            Ntot = errPathDF.shape[0]
+            errPathDF.AOD  = np.mod(errPathDF.AOD +float(c1)*2*np.pi*np.random.randn(Ntot),2*np.pi)
+            errPathDF.DAOA = np.mod(errPathDF.DAOA+float(c2)*2*np.pi*np.random.randn(Ntot),2*np.pi)
+            errPathDF.TDOA += float(c3)*Ds*np.random.randn(Ntot)
         elif errType=='dic':
-            if c1=='inf':
-                aod_est[nv,:,:]=np.mod(aod,2*np.pi)
-            else:
-                aod_est[nv,:,:]=np.mod(np.round(aod*int(c1)/2/np.pi)*2*np.pi/int(c1),2*np.pi)
-            if c2=='inf':
-                aoa_est[nv,:,:]=np.mod(aoa-aoa0,2*np.pi)
-            else:
-                aoa_est[nv,:,:]=np.mod(np.round((aoa-aoa0)*int(c2)/2/np.pi)*2*np.pi/int(c2),2*np.pi)
-            if c3=='inf':
-                tau_est[nv,:,:]=tdoa
-            else:
-                Ts=1.0/400e6 #2.5ns
-                Ds=320e-9 #Ts*128 FIR filter
-                tau_est[nv,:,:]=np.round(tdoa*int(c3)/Ds)*Ds/int(c3)
+            errPathDF = allPathsData.copy()
+            if not c1=='inf':
+                errPathDF.AOD  = np.mod(np.round( errPathDF.AOD  *int(c1)/2/np.pi)*2*np.pi/int(c1),2*np.pi)
+            if not c2=='inf':
+                errPathDF.DAOA = np.mod(np.round( errPathDF.DAOA *int(c2)/2/np.pi)*2*np.pi/int(c2),2*np.pi)
+            if not c3=='inf':
+                errPathDF.TDOA  =np.round(errPathDF.TDOA *int(c3)/Ds )*Ds/int(c3)
+        #TODO Compressed Sensing
         else:
             print("Multipath estimation error model %s to be written"%errType)
-    if not args.nosave: 
-        np.savez(outfoldername+'/chanGenData.npz',
-                 x=x,
-                 y=y,
-                 x0=x0,
-                 y0=y0,
-                 aod=aod,
-                 aoa0=aoa0,
-                 aoa=aoa,
-                 tdoa=tdoa,
-                 tauE=tauE,
-                 aod_est=aod_est,
-                 aoa_est=aoa_est,
-                 tau_est=tau_est,
-                 nvalid=nvalid)
-    print("Total Multipath Estimation Time:%s seconds"%(time.time()-t_start_gen))
+        lErrorPaths.append(errPathDF)
+    print("Total Multipath Estimation Time:%s seconds"%(time.time()-t_start_err))
 
 if args.noloc: 
     data=np.load(outfoldername+'/locEstData.npz') 
     aoa0_est=data["aoa0_est"]
-    x0_est=data["x0_est"]
-    y0_est=data["y0_est"]
+    d0_est=data["d0_est"]
     tauE_est=data["tauE_est"]
-    x_est=data["x_est"]
-    y_est=data["y_est"]
+    d_est=data["d_est"]
     run_time=data["run_time"]    
-    loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=100,RootMethod='lm')    
+    loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')    
 else:        
     t_start_loc=time.time() 
     aoa0_est=np.zeros((NlocAlg,NerrMod,Nsims))
-    x0_est=np.zeros((NlocAlg,NerrMod,Nsims))
-    y0_est=np.zeros((NlocAlg,NerrMod,Nsims))
+    d0_est=np.zeros((NlocAlg,NerrMod,Nsims))
     tauE_est=np.zeros((NlocAlg,NerrMod,Nsims))
-    x_est=np.zeros((NlocAlg,NerrMod,Npath,Nsims))
-    y_est=np.zeros((NlocAlg,NerrMod,Npath,Nsims))
+    d_est=np.zeros((NlocAlg,NerrMod,Nsims,Npath))
     run_time=np.zeros((NlocAlg,NerrMod))
     
-    loc=MultipathLocationEstimator.MultipathLocationEstimator(Npoint=100,RootMethod='lm')
+    loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')
     
     for nc in range(NlocAlg):
         (aoa0Apriori,aoa0Quant,grouping,optimMthd)=lLocAlgs[nc]
-        for nv in range(NerrMod):
-            bar = Bar("Case aoa known:%s aoa0quant: %s grouping:%s optimMthd:%s err=%s"%(aoa0Apriori,aoa0Quant,grouping,optimMthd,lErrMod[nv]), max=Nsims)
-            bar.check_tty = False        
+        for nv in tqdm(range(NerrMod)):  
             t_start_point = time.time()
             for ns in range(Nsims):
                 if aoa0Apriori:
@@ -311,7 +271,7 @@ else:
                         aoa0_est[nc,nv,ns]=np.round(aoa0[ns]*aoa0Quant/(np.pi*2))*2*np.pi/aoa0Quant        
                     else:
                         aoa0_est[nc,nv,ns]=aoa0[ns]
-                    (x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,0:nvalid[ns],ns],y_est[nc,nv,0:nvalid[ns],ns])=loc.computeAllPaths(aod_est[nv,0:nvalid[ns],ns],aoa_est[nv,0:nvalid[ns],ns],tau_est[nv,0:nvalid[ns],ns],aoa0_est[nc,nv,ns])
+                    (x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,0:nvalid[ns],ns],y_est[nc,nv,0:nvalid[ns],ns])=loc.computeAllPaths(aod_est[nv,0:nvalid[ns],ns],daoa_est[nv,0:nvalid[ns],ns],tdoa_est[nv,0:nvalid[ns],ns],aoa0_est[nc,nv,ns])
                 else:
                 #TODO make changes in location estimator and get rid of these ifs
                     if not np.isinf(aoa0Quant):
@@ -320,9 +280,7 @@ else:
                         aoa0_hint=None
                     group_m= '3path' if grouping=='3P' else 'drop1'
                     aoa0_m= 'fsolve' if (optimMthd=='mmse')or(grouping=='D1') else optimMthd
-                    (aoa0_est[nc,nv,ns],x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,0:nvalid[ns],ns],y_est[nc,nv,0:nvalid[ns],ns],_)= loc.computeAllLocationsFromPaths(aod_est[nv,0:nvalid[ns],ns],aoa_est[nv,0:nvalid[ns],ns],tau_est[nv,0:nvalid[ns],ns],AoA0_method=aoa0_m,group_method=group_m,hint_AoA0=aoa0_hint)
-                bar.next()
-            bar.finish()
+                    (aoa0_est[nc,nv,ns],x0_est[nc,nv,ns],y0_est[nc,nv,ns],tauE_est[nc,nv,ns],x_est[nc,nv,0:nvalid[ns],ns],y_est[nc,nv,0:nvalid[ns],ns],_)= loc.computeAllLocationsFromPaths(aod_est[nv,0:nvalid[ns],ns],daoa_est[nv,0:nvalid[ns],ns],tdoa_est[nv,0:nvalid[ns],ns],AoA0_method=aoa0_m,group_method=group_m,hint_AoA0=aoa0_hint)
             run_time[nc,nv] = time.time() - t_start_point
     if not args.nosave: 
         np.savez(outfoldername+'/locEstData.npz',
@@ -377,8 +335,8 @@ if args.cdf:
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
             plt.semilogx(np.percentile(location_error[nc,indErr,~np.isnan(location_error[nc,indErr,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)        
         plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
-        Ts = loc.getTParamToLoc(x0,y0,tau0+tauE,aoa0,x,y,['dDAoA',],['dx0','dy0'])
-        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2))) * (Npath*Nsims)/np.sum(nvalid)
+        Ts = loc.getTParamToLoc(x0,y0,toa0+tauE,aoa0,x,y,['dDAoA',],['dx0','dy0'])
+        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2))) * (Npath*Nsims)/np.sum(nvalid)
         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
         errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
         plt.semilogx(np.percentile(np.sqrt(varaoaDist)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
@@ -399,11 +357,11 @@ if args.cdf:
             plt.semilogx(np.percentile(mapping_error_data_valid,np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
         plt.semilogx(np.percentile(map_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
         if Npath<=50:
-            Ts = loc.getTParamToLoc(x0,y0,tauE+tau0,aoa0,x,y,['dDAoA'],['dx','dy'])            
+            Ts = loc.getTParamToLoc(x0,y0,tauE+toa0,aoa0,x,y,['dDAoA'],['dx','dy'])            
             M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
             #(1/Npath)*
             errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2*Npath),rcond=None)[0])) for n in range(M.shape[0])])
-            varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[indErr,:,:],np.pi*2))) * (Npath*Nsims)/np.sum(nvalid)
+            varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2))) * (Npath*Nsims)/np.sum(nvalid)
             plt.semilogx(np.percentile(np.sqrt(varaoaDist)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="$\\sim$ CRLB")    
             # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
             # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
@@ -439,10 +397,10 @@ if args.pcl:
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'r',label=caseStr)
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,~losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'g',label=caseStr)
         plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(error_dumb,80),':k',label="random guess")
-        Ts = loc.getTParamToLoc(x0,y0,tauE+tau0,aoa0,x,y,['dDAoA'],['dx0','dy0'])
+        Ts = loc.getTParamToLoc(x0,y0,tauE+toa0,aoa0,x,y,['dDAoA'],['dx0','dy0'])
         M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
         errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
-        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2)) * (Npath*Nsims)/np.sum(nvalid)
+        varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2)) * (Npath*Nsims)/np.sum(nvalid)
         plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt(varaoaDist),'--k',label="$\\sim$ CRLB")      
         # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
         # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
@@ -459,11 +417,11 @@ if args.pcl:
             plt.semilogy(np.arange(len(errLabels)),np.percentile(mapping_error[nc,errCaseMask,:,:],Pctl,axis=(1,2)),line+marker+color,label=caseStr)
         plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(map_dumb,80),':k',label="random guess")
         if Npath<=50:
-            Ts = loc.getTParamToLoc(x0,y0,tauE+tau0,aoa0,x,y,['dDAoA'],['dx','dy'])            
+            Ts = loc.getTParamToLoc(x0,y0,tauE+toa0,aoa0,x,y,['dDAoA'],['dx','dy'])            
             M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
             #(1/Npath)*
             errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2*Npath),rcond=None)[0])) for n in range(M.shape[0])])
-            varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-aoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2)) * (Npath*Nsims)/np.sum(nvalid)
+            varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2)) * (Npath*Nsims)/np.sum(nvalid)
             plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt(varaoaDist),'--k',label="$\\sim$ CRLB")      
             # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
             # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       

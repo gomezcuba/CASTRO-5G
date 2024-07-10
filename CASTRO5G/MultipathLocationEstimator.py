@@ -340,11 +340,11 @@ class MultipathLocationEstimator:
         
         return table_group
 
-
-    def locMSEByPathGroups(self, x, paths, groupMethod='drop1'):
-        """Evaluates the mean squared error (MSE) distance among all linear location solutions
-        obtained by multiple groups of paths, as a function of the rotation of the receiver.
-            
+    
+    def locEvalByPathGroups(self, x, paths, groupMethod='drop1'):
+        """Evaluates all linear location solutions obtained by multiple groups
+        of paths, as a function of the rotation of the receiver.
+        
         ---------------------------------------------------------------------------------------------------------
    
         Parameters
@@ -382,13 +382,6 @@ class MultipathLocationEstimator:
             table_group = groupMethod
 
         Ngroup = table_group.shape[0]
-        # d0xall = np.zeros(Ngroup)
-        # d0yall = np.zeros(Ngroup)
-        # tauEall = np.zeros(Ngroup)
-        # for gr in range(Ngroup):
-        #     (d0xall[gr], d0yall[gr], tauEall[gr],_,_) = self.computeAllPathsV1(paths.AoD[table_group[gr, :]], paths.DAoA[table_group[gr, :]], paths.TDoA[table_group[gr, :]], x)
-        # return(np.sum(np.abs(d0xall-np.mean(d0xall,d0xall.ndim-1,keepdims=True))**2+np.abs(d0yall-np.mean(d0yall,d0xall.ndim-1,keepdims=True))**2+np.abs(self.c*tauEall-np.mean(self.c*tauEall,d0xall.ndim-1,keepdims=True))**2,d0xall.ndim-1))
-        
         mode3D = ('ZoD' in paths.columns) and ('DZoA' in paths.columns)    
         Ndim = 3 if mode3D else 2
         d0_all = np.zeros((Ngroup,Ndim))
@@ -396,9 +389,31 @@ class MultipathLocationEstimator:
         for gr in range(Ngroup):
             # (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
             (d0_all[gr,:], tauEall[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
-        v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)
+        v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)        
+        return(v_all)
+    
+    def locMSEByPathGroups(self, x, paths, groupMethod='drop1'):
+        """Evaluates the mean squared error (MSE) distance among all linear location solutions
+        obtained by multiple groups of paths, as a function of the rotation of the receiver.
+        """
+        v_all=self.locEvalByPathGroups(x, paths,groupMethod)
         v_all-=np.mean(v_all,axis=0)
         return( np.sum( np.abs(v_all)**2 ) )
+    
+    def locDifByPathGroups(self, x, paths, groupMethod='drop1'):
+        """Evaluates all pairs of differences of all linear location solutions
+        obtained by multiple groups of paths, as a function of the rotation of the receiver.
+        """
+        v_all=self.locEvalByPathGroups(x, paths,groupMethod)
+        # v_all=np.diff(v_all,axis=0).reshape(-1)
+        # v_all=(v_all[1:,:]-np.mean(v_all,axis=0)).reshape(-1)
+        # return( v_all )
+        Ng=v_all.shape[0]
+        v_big=np.zeros(Ng*(Ng-1)*3)
+        for n1 in range(Ng):
+            for n2 in range(Ng-1):
+                v_big[n2*Ng+n1:n2*Ng+n1+3]=v_all[n1]-v_all[n2+1*(n2>=n1)]
+        return( v_big )
 
     def bruteAoA0ForAllPaths(self, paths, nPoint=None, groupMethod='drop1'):
         """Estimates the value of the receiver Azimuth AoA0 by brute force by minimizing the
@@ -421,20 +436,24 @@ class MultipathLocationEstimator:
         minimum mean square error (MMSE) equation defined by feval_wrapper_AllPathsByGroups. For this purpose, it is used
         the method root() to find the solutions of this function.
         In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.                  
-        """       
-        res = opt.root(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=self.orientationMethod)
+        """
+        # res = opt.root(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
+        res = opt.root(self.locDifByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
+        # res = opt.minimize(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method='nelder-mead')
         if not res.success:
         #print("Attempting to correct initialization problem")
             niter = 0 
             while (not res.success) and (niter<1000):
-                res = opt.root(self.locMSEByPathGroups, x0=2*np.pi*np.random.rand(1), args=(paths, groupMethod), method=self.orientationMethod)
+                res = opt.root(self.locMSEByPathGroups, x0=2*np.pi*np.random.rand(1), args=(paths, groupMethod), method=orientationMethod)
                 niter += 1
         #print("Final Niter %d"%niter)
         if res.success:
             return (res.x,res.cov_x)
+            # return (res.x,None)
         else:
             print("ERROR: AoA0 root not found")
             return (np.array(0.0),np.inf)
+                
 
     def computeAllLocationsFromPaths(self, paths, orientationMethod=None, orientationMethodArgs={'groupMethod':'drop1','hintRotation':None}):
         """Performs the estimation of the phi_0 especified by the parameter method, and returns the position 
@@ -496,7 +515,7 @@ class MultipathLocationEstimator:
                 initRotation = orientationMethodArgs["initRotation"]
             else:
                 #coarse linear approximation for initialization
-                initRotation = self.bruteAoA0ForAllPaths(paths, 25, groupMethod)
+                initRotation = self.bruteAoA0ForAllPaths(paths, 100, groupMethod)
             (rotation_est, rotation_cov) = self.solveAoA0ForAllPaths(paths, initRotation, groupMethod, themethod)
             rotation_est=rotation_est[0]
         else:

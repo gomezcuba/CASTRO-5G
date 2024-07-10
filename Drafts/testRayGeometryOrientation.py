@@ -121,34 +121,34 @@ ax.set_zlabel('$\\ell_e$ (m)')
 plt.legend(['Transmitter','Receiver'])
 plt.savefig('../Figures/graph3Dsoldrop1%d.svg'%(Npath))
 
-(d0_bisec,tauE_bisec,d_bisec,AoA0_bisec,covAoA0_bisec)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
-print(np.mod(AoA0_bisec,2*np.pi),AoA0_true[0])
+(d0_brute,tauE_brute,d_brute,AoA0_brute,covAoA0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
+print(np.mod(AoA0_brute,2*np.pi),AoA0_true[0])
     
 plt.figure(6)
 plt.plot(0,0,'sb')
 plt.plot(x0_true,y0_true,'^g')
 plt.plot([0,x0_true[0]],[0,y0_true[0]],':g')
-plt.plot(d0_bisec[0],d0_bisec[1],'^c')
-plt.plot([0,d0_bisec[0]],[0,d0_bisec[1]],':c')
+plt.plot(d0_brute[0],d0_brute[1],'^c')
+plt.plot([0,d0_brute[0]],[0,d0_brute[1]],':c')
 plt.plot(x_true,y_true,'or')
-plt.plot(d_bisec[:,0],d_bisec[:,1],'oy')
+plt.plot(d_brute[:,0],d_brute[:,1],'oy')
 scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
-plt.plot([d0_bisec[0],d0_bisec[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_bisec)],[d0_bisec[1],d0_bisec[1]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_bisec)],'m')
+plt.plot([d0_brute[0],d0_brute[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_brute)],[d0_brute[1],d0_brute[1]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_brute)],'m')
 
 for p in range(np.shape(AoD_true)[0]):
     plt.plot([0,x_true[p],x0_true[0]],[0,y_true[p],y0_true[0]],':k')
     t=np.linspace(0,1,21)
     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
     plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_true),'k')
-    plt.plot([0,d_bisec[p,0],d0_bisec[0]],[0,d_bisec[p,1],d0_bisec[1]],':m')
+    plt.plot([0,d_brute[p,0],d0_brute[0]],[0,d_brute[p,1],d0_brute[1]],':m')
     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'m')
-    plt.plot(d0_bisec[0]+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_bisec),d0_bisec[1]+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_bisec),'m')
+    plt.plot(d0_brute[0]+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_brute),d0_brute[1]+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_brute),'m')
 
 plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with bisec")
 
 loc.orientationMethod='lm'
-(d0_root,tauE_root,d_root,AoA0_root,covAoA0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
+(d0_root,tauE_root,d_root,AoA0_root,covAoA0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'3path'})
 print(np.mod(AoA0_root,np.pi*2),AoA0_true[0])
 
 plt.figure(7)
@@ -174,10 +174,10 @@ for p in range(np.shape(AoD_true)[0]):
 plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with root method")
 plt.savefig('../Figures/locfromAoAAoD.svg')
 
-# error_bisec=np.sqrt(np.abs(x0_true-d0_bisec[0])**2+np.abs(y0_true-d0_bisec[1]))
+# error_brute=np.sqrt(np.abs(x0_true-d0_brute[0])**2+np.abs(y0_true-d0_brute[1]))
 # error_root=np.sqrt(np.abs(x0_true-d0_root[0])**2+np.abs(y0_true-d0_root[1]))
 
-# print(error_bisec,error_root)
+# print(error_brute,error_root)
 
 # #experimental code to find the correct AoA_true as a function of TDoA , AoD_true, x0 and y0; used in mmwave sim to modify channel model
 # #AoD_dif=AoD_true-AoD0_true

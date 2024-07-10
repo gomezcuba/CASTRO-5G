@@ -111,7 +111,7 @@ for ialg in tqdm(range(Nalg),desc="Dictionary Preconfig: "):
     
 #-------------------------------------------------------------------------------
 for ichan in tqdm(range(Nchan),desc="CS Sims: "):
-    (pathsparse,pahsparse,hk,zp,wp,vp)=listPreparedChannels[ichan]
+    (pathsparse,hsparse,hk,zp,wp,vp)=listPreparedChannels[ichan]
     zp_bb=np.matmul(wp,zp)
     yp_noiseless=pilgen.applyPilotChannel(hk,wp,vp,None)
     zh=mc.AWGN((Ncp,Na,Nd))
@@ -143,30 +143,32 @@ for ichan in tqdm(range(Nchan),desc="CS Sims: "):
             t0 = time.time()
             algParam = confAlgs[ialg]
             behavior = algParam[1]
-            if behavior in ["AWGN","callF"]:                
-                horig=hsparse*np.sqrt(Ncp)
-            else:
-                horig=hk
             if behavior == 'AWGN':
                 hest=hnoised
+                paths=None
+                Npaths[ichan,isnr,ialg] = 0
             elif behavior == 'callF':
                 funHandle = algParam[2]
                 hest=funHandle(hnoised,sigma2)
+                paths=np.where(np.abs(hest)>0)
+                Npaths[ichan,isnr,ialg] = len(paths[0])
             elif behavior == 'runGreedy':
                 Xt,Xa,Xd,Xr,dicObj,_,_,_ = algParam[2:]
                 omprunner.setDictionary(dicObj)
                 hest,paths,_,_=omprunner.OMP(yp,sigma2*K*Nsym*Nrfr,ichan,vp,wp,Xt,Xa,Xd,Xr,Ncp)
+                Npaths[ichan,isnr,ialg] = len(paths.TDoA)
             elif behavior == 'runShrink':
                 Xt,Xa,Xd,modeName,dicObj,_,_,_ = algParam[2:]
                 omprunner.setDictionary(dicObj)
                 hest,paths,_,_=omprunner.Shrinkage(yp, (.05*np.sqrt(sigma2), .5) ,15,ichan,vp,wp,Xt,Xa,Xd,modeName)                
-            pathResults[(ichan,isnr,ialg)]=(hest,paths)
-            MSE[ichan,isnr,ialg] = np.mean(np.abs(horig-hest)**2)/np.mean(np.abs(horig)**2)
-            runTime[ichan,isnr,ialg] = time.time()-t0            
-            if behavior in ["AWGN","callF"]:               
-                Npaths[ichan,isnr,ialg] = len(np.where(np.abs(hest)>0)[0])
-            else:          
                 Npaths[ichan,isnr,ialg] = len(paths.TDoA)
+            runTime[ichan,isnr,ialg] = time.time()-t0
+            pathResults[(ichan,isnr,ialg)]=(hest,paths)
+            if behavior in ["AWGN","callF"]:                
+                horig=hsparse*np.sqrt(Ncp)
+            else:
+                horig=hk
+            MSE[ichan,isnr,ialg] = np.mean(np.abs(horig-hest)**2)/np.mean(np.abs(horig)**2)
             ialg+=1
        
     for ialg in range(Nalg):

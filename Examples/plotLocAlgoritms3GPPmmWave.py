@@ -15,11 +15,6 @@ from CASTRO5G import  threeGPPMultipathGenerator as mp3g
 from CASTRO5G import multipathChannel as mc
 from CASTRO5G import  compressedSensingTools as cs
 
-def radUPA( Nangpoint, incidAngle , Nant = 16, dInterElement = .5):
-    vUPA=mc.fULA(incidAngle,Nant,dInterElement)
-    vAngle=mc.fULA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)
-    return (np.swapaxes(vUPA,vUPA.ndim-2,vUPA.ndim-1)[...,None,:,:]@vAngle.conj())[...,0,0]
-
 plt.close('all')
 
 GEN_CHANS=False
@@ -270,6 +265,11 @@ if EST_PLOT:
 #CALCULO POSICIOM CON REFINAMENTO EXIP
 
 if MATCH_CHANS:
+    
+    def radUPA( Nangpoint, incidAngle , Nant = 16, dInterElement = .5):
+        vUPA=mc.fULA(incidAngle,Nant,dInterElement)
+        vAngle=mc.fULA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)
+        return (np.swapaxes(vUPA,vUPA.ndim-2,vUPA.ndim-1)[...,None,:,:]@vAngle.conj())[...,0,0]
     pdist=np.zeros((Nsims,Nmaxpaths,Nstrongest))
     for nsim in range(Nsims):
         pdist[nsim,:,:]= ( 
@@ -324,7 +324,7 @@ if MATCH_CHANS:
     angbase=np.arange(0,2*np.pi,2*np.pi/Nang)
     nsim=0
     for pind in range(0,np.sum(np.abs(coef_est[:,nsim])>0)):
-        ang=AoA[pathMatchTable[nsim,pind],nsim]
+        ang=DAoA[pathMatchTable[nsim,pind],nsim]
         delay=TDoA[pathMatchTable[nsim,pind],nsim]*1e9/Ts
         gain=np.abs(coefs[pathMatchTable[nsim,pind],nsim])**2    
         x=np.maximum(10*np.log10(gain)+60,0)*np.cos(ang)
@@ -336,7 +336,7 @@ if MATCH_CHANS:
         yrad=np.maximum(10*np.log10(gainrad)+60,0)*np.sin(angbase)
         ax.plot3D(xrad,yrad,delay*np.ones_like(xrad),'-.',color=p[-1].get_color())
         
-        ang=AoA_est[pind,nsim]
+        ang=DAoA_est[pind,nsim]
         delay=TDoA_est[pind,nsim]*1e9/Ts
         gain=np.abs(coef_est[pind,nsim])**2    
         x=np.maximum(10*np.log10(gain)+60,0)*np.cos(ang)
