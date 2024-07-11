@@ -26,8 +26,8 @@ fig_ctr=0
 Nant = 8
 
 # compute the response of the antenna array with Nant antennas
-AntennaResponsesTx =mc.fULA(subpaths.AOD.to_numpy() *np.pi/180,Nant)
-AntennaResponsesRx =mc.fULA(subpaths.AOA.to_numpy() *np.pi/180,Nant)
+AntennaResponsesTx =mc.fULA(subpaths.AoD.to_numpy() *np.pi/180,Nant)
+AntennaResponsesRx =mc.fULA(subpaths.AoA.to_numpy() *np.pi/180,Nant)
 
 Npointsplot=101
 # compute the "beamforming vector". This vector is multiplied by the "response" when we want to receive from the desired angle
@@ -67,7 +67,7 @@ maxdB=np.max(10*np.log10(Nant*Nant*np.abs(channelResponseCombined)**2))
 mindB=-30
 for n in range(nClusters):   
     Nsp=subpaths.loc[n,:].shape[0]
-    plt.scatter(np.mod(subpaths.loc[n,:].AOD*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),
+    plt.scatter(np.mod(subpaths.loc[n,:].AoD*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].AoA*np.pi/180,2*np.pi),
                 # color=cm.coolwarm((10*np.log10(Nant*Nant*subpaths.loc[n,:].P)-mindB)/((maxdB-mindB))),
                 color=cm.jet(n/(nClusters-1)),
                 marker='o')

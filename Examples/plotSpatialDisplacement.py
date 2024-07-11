@@ -37,7 +37,7 @@ nNLOSsp=subpathsNAD.loc[1,:].shape[0]
 
 lsubpaths=[subpathsNAD]
 lClusters=[clustersNAD]
-Npos = 6
+Npos = 5
 despla=(10,0,0)
 
 lrxPosNext0=[rx[0]]
@@ -83,9 +83,9 @@ for clustersONE in lClusters:
   
     for i in clustersONE.index: 
         
-        plt.plot([tx[0],tx[0]+liTX_cNA[i]*np.cos(clustersONE.AOD[i]*np.pi/180)],[tx[1],tx[1]+liTX_cNA[i]*np.sin(clustersONE.AOD[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
+        plt.plot([tx[0],tx[0]+liTX_cNA[i]*np.cos(clustersONE.AoD[i]*np.pi/180)],[tx[1],tx[1]+liTX_cNA[i]*np.sin(clustersONE.AoD[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
    
-        plt.plot([lrxPosNext0[z],lrxPosNext0[z]+liRX_cNA[i]*np.cos(clustersONE.AOA[i]*np.pi/180)],[lrxPosNext1[z],lrxPosNext1[z]+liRX_cNA[i]*np.sin(clustersONE.AOA[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9')
+        plt.plot([lrxPosNext0[z],lrxPosNext0[z]+liRX_cNA[i]*np.cos(clustersONE.AoA[i]*np.pi/180)],[lrxPosNext1[z],lrxPosNext1[z]+liRX_cNA[i]*np.sin(clustersONE.AoA[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9')
      
     plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
     plt.plot(lrxPosNext0[z],lrxPosNext1[z],'sb',label='UE', linewidth='4.5')
@@ -111,9 +111,9 @@ for subpathONE in lsubpaths:
 
     plt.plot([tx[0],lrxPosNext0[z]],[tx[1],lrxPosNext1[z]],'--')
     for i in range(0,nClusters): 
-        Nsp=subpathONE.AOD[i].size
-        plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.cos(subpathONE.AOD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.sin(subpathONE.AOD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
-        plt.plot(lrxPosNext0[z]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*np.cos(subpathONE.AOA[i]*np.pi/180)]),lrxPosNext1[z]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*np.sin(subpathONE.AOA[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
+        Nsp=subpathONE.AoD.loc[i].size
+        plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.cos(subpathONE.AoD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.sin(subpathONE.AoD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
+        plt.plot(lrxPosNext0[z]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*np.cos(subpathONE.AoA[i]*np.pi/180)]),lrxPosNext1[z]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*np.sin(subpathONE.AoA[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
     plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
     plt.plot(lrxPosNext0[z],lrxPosNext1[z],'sb',label='UE', linewidth='4.5')
     legend = plt.legend(shadow=True, fontsize='10')
@@ -127,7 +127,7 @@ for subpathONE in lsubpaths:
     fig = plt.figure(fig_ctr)
     plt.subplot(2,2,1, projection='polar',title="AoD")
     for n in range(nClusters):   
-        AOD_1c = subpathONE.loc[n,:].AOD *np.pi/180
+        AOD_1c = subpathONE.loc[n,:].AoD *np.pi/180
         pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10( subpathONE.loc[n,:].P  ),-45)
         AOD_1c = AOD_1c.to_numpy()
         Nsp=len(AOD_1c)
@@ -136,7 +136,7 @@ for subpathONE in lsubpaths:
     plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'],fontsize = 7)
     plt.subplot(2,2,2, projection='polar')
     for n in range(nClusters):  
-        AOA_1cf = subpathONE.loc[n,:].AOA *np.pi/180
+        AOA_1cf = subpathONE.loc[n,:].AoA *np.pi/180
         pathAmplitudesdBtrunc25_1c = np.maximum(10*np.log10(subpathONE.loc[n,:].P  ),-45)
         AOA_1cf =AOA_1cf.to_numpy()
         Nsp=len(AOA_1cf)
@@ -147,7 +147,7 @@ for subpathONE in lsubpaths:
     plt.ylabel("power [dB]")
     plt.xlabel("TDoA (s)")
     for n in range(nClusters):   
-        markerline, stemlines, baseline = plt.stem( subpathONE.loc[n,:].TDOA ,10*np.log10( subpathONE.loc[n,:].P ),bottom=np.min(10*np.log10(subpathONE.P)))
+        markerline, stemlines, baseline = plt.stem( subpathONE.loc[n,:].TDoA ,10*np.log10( subpathONE.loc[n,:].P ),bottom=np.min(10*np.log10(subpathONE.P)))
         plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
         plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
     filename = f"../Figures/deck_{fig_ctr}.png"            

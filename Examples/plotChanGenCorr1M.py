@@ -51,11 +51,11 @@ losState = np.zeros(Nusers,dtype=bool)
 for i in range(Nusers):
     plinfo,macro,clusters,subpaths = model.create_channel(txPos,users[i])
     losState[i],PLdBmu,shadowing = plinfo
-    AOA[i]= clusters.AOA[1]
-    TDOA[i]= clusters.TDOA[1]
-    AOD[i]= clusters.AOD[1]
-    ZOA[i]= clusters.ZOA[1]
-    ZOD[i]= clusters.ZOD[1]
+    AOA[i]= clusters.AoA[1]
+    TDOA[i]= clusters.TDoA[1]
+    AOD[i]= clusters.AoD[1]
+    ZOA[i]= clusters.ZoA[1]
+    ZOD[i]= clusters.ZoD[1]
 
 
 ###ENCONTRAR DOS VALORES CERCANOS AOA##########

@@ -31,11 +31,11 @@ fig = plt.figure(fig_ctr)
 for n in range(nClusters):
     pathAmplitudes = np.sqrt( subpaths.loc[n,:].P )*np.exp(1j* subpaths.loc[n,:].phase00)
     plt.subplot(2,1,1)
-    markerline, stemlines, baseline = plt.stem(subpaths.loc[n,:].TDOA *1e9,np.real(pathAmplitudes))
+    markerline, stemlines, baseline = plt.stem(subpaths.loc[n,:].TDoA *1e9,np.real(pathAmplitudes))
     plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
     plt.subplot(2,1,2)
-    markerline, stemlines, baseline = plt.stem(subpaths.loc[n,:].TDOA *1e9,np.imag(pathAmplitudes))
+    markerline, stemlines, baseline = plt.stem(subpaths.loc[n,:].TDoA *1e9,np.imag(pathAmplitudes))
     plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.subplot(2,1,1)
@@ -53,7 +53,7 @@ fig = plt.figure(fig_ctr)
 mindB = np.min(10*np.log10( subpaths.P ))
 for n in range(nClusters):
     pathAmpdBtrunc25 = 10*np.log10( subpaths.loc[n,:].P )
-    markerline, stemlines, baseline = plt.stem(subpaths.loc[n,:].TDOA *1e9, pathAmpdBtrunc25, bottom=mindB)
+    markerline, stemlines, baseline = plt.stem(subpaths.loc[n,:].TDoA *1e9, pathAmpdBtrunc25, bottom=mindB)
     plt.setp(stemlines, color=cm.jet(n/(nClusters-1)))
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 
@@ -65,7 +65,7 @@ plt.ylabel('$|h(t)|^2$ [dB]')
 #the DEC h[n] is a digital transmission pulse convolved with the channel and sampled p(t)*h(t)|_{t=nTs}
 Ts=2 #ns
 #while the DEC is an IIR filter, we approximate it as a FIR filter with a length that can cover the delays
-Ds=np.max(subpaths.TDOA *1e9)
+Ds=np.max(subpaths.TDoA *1e9)
 Ntaps = int(np.ceil(Ds/Ts))
 #1 path becomes 1 pulse (we choose sinc in this example)
 PrecedingSincLobes = 5
@@ -80,10 +80,10 @@ topNpaths = subpaths.sort_values(by=['P'],ascending=False).index[0:Ntop]
 for p in range(Ntop):
     n,m = topNpaths[p]    
     pathCoefAbs = np.sqrt( subpaths.loc[n,m].P )
-    pulsesOversampling = np.sinc((t-subpaths.loc[n,m].TDOA *1e9)/Ts)
+    pulsesOversampling = np.sinc((t-subpaths.loc[n,m].TDoA *1e9)/Ts)
     plt.plot(t/Ts,pathCoefAbs*pulsesOversampling,':',color=cm.jet(p/(Ntop-1)))
     
-    pulses = np.sinc(taps-subpaths.loc[n,m].TDOA *1e9/Ts)
+    pulses = np.sinc(taps-subpaths.loc[n,m].TDoA *1e9/Ts)
     markerline, stemlines, baseline =  plt.stem(taps,pathCoefAbs*pulses,label="CIR subpath %d,%d"%(n,m))
     plt.setp(stemlines, color=cm.jet(p/(Ntop-1)))
     plt.setp(markerline, color=cm.jet(p/(Ntop-1))) 
@@ -93,8 +93,8 @@ plt.title('%d strongest subpaths, sampled by sinc pulses with Ts=%.1f'%(Ntop,Ts)
 plt.legend()
 
 #all paths together become a sum of complex-coefficients x sinc pulses
-pulsesOversampling = np.sinc((t-subpaths.TDOA.to_numpy() *1e9)/Ts)
-pulses = np.sinc(taps -subpaths.TDOA.to_numpy() *1e9/Ts)
+pulsesOversampling = np.sinc((t-subpaths.TDoA.to_numpy() *1e9)/Ts)
+pulses = np.sinc(taps -subpaths.TDoA.to_numpy() *1e9/Ts)
 pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy()
 hn=np.sum(pulses*pathAmplitudes,axis=1)
 hnOversampling=np.sum(pulsesOversampling*pathAmplitudes,axis=1)

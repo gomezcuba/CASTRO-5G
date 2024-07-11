@@ -28,8 +28,8 @@ plt.close('all')
 # compute the response of the antenna array with Nant antennas
 Nant = 8
 
-AAntennaResponses =mc.fULA( subpaths.AOA.to_numpy() *np.pi/180 ,Nant)
-ZAntennaResponses =mc.fULA(np.pi/2-subpaths.ZOA.to_numpy() *np.pi/180 ,Nant)#zenit goes from vertical down
+AAntennaResponses =mc.fULA( subpaths.AoA.to_numpy() *np.pi/180 ,Nant)
+ZAntennaResponses =mc.fULA(np.pi/2-subpaths.ZoA.to_numpy() *np.pi/180 ,Nant)#zenit goes from vertical down
 #the full Uniform Planar Array response is the following but we do not need to calculate it for this plot
 #AntennaResponses=np.zeros((Npath,Nant*Nant,1))
 #for i in range(Npath):
@@ -60,7 +60,7 @@ plt.xticks(ticks=np.pi*np.array([0,.5,1,1.5,2]),labels=['0','$\\frac{\\pi}{2}$',
 plt.yticks(ticks=np.pi*np.array([0,.25,.5,.75,1]),labels=['0','$\\frac{\\pi}{4}$','$\\frac{\\pi}{2}$','$\\frac{3\\pi}{4}$','$\\pi$',])
 plt.xlabel('AoA')
 plt.ylabel('ZoA')
-plt.title('%dx%d UPA directivity for 1st subpath AoA=%.1fº ZoA=%.1fº'%(Nant,Nant,subpaths.loc[0,0].AOA,subpaths.loc[0,0].ZOA))
+plt.title('%dx%d UPA directivity for 1st subpath AoA=%.1fº ZoA=%.1fº'%(Nant,Nant,subpaths.loc[0,0].AoA,subpaths.loc[0,0].ZoA))
 
 
 fig_ctr+=1
@@ -77,7 +77,7 @@ ax.set_zlabel('cos(ZoA)')
 cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),ax=ax,shrink=0.8,label = 'Analog Beam Gain dB')
 cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
 cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
-plt.title('%dx%d UPA directivity for 1st subpath AoA=%.1fº ZoA=%.1fº'%(Nant,Nant,subpaths.loc[0,0].AOA,subpaths.loc[0,0].ZOA))
+plt.title('%dx%d UPA directivity for 1st subpath AoA=%.1fº ZoA=%.1fº'%(Nant,Nant,subpaths.loc[0,0].AoA,subpaths.loc[0,0].ZoA))
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
@@ -94,7 +94,7 @@ ax.set_zlabel('cos(ZoA)')
 cbar = plt.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),ax=ax,shrink=0.8,label = 'Analog Beam Gain dB')
 cbar.set_ticks((np.arange(-30,30,10) -np.min(arrayResponseOnePathdBtrunc30) )/(np.max(arrayResponseOnePathdBtrunc30)-np.min(arrayResponseOnePathdBtrunc30)))
 cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(-30,30,10)])
-plt.title('%dx%d UPA directivity for 1st subpath AoA=%.1fº ZoA=%.1fº'%(Nant,Nant,subpaths.loc[0,0].AOA,subpaths.loc[0,0].ZOA))
+plt.title('%dx%d UPA directivity for 1st subpath AoA=%.1fº ZoA=%.1fº'%(Nant,Nant,subpaths.loc[0,0].AoA,subpaths.loc[0,0].ZoA))
 
 
  #plot of all the paths in the channel
@@ -117,7 +117,7 @@ plt.title('sum of %dx%d UPA directivity times all chan coefs'%(Nant,Nant))
 
 for n in range(nClusters):   
     Nsp=subpaths.loc[n,:].shape[0]
-    plt.scatter(np.mod(subpaths.loc[n,:].AOA*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].ZOA*np.pi/180,2*np.pi),color=cm.jet(n/(nClusters-1)),marker='o')
+    plt.scatter(np.mod(subpaths.loc[n,:].AoA*np.pi/180,2*np.pi),np.mod(subpaths.loc[n,:].ZoA*np.pi/180,2*np.pi),color=cm.jet(n/(nClusters-1)),marker='o')
 
 
 fig_ctr+=1

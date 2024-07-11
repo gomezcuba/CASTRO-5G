@@ -35,15 +35,15 @@ pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy
 
 #DEC
 Ts=2 #ns
-Ds=np.max(subpaths.TDOA*1e9)
+Ds=np.max(subpaths.TDoA*1e9)
 Ntaps = int(np.ceil(Ds/Ts))
 n=np.linspace(0,Ntaps-1,Ntaps)
-pulses = np.sinc(n[:,None]-subpaths.TDOA.to_numpy()*1e9/Ts)
+pulses = np.sinc(n[:,None]-subpaths.TDoA.to_numpy()*1e9/Ts)
 
 # array responses
 Nant = 16
-AntennaResponsesRx =mc.fULA(subpaths.AOA.to_numpy()*np.pi/180,Nant)
-AntennaResponsesTx =mc.fULA(subpaths.AOD.to_numpy()*np.pi/180,Nant)
+AntennaResponsesRx =mc.fULA(subpaths.AoA.to_numpy()*np.pi/180,Nant)
+AntennaResponsesTx =mc.fULA(subpaths.AoD.to_numpy()*np.pi/180,Nant)
 Npointsplot=2*Nant #in this case we use only a few beamforming vectors
 angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)

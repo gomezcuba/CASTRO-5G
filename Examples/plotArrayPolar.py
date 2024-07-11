@@ -25,8 +25,8 @@ fig = plt.figure(fig_ctr)
 for n in range(nClusters):   
     pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10( subpaths.loc[n,:].P ),-45)
     Nsp=subpaths.loc[n,:].shape[0]
-    plt.polar(np.tile(subpaths.loc[n,:].AOA*np.pi/180,(2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)))
-    plt.scatter(subpaths.loc[n,:].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker=(3,0,-90+clusters.loc[n].AOA))
+    plt.polar(np.tile(subpaths.loc[n,:].AoA*np.pi/180,(2,1)),np.vstack([-40*np.ones((1,Nsp)),pathAmplitudesdBtrunc25_sp]),':',color=cm.jet(n/(nClusters-1)))
+    plt.scatter(subpaths.loc[n,:].AoA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(n/(nClusters-1)),marker=(3,0,-90+clusters.loc[n].AoA))
 plt.yticks(ticks=[-40,-30,-20,-10],labels=['-40dB','-30dB','-20dB','-10dB'])
 plt.title("AoAs and normalized Power for all clusters and subpaths")
 
@@ -46,15 +46,15 @@ topNpaths = subpaths.sort_values(by=['P'],ascending=False).index[0:Ntop]
 for p in range(Ntop):
     n,m = topNpaths[p]
     
-    AntennaResponse1Path =mc.fULA(subpaths.loc[n,m].AOA *np.pi/180 ,Nant)
+    AntennaResponse1Path =mc.fULA(subpaths.loc[n,m].AoA *np.pi/180 ,Nant)
     
     arrayGain1Path=(BeamformingVectors.transpose([0,2,1]).conj()@ AntennaResponse1Path ).reshape(-1)
     arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGain1Path)**2),-25)
 
     plt.polar(angles_plot,arrayGain1PathdBtrunc25,':',label="ULA G_{%d,%d}"%(n,m),color=cm.jet(p/(Ntop-1)))
     pathAmplitudesdBtrunc25_sp = np.maximum(10*np.log10( subpaths.loc[n,m].P ),-45)
-    plt.polar(np.tile(subpaths.loc[n,m].AOA *np.pi/180,(2,1)),[-40,pathAmplitudesdBtrunc25_sp],'-',color=cm.jet(p/(Ntop-1)))
-    plt.scatter(subpaths.loc[n,m].AOA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(p/(Ntop-1)),marker=(3,0,-90+subpaths.loc[n,m].AOA))
+    plt.polar(np.tile(subpaths.loc[n,m].AoA *np.pi/180,(2,1)),[-40,pathAmplitudesdBtrunc25_sp],'-',color=cm.jet(p/(Ntop-1)))
+    plt.scatter(subpaths.loc[n,m].AoA*np.pi/180,pathAmplitudesdBtrunc25_sp,color=cm.jet(p/(Ntop-1)),marker=(3,0,-90+subpaths.loc[n,m].AoA))
 
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
 plt.legend()
@@ -64,7 +64,7 @@ plt.title("%d ULA angular response and channel gain for %d strongest subpaths"%(
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 # plt.subplot(2,1,2, projection='polar')
-AntennaResponseNPaths = mc.fULA(subpaths.loc[topNpaths].AOA *np.pi/180 ,Nant)
+AntennaResponseNPaths = mc.fULA(subpaths.loc[topNpaths].AoA *np.pi/180 ,Nant)
 arrayGainNPaths=(AntennaResponseNPaths.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Ntop))
 chanCoefNPaths=np.sqrt( subpaths.loc[topNpaths].P ) * np.exp( 1j* subpaths.loc[topNpaths].phase00 )
 arrayResponseCombined = np.sum( arrayGainNPaths*chanCoefNPaths.to_numpy() , axis=1)
@@ -78,7 +78,7 @@ plt.title("%d ULA angular response times channel gain summed over %d strongest s
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 for n in range(nClusters):       
-    AntennaResponseCluster =mc.fULA(subpaths.loc[n,:].AOA *np.pi/180 ,Nant)
+    AntennaResponseCluster =mc.fULA(subpaths.loc[n,:].AoA *np.pi/180 ,Nant)
     arrayGainCluster=(AntennaResponseCluster.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
     chanGainClusterdBtrunc25 = np.maximum(10*np.log10(subpaths.loc[n,:].P.to_numpy()*Nant*np.abs(arrayGainCluster)**2),-25)
     plt.polar(angles_plot,chanGainClusterdBtrunc25,color=cm.jet(n/(nClusters-1)),label='Cluster %d'%(n))
@@ -90,7 +90,7 @@ plt.title("%d ULA angular response times channel gain for all subpaths"%(Nant))
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
-AntennaResponseAll =mc.fULA( subpaths.AOA *np.pi/180 ,Nant)
+AntennaResponseAll =mc.fULA( subpaths.AoA *np.pi/180 ,Nant)
 arrayGainAllPaths=(AntennaResponseAll.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
 chanCoefAllPaths=np.sqrt( subpaths.P )*np.exp(-1j* subpaths.phase00)
 arrayResponseCombined = np.sum( arrayGainAllPaths*chanCoefAllPaths.to_numpy() , axis=1)

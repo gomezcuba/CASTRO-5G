@@ -38,13 +38,13 @@ for n in range(nClusters1):
     Nsp=subpaths1.loc[n,:].shape[0]
     pathAmplitudesdBtrunc25 = np.maximum(10*np.log10( subpaths1.loc[n,:].P ),-45)
     plt.polar(
-        np.tile(subpaths1.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths1.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         ":",
         color=cm.jet(n / (nClusters1 - 1))
     )
     plt.scatter(
-        np.tile(subpaths1.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths1.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         color=cm.jet(n / (nClusters1 - 1)),
         marker="<"
@@ -59,13 +59,13 @@ for n in range(nClusters2):
     Nsp=subpaths2.loc[n,:].shape[0]
     pathAmplitudesdBtrunc25 = np.maximum(10*np.log10( subpaths2.loc[n,:].P ),-45)
     plt.polar(
-        np.tile(subpaths2.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths2.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         ":",
         color=cm.jet(n / (nClusters2 - 1))
     )
     plt.scatter(
-        np.tile(subpaths2.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths2.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         color=cm.jet(n / (nClusters2 - 1)),
         marker="<"
@@ -83,13 +83,13 @@ for n in range(nClusters3):
     Nsp=subpaths3.loc[n,:].shape[0]
     pathAmplitudesdBtrunc25 = np.maximum(10*np.log10( subpaths3.loc[n,:].P ),-45)
     plt.polar(
-        np.tile(subpaths3.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths3.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         ":",
         color=cm.jet(n / (nClusters3 - 1))
     )
     plt.scatter(
-        np.tile(subpaths3.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths3.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         color=cm.jet(n / (nClusters3 - 1)),
         marker="<"
@@ -112,13 +112,13 @@ for n in range(nClusters1):
     Nsp=subpaths1.loc[n,:].shape[0]
     pathAmplitudesdBtrunc25 = np.maximum(10*np.log10( subpaths1.loc[n,:].P ),-45)
     plt.polar(
-        np.tile(subpaths1.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths1.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         ":",
         color=cm.jet(n / (nClusters1 - 1))
     )
     plt.scatter(
-        np.tile(subpaths1.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths1.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         color=cm.jet(n / (nClusters1 - 1)),
         marker="<"
@@ -137,13 +137,13 @@ for n in range(nClusters2):
     Nsp=subpaths2.loc[n,:].shape[0]
     pathAmplitudesdBtrunc25 = np.maximum(10*np.log10( subpaths2.loc[n,:].P ),-45)
     plt.polar(
-        np.tile(subpaths2.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths2.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         ":",
         color=cm.jet(n / (nClusters2 - 1))
     )
     plt.scatter(
-        np.tile(subpaths2.loc[n,:].AOA*np.pi/180,(2,1)),
+        np.tile(subpaths2.loc[n,:].AoA*np.pi/180,(2,1)),
         np.vstack([-40 * np.ones((1, Nsp)), pathAmplitudesdBtrunc25]),
         color=cm.jet(n / (nClusters2 - 1)),
         marker="<"

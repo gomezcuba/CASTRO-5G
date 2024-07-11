@@ -51,7 +51,7 @@ def plot3DPolarCilinder(ax,N,zval,lval,maxv):
     ax.text3D(0,0,maxdelCentenas,"delay [ns]",color='k')
 
 dBat0polar = -40
-plot3DPolarCilinder(ax,101,dBat0polar,[-30,-20,-10,0],np.max(np.max(subpaths.TDOA)*1e9))
+plot3DPolarCilinder(ax,101,dBat0polar,[-30,-20,-10,0],np.max(np.max(subpaths.TDoA)*1e9))
 
 ###############################################################################
 # Plot each path power- AoA - delay profile in analog domain
@@ -61,17 +61,17 @@ for n,m in subpaths.index:#plot3D needs to be called 1 line at a time
     clr = cm.jet(n/(nClusters-1))
     coefdB=10*np.log10( subpaths.loc[n,m].P )
     radius = coefdB - dBat0polar
-    x=np.maximum(radius,0)*np.cos(subpaths.loc[n,m].AOA)
-    y=np.maximum(radius,0)*np.sin(subpaths.loc[n,m].AOA)
+    x=np.maximum(radius,0)*np.cos(subpaths.loc[n,m].AoA)
+    y=np.maximum(radius,0)*np.sin(subpaths.loc[n,m].AoA)
     #plot the paths
-    ax.plot3D([0,x],[0,y],[subpaths.loc[n,m].TDOA*1e9,subpaths.loc[n,m].TDOA*1e9],color=clr)
-    ax.scatter3D(x,y,subpaths.loc[n,m].TDOA*1e9,marker=(3,0,-90+clusters.loc[n].AOA),color=clr)
+    ax.plot3D([0,x],[0,y],[subpaths.loc[n,m].TDoA*1e9,subpaths.loc[n,m].TDoA*1e9],color=clr)
+    ax.scatter3D(x,y,subpaths.loc[n,m].TDoA*1e9,marker=(3,0,-90+clusters.loc[n].AoA),color=clr)
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 # ax = Axes3D(fig)
 ax = fig.add_subplot(111, projection='3d')
 
-plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.TDOA)*1e9))
+plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.TDoA)*1e9))
 
 ########################################################################
 # compute the response of the antenna array with Nant antennas
@@ -85,36 +85,36 @@ BeamformingVectors =mc.fULA(angles_plot,Nant)
 for n,m in subpaths.index:#plot3D needs to be called 1 line at a time
     clr = cm.jet(n/(nClusters-1))
     
-    AntennaResponse1Path =mc.fULA(subpaths.loc[n,m].AOA *np.pi/180 ,Nant)    
+    AntennaResponse1Path =mc.fULA(subpaths.loc[n,m].AoA *np.pi/180 ,Nant)    
     arrayGain1Path=(BeamformingVectors.transpose([0,2,1]).conj()@ AntennaResponse1Path ).reshape(-1)
     arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(subpaths.loc[n,m].P*Nant*np.abs(arrayGain1Path)**2),-40)
 
     coefdB=10*np.log10( subpaths.loc[n,m].P )
     radius = coefdB - dBat0polar
-    x=np.maximum(radius,0)*np.cos(subpaths.loc[n,m].AOA)
-    y=np.maximum(radius,0)*np.sin(subpaths.loc[n,m].AOA)
+    x=np.maximum(radius,0)*np.cos(subpaths.loc[n,m].AoA)
+    y=np.maximum(radius,0)*np.sin(subpaths.loc[n,m].AoA)
     #plot the paths
-    ax.plot3D([0,x],[0,y],[subpaths.loc[n,m].TDOA*1e9,subpaths.loc[n,m].TDOA*1e9],color=clr)
-    ax.scatter3D(x,y,subpaths.loc[n,m].TDOA*1e9,marker=(3,0,-90+clusters.loc[n].AOA),color=clr)
+    ax.plot3D([0,x],[0,y],[subpaths.loc[n,m].TDoA*1e9,subpaths.loc[n,m].TDoA*1e9],color=clr)
+    ax.scatter3D(x,y,subpaths.loc[n,m].TDoA*1e9,marker=(3,0,-90+clusters.loc[n].AoA),color=clr)
     #plot the array gains for each path
     radius = arrayGain1PathdBtrunc25 - dBat0polar
     x=radius*np.cos(angles_plot)
     y=radius*np.sin(angles_plot)
-    ax.plot3D(x,y,subpaths.loc[n,m].TDOA*1e9*np.ones_like(x),linestyle=':',color=clr)
+    ax.plot3D(x,y,subpaths.loc[n,m].TDoA*1e9*np.ones_like(x),linestyle=':',color=clr)
  
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 ax = fig.add_subplot(111, projection='3d')
-plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.TDOA)*1e9))   
+plot3DPolarCilinder(ax,101,-40,[-30,-20,-10,0],np.max(np.max(subpaths.TDoA)*1e9))   
 #DEC
 Ts=2 #ns
-Ds=np.max(subpaths.TDOA*1e9)
+Ds=np.max(subpaths.TDoA*1e9)
 Ntaps = int(np.ceil(Ds/Ts))
 n=np.linspace(0,Ntaps-1,Ntaps)
-pulses = np.sinc(n[:,None]-subpaths.TDOA.to_numpy()*1e9/Ts)
+pulses = np.sinc(n[:,None]-subpaths.TDoA.to_numpy()*1e9/Ts)
 
 
-AntennaResponsesRx =mc.fULA(subpaths.AOA.to_numpy()*np.pi/180,Nant)
+AntennaResponsesRx =mc.fULA(subpaths.AoA.to_numpy()*np.pi/180,Nant)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
 arrayGainAllPathsRx=(AntennaResponsesRx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:])[:,:,0,0]
 hnArray = np.sum(pulses[:,None,:]*arrayGainAllPathsRx[None,:,:]*pathAmplitudes[None,None,:],axis=2)

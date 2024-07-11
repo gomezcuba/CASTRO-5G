@@ -20,20 +20,20 @@ plt.close('all')
 GEN_CHANS=False
 GEN_PLOT=False
 Nstrongest=40
-Nmaxpaths=100
+Nmaxpaths=50
 Nsims=100
 
-EST_CHANS=False
+EST_CHANS=True
 EST_PLOT=False
 Nd=16
 Na=16
-Ncp=64
+Ncp=128
 Nframe=7
 Nrft=1
 Nrfr=4
-K=64
-Ts=300/Ncp #2.5
-Ds=Ts*Ncp
+K=128
+Ds=300e-9
+Ts=Ds/Ncp #2.5 ns
 sigma2=.01
 
 MATCH_CHANS=False
@@ -64,11 +64,11 @@ if GEN_CHANS:
     
     t_start_g= time.time()
     Npath=np.zeros(Nsims,dtype=int)
-    AoD=np.zeros((Nmaxpaths,Nsims))
-    DAoA=np.zeros((Nmaxpaths,Nsims))
-    refLocs=np.zeros((Nmaxpaths,Nsims,2))
-    TDoA=np.zeros((Nmaxpaths,Nsims))
-    coefs=np.zeros((Nmaxpaths,Nsims),dtype=complex)
+    AoD=np.zeros((Nsims,Nmaxpaths))
+    DAoA=np.zeros((Nsims,Nmaxpaths))
+    refLocs=np.zeros((Nsims,Nmaxpaths,2))
+    TDoA=np.zeros((Nsims,Nmaxpaths))
+    coefs=np.zeros((Nsims,Nmaxpaths),dtype=complex)
     for nsim in tqdm(range(Nsims),desc="Generating multipath channels"):
         #chamar ao xenerador de canle do 3GPP
         plinfo,macro,clustersNAD,subpathsNAD = chgen.create_channel((0,0,10),(x0[nsim],y0[nsim],1.5))        
@@ -78,19 +78,19 @@ if GEN_CHANS:
         # los, PLfree, SF = plinfo
         # TDoA_sp,pow_sp,AOA_sp,AOD_sp,ZOA_sp,ZOD_sp,_,phase00,_,_,_,xpos,ypos  = subpathsAD.T.to_numpy
         allCoefs = np.sqrt( subpathsAD.P.to_numpy() )*np.exp(2j*np.pi*subpathsAD.phase00.to_numpy())
-        allDAoA = np.mod( subpathsAD.AOA.to_numpy()*np.pi/180-AoA0[nsim] ,np.pi*2)
-        allAoD = np.mod( subpathsAD.AOD.to_numpy()*np.pi/180 ,np.pi*2)
-        allTDoA = subpathsAD.TDOA.to_numpy()
+        allDAoA = np.mod( subpathsAD.AoA.to_numpy()*np.pi/180-AoA0[nsim] ,np.pi*2)
+        allAoD = np.mod( subpathsAD.AoD.to_numpy()*np.pi/180 ,np.pi*2)
+        allTDoA = subpathsAD.TDoA.to_numpy()
         Npath[nsim]=np.minimum(Nmaxpaths,allCoefs.size)
             
     #    strongestInds=np.argpartition(-np.abs(amps),Npath[nsim],axis=0)[0:Npath[nsim]]
         strongestInds=np.argsort(-np.abs(allCoefs),axis=0)[0:Npath[nsim]]
-        coefs[0:Npath[nsim],nsim]=allCoefs[strongestInds[0:Npath[nsim]]]
-        TDoA[0:Npath[nsim],nsim] = allTDoA[strongestInds[0:Npath[nsim]]]
-        AoD[0:Npath[nsim],nsim] = allAoD[strongestInds[0:Npath[nsim]]]
-        DAoA[0:Npath[nsim],nsim] = allDAoA[strongestInds[0:Npath[nsim]]]
-        refLocs[0:Npath[nsim],nsim,0] = subpathsAD.Xs.to_numpy()[strongestInds[0:Npath[nsim]]]
-        refLocs[0:Npath[nsim],nsim,1] = subpathsAD.Ys.to_numpy()[strongestInds[0:Npath[nsim]]]
+        coefs[nsim,0:Npath[nsim]]=allCoefs[strongestInds[0:Npath[nsim]]]
+        TDoA[nsim,0:Npath[nsim]] = allTDoA[strongestInds[0:Npath[nsim]]]
+        AoD[nsim,0:Npath[nsim]] = allAoD[strongestInds[0:Npath[nsim]]]
+        DAoA[nsim,0:Npath[nsim]] = allDAoA[strongestInds[0:Npath[nsim]]]
+        refLocs[nsim,0:Npath[nsim],0] = subpathsAD.Xs.to_numpy()[strongestInds[0:Npath[nsim]]]
+        refLocs[nsim,0:Npath[nsim],1] = subpathsAD.Ys.to_numpy()[strongestInds[0:Npath[nsim]]]
             
     t_run_g = time.time() - t_start_g
 
@@ -143,8 +143,8 @@ if EST_CHANS:
     #channel multipath estimation outputs with error
     
 #    angleNoiseMSE=(2*np.pi/64)**2
-#    AoD_err = np.mod(AoD+np.random.randn(Nmaxpaths,Nsims)*np.sqrt(angleNoiseMSE),2*np.pi)
-#    AoA_err = np.mod(AoA+np.random.randn(Nmaxpaths,Nsims)*np.sqrt(angleNoiseMSE),2*np.pi)
+#    AoD_err = np.mod(AoD+np.random.randn(Nsims,Nmaxpaths)*np.sqrt(angleNoiseMSE),2*np.pi)
+#    AoA_err = np.mod(AoA+np.random.randn(Nsims,Nmaxpaths)*np.sqrt(angleNoiseMSE),2*np.pi)
 #    clock_error=(40/c)*np.random.rand(1,Nsims) #delay estimation error
 #    TDoA_err = TDoA+clock_error
     
@@ -154,10 +154,10 @@ if EST_CHANS:
     dicFast=cs.CSMultiFFTDictionary()
     omprunner.setDictionary(dicFast)
     pilgen = mc.MIMOPilotChannel("IDUV")
-    AoD_est=np.zeros((Nmaxpaths,Nsims))
-    DAoA_est=np.zeros((Nmaxpaths,Nsims))
-    TDoA_est=np.zeros((Nmaxpaths,Nsims))
-    coef_est=np.zeros((Nmaxpaths,Nsims),dtype=complex)
+    AoD_est=np.zeros((Nsims,Nmaxpaths))
+    DAoA_est=np.zeros((Nsims,Nmaxpaths))
+    TDoA_est=np.zeros((Nsims,Nmaxpaths))
+    coef_est=np.zeros((Nsims,Nmaxpaths),dtype=complex)
     wall=np.zeros((Nsims,Nframe,K,Nrfr,Na),dtype=complex)
     vall=np.zeros((Nsims,Nframe,K,Nd,Nrft),dtype=complex)
     zall=np.zeros((Nsims,Nframe,K,Na,1),dtype=complex)
@@ -180,23 +180,23 @@ if EST_CHANS:
         Pfa=1e-5
         factor_Pfa=np.log(1/(1-(Pfa)**(1/(Nd*Na*Ncp))))
         factor_Pfa=1
-        ( hest, paths_est, Rsup, Hsup)=omprunner.OMP(yp,sigma2*K*Nframe*Nrfr*factor_Pfa,nsim,v,w, Xt=1.0, Xd=1.0, Xa=1.0, Xrefine=5.0,  Ncp = Ncp)
+        ( hest, paths_est, Rsup, Hsup)=omprunner.OMP(yp,sigma2*K*Nframe*Nrfr*factor_Pfa,nsim,v,w, Xt=1.0, Xd=1.0, Xa=1.0, Xrefine=10.0,  Ncp = Ncp)
         #    a_est = np.linalg.lstsq(Isupp.observations,yp.reshape(-1,1),rcond=None)[0]
         a_est = paths_est.coefs.to_numpy()
         if Nmaxpaths<a_est.size:
     #        indStrongest=np.argpartition(-np.abs(a_est[:,0]),Nmaxpaths,axis=0)[0:Nmaxpaths]
             indStrongest=np.argsort(-np.abs(a_est),axis=0)[0:Nmaxpaths]
-            AoD_est[:,nsim]=paths_est.AoD.to_numpy()[indStrongest]
-            DAoA_est[:,nsim]=paths_est.AoA.to_numpy()[indStrongest]
-            TDoA_est[:,nsim]=paths_est.TDoA.to_numpy()[indStrongest]*Ts*1e-9
-            coef_est[:,nsim]=paths_est.coefs.to_numpy()[indStrongest].reshape(-1)/np.sqrt(Na*Nd*Ncp)
+            AoD_est[nsim,:]=paths_est.AoD.to_numpy()[indStrongest]
+            DAoA_est[nsim,:]=paths_est.AoA.to_numpy()[indStrongest]
+            TDoA_est[nsim,:]=paths_est.TDoA.to_numpy()[indStrongest]*Ts
+            coef_est[nsim,:]=paths_est.coefs.to_numpy()[indStrongest].reshape(-1)/np.sqrt(Na*Nd*Ncp)
         else:
             Nelems=a_est.size
             indStrongest=np.argsort(-np.abs(a_est),axis=0)
-            AoD_est[0:Nelems,nsim]=paths_est.AoD.to_numpy()[indStrongest]
-            DAoA_est[0:Nelems,nsim]=paths_est.AoA.to_numpy()[indStrongest]
-            TDoA_est[0:Nelems,nsim]=paths_est.TDoA.to_numpy()[indStrongest]*Ts*1e-9
-            coef_est[0:Nelems,nsim]=paths_est.coefs.to_numpy()[indStrongest].reshape(-1)/np.sqrt(Na*Nd*Ncp)
+            AoD_est[nsim,0:Nelems]=paths_est.AoD.to_numpy()[indStrongest]
+            DAoA_est[nsim,0:Nelems]=paths_est.AoA.to_numpy()[indStrongest]
+            TDoA_est[nsim,0:Nelems]=paths_est.TDoA.to_numpy()[indStrongest]*Ts
+            coef_est[nsim,0:Nelems]=paths_est.coefs.to_numpy()[indStrongest].reshape(-1)/np.sqrt(Na*Nd*Ncp)
         omprunner.dictionaryEngine.freeCacheOfPilot(nsim,(K,Ncp,Na,Nd),(Ncp,Na,Nd))
         MSEOMP[nsim]=np.sum(np.abs(hest-hk)**2)/np.sum(np.abs(hk)**2)
         IsuppAll.append(paths_est)
@@ -213,13 +213,13 @@ if EST_CHANS:
     
     print("OMP MSEs: %s"%(MSEOMP))
     
-    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)
+    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=1)
     NpathsRetrievedMax=np.max(NpathsRetrieved)
-    DAoA_est=DAoA_est[0:NpathsRetrievedMax,:]
-    AoD_est=AoD_est[0:NpathsRetrievedMax,:]
-    TDoA_est=TDoA_est[0:NpathsRetrievedMax,:]
-    doef_est=coef_est[0:NpathsRetrievedMax,:]
-    np.savez('./mimoestimschans-%d-%d-%d-%d-%d-%d-%d.npz'%(Nrft,Nd,Na,Nrfr,Ncp,Nframe,Nsims),
+    DAoA_est=DAoA_est[:,0:NpathsRetrievedMax]
+    AoD_est=AoD_est[:,0:NpathsRetrievedMax]
+    TDoA_est=TDoA_est[:,0:NpathsRetrievedMax]
+    coef_est=coef_est[:,0:NpathsRetrievedMax]
+    np.savez('../Results/mimoestimschans-%d-%d-%d-%d-%d-%d-%d.npz'%(Nrft,Nd,Na,Nrfr,Ncp,Nframe,Nsims),
              DAoA_est=DAoA_est,
              AoD_est=AoD_est,
              TDoA_est=TDoA_est,
@@ -231,7 +231,7 @@ if EST_CHANS:
              hestall=hestall,
              MSEOMP=MSEOMP)
 else:
-    data=np.load('./mimoestimschans-%d-%d-%d-%d-%d-%d-%d.npz'%(Nrft,Nd,Na,Nrfr,Ncp,Nframe,Nsims),allow_pickle=True)
+    data=np.load('../Results/mimoestimschans-%d-%d-%d-%d-%d-%d-%d.npz'%(Nrft,Nd,Na,Nrfr,Ncp,Nframe,Nsims),allow_pickle=True)
     DAoA_est=data["DAoA_est"]
     AoD_est=data["AoD_est"]
     TDoA_est=data["TDoA_est"]
@@ -242,7 +242,7 @@ else:
     hkall=data["hkall"]
     hestall=data["hestall"]
     MSEOMP=data["MSEOMP"]
-    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)
+    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=1)
     NpathsRetrievedMax=np.max(NpathsRetrieved)
 
 if EST_PLOT:
@@ -270,24 +270,24 @@ if MATCH_CHANS:
         vUPA=mc.fULA(incidAngle,Nant,dInterElement)
         vAngle=mc.fULA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)
         return (np.swapaxes(vUPA,vUPA.ndim-2,vUPA.ndim-1)[...,None,:,:]@vAngle.conj())[...,0,0]
-    pdist=np.zeros((Nsims,Nmaxpaths,Nstrongest))
+    pdist=np.zeros((Nsims,Nmaxpaths,Nmaxpaths))
     for nsim in range(Nsims):
         pdist[nsim,:,:]= ( 
-                np.abs(np.sin(AoD_est[:,nsim:nsim+1]).T-np.sin(AoD[:,nsim:nsim+1]))/2 +
-                np.abs(np.sin(DAoA_est[:,nsim:nsim+1]).T-np.sin(DAoA[:,nsim:nsim+1]))/2 +
-                np.abs(TDoA_est[:,nsim:nsim+1].T-TDoA[:,nsim:nsim+1])*1e9/Ts/Ncp +
-                np.abs(coef_est[:,nsim:nsim+1].T-coefs[:,nsim:nsim+1])**2*(1/np.abs(coef_est[:,nsim:nsim+1].T)**2+1/np.abs(coefs[:,nsim:nsim+1])**2)/np.sum(np.abs(coef_est[:,nsim:nsim+1])>0)
+                np.abs(np.sin(AoD_est[nsim:nsim+1,:]).T-np.sin(AoD[nsim:nsim+1,0:]))/2 +
+                np.abs(np.sin(DAoA_est[nsim:nsim+1,:]).T-np.sin(DAoA[nsim:nsim+1,:]))/2 +
+                np.abs(TDoA_est[nsim:nsim+1,:].T-TDoA[nsim:nsim+1,:])*1e9/Ts/Ncp +
+                np.abs(coef_est[nsim:nsim+1,:].T-coefs[nsim:nsim+1,:])**2*(1/np.abs(coef_est[nsim:nsim+1,:].T)**2+1/np.abs(coefs[nsim:nsim+1,:])**2)/np.sum(np.abs(coef_est[nsim:nsim+1,:])>0)
                 )
     pathMatchTable = np.argmin(pdist,axis=1)
-    DAoA_diff=np.zeros((Nstrongest,Nsims))
-    AoD_diff=np.zeros((Nstrongest,Nsims))
-    TDoA_diff=np.zeros((Nstrongest,Nsims))
-    coef_diff=np.zeros((Nstrongest,Nsims),dtype=complex)
+    DAoA_diff=np.zeros((Nsims,Nstrongest))
+    AoD_diff=np.zeros((Nsims,Nstrongest))
+    TDoA_diff=np.zeros((Nsims,Nstrongest))
+    coef_diff=np.zeros((Nsims,Nstrongest),dtype=complex)
     for nsim in range(Nsims):
-        DAoA_diff[:,nsim]=np.mod(DAoA[pathMatchTable[nsim,:],nsim],2*np.pi)-np.mod(DAoA_est[:,nsim],2*np.pi)
-        AoD_diff[:,nsim]=np.mod(AoD[pathMatchTable[nsim,:],nsim],2*np.pi)-np.mod(AoD_est[:,nsim],2*np.pi)
-        TDoA_diff[:,nsim]=TDoA[pathMatchTable[nsim,:],nsim]-TDoA_est[:,nsim]
-        coef_diff[:,nsim]=coefs[pathMatchTable[nsim,:],nsim]-coef_est[:,nsim]
+        DAoA_diff[nsim,:]=np.mod(DAoA[nsim,pathMatchTable[nsim,0:Nstrongest]],2*np.pi)-np.mod(DAoA_est[nsim,0:Nstrongest],2*np.pi)
+        AoD_diff[nsim,:]=np.mod(AoD[nsim,pathMatchTable[nsim,0:Nstrongest]],2*np.pi)-np.mod(AoD_est[nsim,0:Nstrongest],2*np.pi)
+        TDoA_diff[nsim,:]=TDoA[nsim,pathMatchTable[nsim,0:Nstrongest]]-TDoA_est[nsim,0:Nstrongest]
+        coef_diff[nsim,:]=coefs[nsim,pathMatchTable[nsim,0:Nstrongest]]-coef_est[nsim,0:Nstrongest]
     Nlines=10
     fig_ctr+=1
     plt.figure(fig_ctr)
@@ -323,27 +323,27 @@ if MATCH_CHANS:
     Nang=250
     angbase=np.arange(0,2*np.pi,2*np.pi/Nang)
     nsim=0
-    for pind in range(0,np.sum(np.abs(coef_est[:,nsim])>0)):
-        ang=DAoA[pathMatchTable[nsim,pind],nsim]
-        delay=TDoA[pathMatchTable[nsim,pind],nsim]*1e9/Ts
-        gain=np.abs(coefs[pathMatchTable[nsim,pind],nsim])**2    
+    for pind in range(0,np.sum(np.abs(coef_est[nsim,:])>0)):
+        ang=DAoA[nsim,pathMatchTable[nsim,pind]]
+        delay=TDoA[nsim,pathMatchTable[nsim,pind]]*1e9/Ts
+        gain=np.abs(coefs[nsim,pathMatchTable[nsim,pind]])**2    
         x=np.maximum(10*np.log10(gain)+60,0)*np.cos(ang)
         y=np.maximum(10*np.log10(gain)+60,0)*np.sin(ang)
         p=ax.plot3D([0,x],[0,y],[delay,delay])
         ax.scatter3D(x,y,delay,marker='o',color=p[-1].get_color())    
-        gainrad=np.abs(radUPA(Nang,ang,Na,.5)*coefs[pathMatchTable[nsim,pind],nsim])**2
+        gainrad=np.abs(radUPA(Nang,ang,Na,.5)*coefs[nsim,pathMatchTable[nsim,pind]])**2
         xrad=np.maximum(10*np.log10(gainrad)+60,0)*np.cos(angbase)
         yrad=np.maximum(10*np.log10(gainrad)+60,0)*np.sin(angbase)
         ax.plot3D(xrad,yrad,delay*np.ones_like(xrad),'-.',color=p[-1].get_color())
         
-        ang=DAoA_est[pind,nsim]
-        delay=TDoA_est[pind,nsim]*1e9/Ts
-        gain=np.abs(coef_est[pind,nsim])**2    
+        ang=DAoA_est[nsim,pind]
+        delay=TDoA_est[nsim,pind]*1e9/Ts
+        gain=np.abs(coef_est[nsim,pind])**2    
         x=np.maximum(10*np.log10(gain)+60,0)*np.cos(ang)
         y=np.maximum(10*np.log10(gain)+60,0)*np.sin(ang)
         ax.plot3D([0,x],[0,y],[delay,delay],color=p[-1].get_color())
         ax.scatter3D(x,y,delay,marker='x',color=p[-1].get_color())      
-        gainrad=np.abs(radUPA(Nang,ang,Na,.5)*coef_est[pind,nsim])**2
+        gainrad=np.abs(radUPA(Nang,ang,Na,.5)*coef_est[nsim,pind])**2
         xrad=np.maximum(10*np.log10(gainrad)+60,0)*np.cos(angbase)
         yrad=np.maximum(10*np.log10(gainrad)+60,0)*np.sin(angbase)
         ax.plot3D(xrad,yrad,delay*np.ones_like(xrad),':',color=p[-1].get_color())   
@@ -357,69 +357,69 @@ if EST_LOCS:
             # ('CS','root','drop1','No hint'),
 #            ('CS','root','3path','Hint'),
             # ('CS','root','drop1','Hint'),
-            ('CS','oracle','','Pure'),            
+            ('CS','oracle','','Pure'),
             # ('CS','oracle','','Hint'),            
 #            ('true','brute','3path',''),
 #            ('true','root','3path','No Hint'),
-#            ('true','root','drop1','No hint'),
+            # ('true','root','drop1','No hint'),
             # ('true','root','3path','Hint'),
             # ('true','root','drop1','Hint'),
             ('true','oracle','','Pure'),            
-            # ('true','oracle','','Hint'),            
+            ('true','oracle','','Hint'),            
     ]
     Nconfigs=len(configTable)
     
 #    NpathsRetrieved=np.zeros(Nsims,dtype=np.int)
 #    for nsim in range(Nsims):
-#        NpathsRetrieved[nsim]=np.sum(np.abs(coef_est[:,nsim])**2>sigma2,axis=0)
-#        NpathsRetrieved[nsim]=np.where(np.cumsum(np.abs(coef_est[:,nsim])**2,axis=0)/np.sum(np.abs(coef_est[:,nsim])**2,axis=0)>.75)[0][0]
-#        NpathsRetrieved[nsim]=np.sum(coef_est[:,nsim]!=0)
+#        NpathsRetrieved[nsim]=np.sum(np.abs(coef_est[nsim,:])**2>sigma2,axis=0)
+#        NpathsRetrieved[nsim]=np.where(np.cumsum(np.abs(coef_est[nsim,:])**2,axis=0)/np.sum(np.abs(coef_est[nsim,:])**2,axis=0)>.75)[0][0]
+#        NpathsRetrieved[nsim]=np.sum(coef_est[nsim,:]!=0)
     loc=mploc.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')
     t_start_all=np.zeros(Nconfigs)
     t_end_all=np.zeros(Nconfigs)
-    AoA0_est=np.zeros((Nconfigs,NpathsRetrievedMax-2,Nsims))
-    d0_est=np.zeros((Nconfigs,NpathsRetrievedMax-2,Nsims,2))
-    d_est=np.zeros((Nconfigs,NpathsRetrievedMax-2,NpathsRetrievedMax,Nsims,2))
+    AoA0_est=np.zeros((Nconfigs,Nsims,NpathsRetrievedMax-2))
+    d0_est=np.zeros((Nconfigs,Nsims,NpathsRetrievedMax-2,2))
+    d_est=np.zeros((Nconfigs,Nsims,NpathsRetrievedMax-2,NpathsRetrievedMax,2))
     AoA0_coarse=np.round(AoA0*32/np.pi/2)*np.pi*2/32
-    AoA0_cov=np.inf*np.ones((Nconfigs,NpathsRetrievedMax-2,Nsims))
+    AoA0_cov=np.inf*np.ones((Nconfigs,Nsims,NpathsRetrievedMax-2))
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
         t_start_all[ncfg]=time.time()
         for nsim in tqdm(range(Nsims),desc=f'Estimating location with alg {cfg}'):
-            for Nstimpaths in range(3, NpathsRetrieved[nsim]+1 ):
+            for Nstimpaths in range(3, NpathsRetrieved[nsim] ):
                 # try:
                 if cfg[0]=='CS':
                     subpathValues = pd.DataFrame({
-                        "AoD" : AoD_est[0:Nstimpaths,nsim],
-                        "DAoA" : DAoA_est[0:Nstimpaths,nsim],
-                        "TDoA" : TDoA_est[0:Nstimpaths,nsim],
+                        "AoD" : AoD_est[nsim,0:Nstimpaths],
+                        "DAoA" : DAoA_est[nsim,0:Nstimpaths],
+                        "TDoA" : TDoA_est[nsim,0:Nstimpaths],
                         })
                 else:
                     subpathValues = pd.DataFrame({
-                        "AoD" : AoD[0:Nstimpaths,nsim],
-                        "DAoA" : DAoA[0:Nstimpaths,nsim],
-                        "TDoA" : TDoA[0:Nstimpaths,nsim],
+                        "AoD" : AoD[nsim,0:Nstimpaths],
+                        "DAoA" : DAoA[nsim,0:Nstimpaths],
+                        "TDoA" : TDoA[nsim,0:Nstimpaths],
                         })
                 if cfg[1]=='oracle':
                     if cfg[3]=='Hint':
-                        AoA0_est[ncfg,Nstimpaths-3,nsim]=AoA0_coarse[nsim]
+                        AoA0_est[ncfg,nsim,Nstimpaths-3]=AoA0_coarse[nsim]
                     else:
-                        AoA0_est[ncfg,Nstimpaths-3,nsim]=AoA0[nsim]
-                    (d0_est[ncfg,Nstimpaths-3,nsim,:],_,d_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim,:]) = loc.computeAllPaths(subpathValues,AoA0_est[ncfg,Nstimpaths-3,nsim])
+                        AoA0_est[ncfg,nsim,Nstimpaths-3]=AoA0[nsim]
+                    (d0_est[ncfg,nsim,Nstimpaths-3,:],_,d_est[ncfg,nsim,Nstimpaths-3,0:Nstimpaths,:]) = loc.computeAllPaths(subpathValues,AoA0_est[ncfg,nsim,Nstimpaths-3])
                 else:
                     if cfg[3]=='Hint':                            
-                        (d0_est[ncfg,Nstimpaths-3,nsim,:],_,d_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim,:],AoA0_est[ncfg,Nstimpaths-3,nsim],_)= loc.computeAllLocationsFromPaths(subpathValues,orientationMethod='lm',orientationMethodArgs={'groupMethod':cfg[2],'hitRotation':AoA0_coarse[nsim] })
+                        (d0_est[ncfg,nsim,Nstimpaths-3,:],_,d_est[ncfg,nsim,Nstimpaths-3,0:Nstimpaths,:],AoA0_est[ncfg,nsim,Nstimpaths-3],_)= loc.computeAllLocationsFromPaths(subpathValues,orientationMethod='lm',orientationMethodArgs={'groupMethod':cfg[2],'hitRotation':AoA0_coarse[nsim] })
                     else:
-                        (d0_est[ncfg,Nstimpaths-3,nsim,:],_,d_est[ncfg,Nstimpaths-3,0:Nstimpaths,nsim,:],AoA0_est[ncfg,Nstimpaths-3,nsim],_)= loc.computeAllLocationsFromPaths(subpathValues,orientationMethod='lm',orientationMethodArgs={'groupMethod':cfg[2]})                            
+                        (d0_est[ncfg,nsim,Nstimpaths-3,:],_,d_est[ncfg,nsim,Nstimpaths-3,0:Nstimpaths,:],AoA0_est[ncfg,nsim,Nstimpaths-3],_)= loc.computeAllLocationsFromPaths(subpathValues,orientationMethod='lm',orientationMethodArgs={'groupMethod':cfg[2]})                            
                 # except Exception as e:
                 #     print("Omitting other error in nsim %d npaths %d"%(nsim,Nstimpaths))
                 #     print(str(e))
             if NpathsRetrieved[nsim]<NpathsRetrievedMax:
-                AoA0_est[ncfg,NpathsRetrieved[nsim]-3:,nsim]=AoA0_est[ncfg,NpathsRetrieved[nsim]-4,nsim]
-                d0_est[ncfg,NpathsRetrieved[nsim]-3:,nsim,:]=d0_est[ncfg,NpathsRetrieved[nsim]-4,nsim,:]
-                d_est[ncfg,NpathsRetrieved[nsim]-3:,0:Nstimpaths,nsim,:]=d_est[ncfg,NpathsRetrieved[nsim]-4,0:Nstimpaths,nsim,:]
+                AoA0_est[ncfg,nsim,-3:NpathsRetrieved[nsim]]=AoA0_est[ncfg,nsim,NpathsRetrieved[nsim]-4]
+                d0_est[ncfg,nsim,-3:NpathsRetrieved[nsim],:]=d0_est[ncfg,nsim,NpathsRetrieved[nsim]-4,:]
+                d_est[ncfg,nsim,NpathsRetrieved[nsim]-3:,0:Nstimpaths,:]=d_est[ncfg,nsim,NpathsRetrieved[nsim]-4,0:Nstimpaths,:]
         t_end_all[ncfg]=time.time()
-        np.savez('./mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Ncp,Nframe,Nsims),
+        np.savez('../Results/mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Ncp,Nframe,Nsims),
                 t_start_all=t_start_all,
                 t_end_all=t_end_all,
                 AoA0_est=AoA0_est,
@@ -428,8 +428,8 @@ if EST_LOCS:
                 configTable=configTable)
         configTable=np.array(configTable)
 else:
-    loc=mploc.MultipathLocationEstimator(Npoint=1000,RootMethod='lm')
-    data=np.load('./mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Ncp,Nframe,Nsims))
+    loc=mploc.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')
+    data=np.load('../Results/mimoestimslocs-%d-%d-%d-%d-%d.npz'%(Nd,Na,Ncp,Nframe,Nsims))
     t_start_all=data["t_start_all"]
     t_end_all=data["t_end_all"]
     AoA0_est=data["AoA0_est"]
@@ -437,8 +437,8 @@ else:
     d_est=data["d_est"]
     configTable=data["configTable"]
     Nconfigs=len(configTable)
-    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=0)
-    NpathsRetrievedMax=np.max(NpathsRetrieved)  
+    NpathsRetrieved=np.sum(np.abs(coef_est)**2>0,axis=1)
+    NpathsRetrievedMax=np.max(NpathsRetrieved)
     AoA0_est=np.mod(AoA0_est,2*np.pi)
     AoA0_coarse=np.round(AoA0*32/np.pi/2)*np.pi*2/32
 
@@ -447,10 +447,10 @@ if PLOT_LOCS:
     fig_ctr+=1
     plt.figure(fig_ctr)
     d0=np.column_stack([x0,y0])
-    error_dist=np.linalg.norm( d0_est - d0,axis=-1)
+    error_dist=np.linalg.norm( d0_est - d0[None,:,None,:],axis=-1)
     error_dist[np.isnan(error_dist)]=np.inf
-    npathbest=np.argmin(error_dist,axis=1)
-    error_min=np.min(error_dist,axis=1)
+    npathbest=np.argmin(error_dist,axis=2)
+    error_min=np.min(error_dist,axis=2)
     
     configTablePlot=[
             (':','x','c'),
@@ -492,7 +492,7 @@ if PLOT_LOCS:
         (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
         labstr = "%s %s %s %s"%(cfg[0],cfg[1],cfg[2],cfg[3])
         if labstr in labstrFilter:
-            pcatch = plt.plot(np.vstack((x0,d0_est[ncfg,npathbest[ncfg,:],range(Nsims),0])),np.vstack((y0,d0_est[ncfg,npathbest[ncfg,:],range(Nsims),1])),linestyle=':',color=clcfg,marker=mkcfg, mfc='none', label=labstr)
+            pcatch = plt.plot(np.vstack((x0,d0_est[ncfg,range(Nsims),npathbest[ncfg,:],0])),np.vstack((y0,d0_est[ncfg,range(Nsims),npathbest[ncfg,:],1])),linestyle=':',color=clcfg,marker=mkcfg, mfc='none', label=labstr)
             plt.setp(pcatch[1:],label="_")
 
     plt.axis([0, 100, -50, 50])
@@ -503,13 +503,13 @@ if PLOT_LOCS:
     plt.figure(fig_ctr)
     labstrFilter=["CS bisec ", "CS root No hint", "CS root Hint", "CS root linear Hint"]
     AoA0_err = np.minimum(
-            np.mod(np.abs(AoA0-AoA0_est),np.pi*2),
-            np.mod(np.abs(AoA0+AoA0_est-2*np.pi),np.pi*2)
+            np.mod(np.abs(AoA0[None,:,None]-AoA0_est),np.pi*2),
+            np.mod(np.abs(AoA0[None,:,None]+AoA0_est-2*np.pi),np.pi*2)
             )
     AoA0_eatmin = np.zeros((Nconfigs,Nsims))
     for ncfg in range(Nconfigs):
         cfg = configTable[ncfg]
-        AoA0_eatmin[ncfg,:]=AoA0_err[ncfg,npathbest[ncfg,:],range(Nsims)]
+        AoA0_eatmin[ncfg,:]=AoA0_err[ncfg,range(Nsims),npathbest[ncfg,:]]
         labstr = "%s %s %s %s"%(cfg[0],cfg[1],cfg[2],cfg[3])
         if labstr in labstrFilter:
             (lncfg,mkcfg,clcfg) = configTablePlot[ncfg]
@@ -853,15 +853,15 @@ if PLOT_LOCS:
 #     #error_root=np.zeros((NAnglenoises,Nsims))
 #     #angleNoiseMSE=np.logspace(0,-6,NAnglenoises)
 #     #for ian in range( NAnglenoises):
-#     #    AoD_err = np.mod(AoD+np.random.randn(Nstrongest,Nsims)*np.sqrt(angleNoiseMSE[ian]),2*np.pi)
-#     #    AoA_err = np.mod(AoA+np.random.randn(Nstrongest,Nsims)*np.sqrt(angleNoiseMSE[ian]),2*np.pi)
+#     #    AoD_err = np.mod(AoD+np.random.randn(Nsims,Nstrongest)*np.sqrt(angleNoiseMSE[ian]),2*np.pi)
+#     #    AoA_err = np.mod(AoA+np.random.randn(Nsims,Nstrongest)*np.sqrt(angleNoiseMSE[ian]),2*np.pi)
 #     #    clock_error=(40/c)*np.random.rand(1,Nsims) #delay estimation error
 #     #    TDoA_err = TDoA+clock_error
 #     #    AoA0_r=np.zeros((1,Nsims))
 #     #    x0_r=np.zeros((1,Nsims))
 #     #    y0_r=np.zeros((1,Nsims))
-#     #    x_r=np.zeros((Nstrongest,Nsims))
-#     #    y_r=np.zeros((Nstrongest,Nsims))
+#     #    x_r=np.zeros((Nsims,Nstrongest))
+#     #    y_r=np.zeros((Nsims,Nstrongest))
 #     #    for nsim in range(Nsims):
 #     #        (AoA0_r[:,nsim],x0_r[:,nsim],y0_r[:,nsim],x_r[:,nsim],y_r[:,nsim])= loc.computeAllLocationsFromPaths(AoD_err[:,nsim],AoA_err[:,nsim],TDoA_err[:,nsim],method='root')
 #     #        bar.next()

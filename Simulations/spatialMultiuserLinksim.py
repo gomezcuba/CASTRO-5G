@@ -223,9 +223,9 @@ else:
                 indexStrongest=srtdP.iloc[0:Nclippaths].index
                 subpaths = subpaths.loc[indexStrongest]
             nvalid[isim]=subpaths.shape[0]
-            tdoa[isim,0,0:nvalid[isim]] = subpaths.TDOA*np.pi/180
-            aoa[isim,0,0:nvalid[isim]] = subpaths.AOA*np.pi/180
-            aod[isim,0,0:nvalid[isim]] = subpaths.AOD*np.pi/180
+            tdoa[isim,0,0:nvalid[isim]] = subpaths.TDoA*np.pi/180
+            aoa[isim,0,0:nvalid[isim]] = subpaths.AoA*np.pi/180
+            aod[isim,0,0:nvalid[isim]] = subpaths.AoD*np.pi/180
             coefs[isim,0:nvalid[isim]] = np.sqrt(subpaths.P)*np.exp(2j*np.pi*subpaths.phase00)
             subpathsPrev=subpaths  
             for nu in range(Nu-1):
@@ -233,9 +233,9 @@ else:
                 rxPosPrev = (x[isim,nu],y[isim,nu],1.5)
                 rxPosNext = (x[isim,nu+1],y[isim,nu+1],1.5)
                 subpathsNext = model.displaceMultipathChannel(subpathsPrev,txPos,rxPosPrev,txPos,rxPosNext,bKeepClockSync=True)
-                tdoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.TDOA*np.pi/180
-                aoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.AOA*np.pi/180
-                aod[isim,nu+1,0:nvalid[isim]] = subpathsNext.AOD*np.pi/180
+                tdoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.TDoA*np.pi/180
+                aoa[isim,nu+1,0:nvalid[isim]] = subpathsNext.AoA*np.pi/180
+                aod[isim,nu+1,0:nvalid[isim]] = subpathsNext.AoD*np.pi/180
                 # coefs[isim,nu+1,0:nvalid[isim]] = np.sqrt(subpathsNext.P)*np.exp(2j*np.pi*subpathsNext.phase00) 
                 subpathsPrev=subpathsNext
         clock_offset[isim]=np.min(tdoa[isim,:,:])

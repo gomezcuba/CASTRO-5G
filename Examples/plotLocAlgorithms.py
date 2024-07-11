@@ -15,7 +15,7 @@ sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
 
 Npath=20
-Nsims=100
+Nsims=10
 
 Ndim=2#3
 #random locations in a 40m square
@@ -61,9 +61,6 @@ for nsim in tqdm(range(Nsims),desc="brute"):
     (d0_b[nsim,:],tauE_b[nsim],d_b[nsim,:,:],AoA0_b[nsim],_)= loc.computeAllLocationsFromPaths(allPathsData.loc[nsim,:] ,orientationMethod='brute', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
 error_brute=np.linalg.norm(d0-d0_b,axis=1)
 t_run_b = time.time() - t_start_b
-plt.figure(1)
-plt.semilogx(np.sort(error_brute).T,np.linspace(0,1,error_brute.size),':xr')
-
 
 t_start_b2 = time.time()
 AoA0_b2=np.zeros(Nsims)
@@ -74,8 +71,6 @@ for nsim in tqdm(range(Nsims),desc="brute"):
     (d0_b2[nsim,:],tauE_b2[nsim],d_b2[nsim,:,:],AoA0_b2[nsim],_)= loc.computeAllLocationsFromPaths(allPathsData.loc[nsim,:] ,orientationMethod='brute', orientationMethodArgs={'groupMethod':'drop1','nPoint':100})
 error_brute2=np.linalg.norm(d0-d0_b2,axis=1)
 t_run_b = time.time() - t_start_b
-plt.figure(1)
-plt.semilogx(np.sort(error_brute2).T,np.linspace(0,1,error_brute.size),'-.r')
 
 t_start_r = time.time()
 AoA0_r=np.zeros(Nsims)
@@ -86,7 +81,6 @@ for nsim in tqdm(range(Nsims),desc="lm 3P"):
     (d0_r[nsim,:],tauE_r[nsim],d_r[nsim,:,:],AoA0_r[nsim],_)= loc.computeAllLocationsFromPaths(allPathsData.loc[nsim,:] ,orientationMethod='lm', orientationMethodArgs={'groupMethod':'3path'})
 error_root=np.linalg.norm(d0-d0_r,axis=1)
 t_run_r = time.time() - t_start_r
-plt.semilogx(np.sort(error_root).T,np.linspace(0,1,error_root.size),':xg')
 
 
 t_start_r2 = time.time()
@@ -98,7 +92,6 @@ for nsim in tqdm(range(Nsims),desc="lm D1"):
     (d0_r2[nsim,:],tauE_r2[nsim],d_r2[nsim,:,:],AoA0_r2[nsim],_)= loc.computeAllLocationsFromPaths(allPathsData.loc[nsim,:] ,orientationMethod='lm', orientationMethodArgs={'groupMethod':'drop1'})
 error_root2=np.linalg.norm(d0-d0_r2,axis=1)
 t_run_r2 = time.time() - t_start_r2
-plt.semilogx(np.sort(error_root2).T,np.linspace(0,1,error_root2.size),'-g')
 
 t_start_h= time.time()
 AoA0_h=np.zeros(Nsims)
@@ -110,7 +103,6 @@ for nsim in tqdm(range(Nsims),desc="lm D1h"):
     (d0_h[nsim,:],tauE_h[nsim],d_h[nsim,:,:],AoA0_h[nsim],_)= loc.computeAllLocationsFromPaths(allPathsData.loc[nsim,:] ,orientationMethod='lm', orientationMethodArgs={'groupMethod':'drop1','initRotation':AoA0_coarse[nsim]})
 error_rooth=np.linalg.norm(d0-d0_h,axis=1)
 t_run_h = time.time() - t_start_h
-plt.semilogx(np.sort(error_rooth).T,np.linspace(0,1,error_rooth.size),'-.b')
 
 t_start_l= time.time()
 tauE_l=np.zeros(Nsims)
@@ -120,9 +112,14 @@ for nsim in tqdm(range(Nsims),desc="lin all"):
     (d0_l[nsim,:],tauE_l[nsim],d_l[nsim,:,:])= loc.computeAllPaths(allPathsData.loc[nsim],rotation=AoA0[nsim])
 error_l=np.linalg.norm(d0-d0_l,axis=1)
 t_run_l = time.time() - t_start_l
+
+plt.figure(1)
+plt.semilogx(np.sort(error_brute).T,np.linspace(0,1,error_brute.size),':xr')
+plt.semilogx(np.sort(error_brute2).T,np.linspace(0,1,error_brute2.size),'-.r')
+plt.semilogx(np.sort(error_root).T,np.linspace(0,1,error_root.size),':xg')
+plt.semilogx(np.sort(error_root2).T,np.linspace(0,1,error_root2.size),'-g')
+plt.semilogx(np.sort(error_rooth).T,np.linspace(0,1,error_rooth.size),'-.b')
 plt.semilogx(np.sort(error_l).T,np.linspace(0,1,error_l.size),':xk')
-
-
 error_dumb=np.linalg.norm(d0-d[:,0,:],axis=1)
 plt.semilogx(np.sort(error_dumb).T,np.linspace(0,1,error_dumb.size),':k')
 
@@ -152,7 +149,7 @@ plt.semilogx(np.sort(AoA0-AoA0_r2).T,np.linspace(0,1,AoA0.size),':xb')
 plt.semilogx(np.sort(AoA0-AoA0_h).T,np.linspace(0,1,AoA0.size),':xk')
 plt.xlabel('$\\textnormal{AoA}_o-\\hat{\\textnormal{AoA}}_o$ (rad)')
 plt.ylabel('C.D.F.')
-plt.legend(['brute $\\textnormal{AoA}_o$ 3path','lm $\\textnormal{AoA}_o$ 3path','lm $\\textnormal{AoA}_o$ drop1'])
+plt.legend(['brute $\\textnormal{AoA}_o$ 3path','lm $\\textnormal{AoA}_o$ 3path','lm $\\textnormal{AoA}_o$ drop1','lm $\\textnormal{AoA}_o$ D1hint'])
 plt.savefig('../Figures/cdfpsi0err.svg')
 
 plt.figure(4)
@@ -162,5 +159,5 @@ plt.loglog(np.abs(np.mod(AoA0.T,2*np.pi)-np.mod(AoA0_r2.T,2*np.pi)),error_root2.
 plt.loglog(np.abs(np.mod(AoA0.T,2*np.pi)-np.mod(AoA0_h.T,2*np.pi)),error_rooth.T,'db')
 plt.xlabel('$\\textnormal{AoA}_o-\\hat{\\textnormal{AoA}}_o$ (rad)')
 plt.ylabel('Location error (m)')
-plt.legend(['brute $\\textnormal{AoA}_o$ 3path','lm $\\textnormal{AoA}o$ 3path','lm $\\textnormal{AoA}_o$ drop1'])
+plt.legend(['brute $\\textnormal{AoA}_o$ 3path','lm $\\textnormal{AoA}o$ drop1','lm $\\textnormal{AoA}_o$ D1h'])
 plt.savefig('../Figures/corrpsi0-Poserr.svg')

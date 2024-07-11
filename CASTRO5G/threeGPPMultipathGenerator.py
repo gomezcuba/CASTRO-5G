@@ -32,7 +32,7 @@ class ThreeGPPMultipathChannelModel:
                     'xi',
                     'Cc', #Correlations Matrix Azimut [sSF, sK, sDS, sASD, sASA, sZSD, sZSA]
                     'funPathLoss',
-                    'funZODoffset',
+                    'funZoDoffset',
                     'xpr_mu','xpr_sg',
                     'corrO21','corrLOS','corrStatistics'
                 ],
@@ -430,11 +430,11 @@ class ThreeGPPMultipathChannelModel:
         #TODO modify channels generated dictionary to native pandas dataframe
         # self.dClustersGenerated = pd.DataFrame(columns=[
         #     'Xt','Yt','Zt','Xr','Yr','Zr','n',
-        #       'TDOA','P','AOA','AOD','ZOA','ZOD'
+        #       'TDoA','P','AoA','AoD','ZoA','ZoD'
         # ]).set_index(['Xt','Yt','Zt','Xr','Yr','Zr','n'])
         # self.dSubpathsGenerated = pd.DataFrame(columns=[
         #     'Xt','Yt','Zt','Xr','Yr','Zr','n','m',
-        #       'TDOA','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'
+        #       'TDoA','P','AoA','AoD','ZoA','ZoD','XPR','phase00','phase01','phase10','phase11'
         # ]).set_index(['Xt','Yt','Zt','Xr','Yr','Zr','n','m'])
         self.dLOSGenerated = {}
 
@@ -551,7 +551,7 @@ class ThreeGPPMultipathChannelModel:
     
     #clusters => small scale groups of pahts
     def create_clusters(self,smallStatistics,LOSangles):
-        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
+        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZoD = smallStatistics
         
         if los:
             param = self.scenarioParams.LOS
@@ -590,15 +590,15 @@ class ThreeGPPMultipathChannelModel:
             Cphi = self.CphiNLOStable[N]*(1.1035 - 0.028*K - 0.002*(K**2) + 0.0001*(K**3))
         else:
             Cphi = self.CphiNLOStable[N]
-        phiAOAprima = 2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
-        phiAODprima = 2*(ASD/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
+        phiAoAprima = 2*(ASA/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
+        phiAoDprima = 2*(ASD/1.4)*np.sqrt(-np.log(powC/maxP))/Cphi
         
         Xaoa = np.random.choice((-1,1),size=powC.shape)
         Xaod = np.random.choice((-1,1),size=powC.shape)
         Yaoa = np.random.normal(0,ASA/7,size=powC.shape)
         Yaod = np.random.normal(0,ASD/7,size=powC.shape)
-        AOA = Xaoa*phiAOAprima + Yaoa + losAoA - (Xaoa[0]*phiAOAprima[0] + Yaoa[0] if los==1 else 0)
-        AOD = Xaod*phiAODprima + Yaod + losAoD - (Xaod[0]*phiAODprima[0] + Yaod[0] if los==1 else 0)
+        AoA = Xaoa*phiAoAprima + Yaoa + losAoA - (Xaoa[0]*phiAoAprima[0] + Yaoa[0] if los==1 else 0)
+        AoD = Xaod*phiAoDprima + Yaod + losAoD - (Xaod[0]*phiAoDprima[0] + Yaod[0] if los==1 else 0)
         
         #Zenith 
         if los:
@@ -606,24 +606,24 @@ class ThreeGPPMultipathChannelModel:
         else:
             Cteta = Cteta = self.CtetaNLOStable.get(N)
         
-        tetaZOAprima = -((ZSA*np.log(powC/maxP))/Cteta)
-        tetaZODprima = -((ZSD*np.log(powC/maxP))/Cteta)
+        tetaZoAprima = -((ZSA*np.log(powC/maxP))/Cteta)
+        tetaZoDprima = -((ZSD*np.log(powC/maxP))/Cteta)
         
         Xzoa = np.random.choice((-1,1),size=powC.shape)
         Xzod = np.random.choice((-1,1),size=powC.shape)
         Yzoa = np.random.normal(0, ZSA/7 ,size=powC.shape)
         Yzod = np.random.normal(0, ZSD/7 ,size=powC.shape)
-        ZOA = Xzoa*tetaZOAprima + Yzoa + losZoA - (Xzoa[0]*tetaZOAprima[0] + Yzoa[0] if (los==1) else 0)
-        ZOD = Xzod*tetaZODprima + Yzod + losZoD + muZOD - (Xzod[0]*tetaZODprima[0] + Yzod[0] + muZOD if (los==1) else 0)
+        ZoA = Xzoa*tetaZoAprima + Yzoa + losZoA - (Xzoa[0]*tetaZoAprima[0] + Yzoa[0] if (los==1) else 0)
+        ZoD = Xzod*tetaZoDprima + Yzod + losZoD + muZoD - (Xzod[0]*tetaZoDprima[0] + Yzod[0] + muZoD if (los==1) else 0)
           
-        return( pd.DataFrame(columns=['TDOA','P','AOA','AOD','ZOA','ZOD'],
-                             data=np.array([tau,powC,AOA,AOD,ZOA,ZOD]).T,
+        return( pd.DataFrame(columns=['TDoA','P','AoA','AoD','ZoA','ZoD'],
+                             data=np.array([tau,powC,AoA,AoD,ZoA,ZoD]).T,
                              index=pd.Index(np.arange(nClusters),name='n')) )
        
     def create_subpaths_basics(self,smallStatistics,clusters,LOSangles):
-        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
+        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZoD = smallStatistics
         (losAoD,losAoA,losZoD,losZoA) = LOSangles
-        (tau,powC,AOA,AOD,ZOA,ZOD)=clusters.T.to_numpy()
+        (tau,powC,AoA,AoD,ZoA,ZoD)=clusters.T.to_numpy()
         nClusters=tau.size   
         if los:
             param = self.scenarioParams.LOS
@@ -644,26 +644,26 @@ class ThreeGPPMultipathChannelModel:
             tau_sp[n,self.tableSubclusterIndices[1]] += 1.28*param.cds*1e-9
             tau_sp[n,self.tableSubclusterIndices[2]] += 2.56*param.cds*1e-9
         
-        AOA_sp = np.tile(AOA[:,None],(1,M)) + param.casa*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
-        AOD_sp = np.tile(AOD[:,None],(1,M)) + param.casd*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+        AoA_sp = np.tile(AoA[:,None],(1,M)) + param.casa*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+        AoD_sp = np.tile(AoD[:,None],(1,M)) + param.casd*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
        
-        ZOA_sp = np.tile(ZOA[:,None],(1,M)) + param.czsa*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
-        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+        ZoA_sp = np.tile(ZoA[:,None],(1,M)) + param.czsa*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
+        ZoD_sp = np.tile(ZoD[:,None],(1,M)) + czsd*np.tile(self.alphamTable,(nClusters,1)) #* np.random.choice([1, -1],size=(nClusters,M))
     
         for n in range(nClusters):
             if n not in indStrongestClusters:
-                #couple randomly AOD/ZOD/ZOA angles to AOA angles within cluster n
-                AOD_sp[n,:]=np.random.permutation(AOD_sp[n,:])
-                ZOA_sp[n,:]=np.random.permutation(ZOA_sp[n,:])
-                ZOD_sp[n,:]=np.random.permutation(ZOD_sp[n,:])
+                #couple randomly AoD/ZoD/ZoA angles to AoA angles within cluster n
+                AoD_sp[n,:]=np.random.permutation(AoD_sp[n,:])
+                ZoA_sp[n,:]=np.random.permutation(ZoA_sp[n,:])
+                ZoD_sp[n,:]=np.random.permutation(ZoD_sp[n,:])
             else:#clusters 1 and 2
                 for scl in range(3):#c
-                    AOD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(AOD_sp[n,self.tableSubclusterIndices[scl]])
-                    ZOA_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZOA_sp[n,self.tableSubclusterIndices[scl]])
-                    ZOD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZOD_sp[n,self.tableSubclusterIndices[scl]])
+                    AoD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(AoD_sp[n,self.tableSubclusterIndices[scl]])
+                    ZoA_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZoA_sp[n,self.tableSubclusterIndices[scl]])
+                    ZoD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZoD_sp[n,self.tableSubclusterIndices[scl]])
             
-        #mask = (ZOA_sp>=180) & (ZOA_sp<=360)
-        #ZOA_sp[mask] = 360 - ZOA_sp             
+        #mask = (ZoA_sp>=180) & (ZoA_sp<=360)
+        #ZoA_sp[mask] = 360 - ZoA_sp             
     
         # Generate the cross polarization power ratios
         xpr_mu = param.xpr_mu
@@ -675,14 +675,14 @@ class ThreeGPPMultipathChannelModel:
         phase = np.random.uniform(-np.pi,np.pi,size=(4,nClusters,M))        
         
         subpaths = pd.DataFrame(
-            columns=['TDOA','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'],
+            columns=['TDoA','P','AoA','AoD','ZoA','ZoD','XPR','phase00','phase01','phase10','phase11'],
             data=np.vstack([
                 tau_sp.reshape(-1),
                 pow_sp.reshape(-1),
-                AOA_sp.reshape(-1),
-                AOD_sp.reshape(-1),
-                ZOA_sp.reshape(-1),
-                ZOD_sp.reshape(-1),
+                AoA_sp.reshape(-1),
+                AoD_sp.reshape(-1),
+                ZoA_sp.reshape(-1),
+                ZoD_sp.reshape(-1),
                 XPR_sp.reshape(-1),
                 phase[0,:,:].reshape(-1),
                 phase[1,:,:].reshape(-1),
@@ -700,9 +700,9 @@ class ThreeGPPMultipathChannelModel:
    
     
     def create_subpaths_largeBW(self,smallStatistics,clusters,LOSangles,d2D,hut):
-        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZOD = smallStatistics
+        los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZoD = smallStatistics
         (losAoD,losAoA,losZoD,losZoA) = LOSangles
-        (tau,powC,AOA,AOD,ZOA,ZOD)=clusters.T.to_numpy()
+        (tau,powC,AoA,AoD,ZoA,ZoD)=clusters.T.to_numpy()
         nClusters=tau.size      
         if los:
             param = self.scenarioParams.LOS
@@ -719,14 +719,14 @@ class ThreeGPPMultipathChannelModel:
         #The number of rays per cluster, replacing param.M
         k = 0.5#sparsity coefficient
         M_t = np.ceil(4*k*cds*self.B)
-        M_AOD = np.ceil(4*k*casd*((np.pi*self.Dh)/(180*self.wavelength)))
-        M_ZOD = np.ceil(4*k*czsd*((np.pi*self.Dv)/(180*self.wavelength)))
-        M = int(np.minimum( np.maximum(M_t*M_AOD*M_ZOD, param.M ) ,self.maxM))
+        M_AoD = np.ceil(4*k*casd*((np.pi*self.Dh)/(180*self.wavelength)))
+        M_ZoD = np.ceil(4*k*czsd*((np.pi*self.Dv)/(180*self.wavelength)))
+        M = int(np.minimum( np.maximum(M_t*M_AoD*M_ZoD, param.M ) ,self.maxM))
         #The offset angles alpha_m
-        alpha_AOA = np.random.uniform(-2,2,size=(nClusters,M))
-        alpha_AOD = np.random.uniform(-2,2,size=(nClusters,M))
-        alpha_ZOA = np.random.uniform(-2,2,size=(nClusters,M))
-        alpha_ZOD = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_AoA = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_AoD = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_ZoA = np.random.uniform(-2,2,size=(nClusters,M))
+        alpha_ZoD = np.random.uniform(-2,2,size=(nClusters,M))
         
         #The relative delay of m-th ray
         tau_primaprima = np.random.uniform(0,2*cds*1e-9,size=(nClusters,M))#ns
@@ -734,14 +734,14 @@ class ThreeGPPMultipathChannelModel:
         tau_sp = tau_prima + tau.reshape((-1,1))
         
         #Ray powers
-        pow_prima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AOA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AOD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZOA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZOD))/czsd)
+        pow_prima = np.exp(-tau_prima/cds)*np.exp(-(np.sqrt(2)*abs(alpha_AoA))/casa)*np.exp(-(np.sqrt(2)*abs(alpha_AoD))/casd)*np.exp(-(np.sqrt(2)*abs(alpha_ZoA))/czsa)*np.exp(-(np.sqrt(2)*abs(alpha_ZoD))/czsd)
         pow_sp = powC_nlos.reshape(-1,1)*(pow_prima/np.sum(pow_prima,axis=1,keepdims=True))
                 
-        AOA_sp = np.tile(AOA[:,None],(1,M)) + casa*alpha_AOA
-        AOD_sp = np.tile(AOD[:,None],(1,M)) + casd*alpha_AOD
+        AoA_sp = np.tile(AoA[:,None],(1,M)) + casa*alpha_AoA
+        AoD_sp = np.tile(AoD[:,None],(1,M)) + casd*alpha_AoD
        
-        ZOA_sp = np.tile(ZOA[:,None],(1,M)) + czsa*alpha_ZOA
-        ZOD_sp = np.tile(ZOD[:,None],(1,M)) + czsd*alpha_ZOD
+        ZoA_sp = np.tile(ZoA[:,None],(1,M)) + czsa*alpha_ZoA
+        ZoD_sp = np.tile(ZoD[:,None],(1,M)) + czsd*alpha_ZoD
         
         # Generate the cross polarization power ratios
         xpr_mu = param.xpr_mu
@@ -753,14 +753,14 @@ class ThreeGPPMultipathChannelModel:
         phase = np.random.uniform(-np.pi,np.pi,size=(4,nClusters,M))        
         
         subpaths = pd.DataFrame(
-            columns=['TDOA','P','AOA','AOD','ZOA','ZOD','XPR','phase00','phase01','phase10','phase11'],
+            columns=['TDoA','P','AoA','AoD','ZoA','ZoD','XPR','phase00','phase01','phase10','phase11'],
             data=np.vstack([
                 tau_sp.reshape(-1),
                 pow_sp.reshape(-1),
-                AOA_sp.reshape(-1),
-                AOD_sp.reshape(-1),
-                ZOA_sp.reshape(-1),
-                ZOD_sp.reshape(-1),
+                AoA_sp.reshape(-1),
+                AoD_sp.reshape(-1),
+                ZoA_sp.reshape(-1),
+                ZoD_sp.reshape(-1),
                 XPR_sp.reshape(-1),
                 phase[0,:,:].reshape(-1),
                 phase[1,:,:].reshape(-1),
@@ -778,7 +778,7 @@ class ThreeGPPMultipathChannelModel:
     
     
     def create_small_param(self,LOSangles,smallStatistics,d2D,hut):
-        los,DS,ASA,ASD,ZSA,ZSD,K,cZSD,muZOD = smallStatistics
+        los,DS,ASA,ASD,ZSA,ZSD,K,cZSD,muZoD = smallStatistics
         
         clusters = self.create_clusters(smallStatistics,LOSangles)
         
@@ -797,11 +797,11 @@ class ThreeGPPMultipathChannelModel:
         # Código que cumple con el procedimiento A del apartado de consistencia espacial 
         #Parámetros para actualizar tau
         c = 3e8
-        tau = dataframe['TDOA'].T.to_numpy()
-        zoa = dataframe['ZOA'].T.to_numpy()*np.pi/180
-        aoa = dataframe['AOA'].T.to_numpy()*np.pi/180
-        zod = dataframe['ZOD'].T.to_numpy()*np.pi/180
-        aod = dataframe['AOD'].T.to_numpy()*np.pi/180
+        tau = dataframe['TDoA'].T.to_numpy()
+        zoa = dataframe['ZoA'].T.to_numpy()*np.pi/180
+        aoa = dataframe['AoA'].T.to_numpy()*np.pi/180
+        zod = dataframe['ZoD'].T.to_numpy()*np.pi/180
+        aod = dataframe['AoD'].T.to_numpy()*np.pi/180
         #ensure numpy format
         origTxPos = np.array(origTxPos)
         origRxPos = np.array(origRxPos)
@@ -841,7 +841,7 @@ class ThreeGPPMultipathChannelModel:
             tau_nueva = tau_tilde-np.min( tau_tilde) 
      
 
-        ############################AOD#####################3
+        ############################AoD#####################3
         phiAoD = np.array([[-np.sin(aod)],
                         [np.cos(aod)],
                         [np.zeros_like(aod)]]).transpose(2,0,1)
@@ -851,7 +851,7 @@ class ThreeGPPMultipathChannelModel:
         auxAoD3 = auxAoD2 /(c*tau_tilde_previo * np.sin(zod))
         aodnueva= auxAoD3 + aod
 
-        ###############################ZOD######################3
+        ###############################ZoD######################3
         tetaZoD = np.array([[np.cos(zod) * np.cos(aod)],
                         [np.cos(zod) * np.sin(aod)],
                         [-np.sin(aod)]]).transpose(2,0,1)
@@ -861,7 +861,7 @@ class ThreeGPPMultipathChannelModel:
         auxZoD3= auxZoD2 / (c*tau_tilde_previo)
         zodnueva = zod + auxZoD3
 
-        ##########################AOA###################
+        ##########################AoA###################
 
         phiAoA = np.array([[-np.sin(aoa)],
                         [np.cos(aoa)],
@@ -872,7 +872,7 @@ class ThreeGPPMultipathChannelModel:
         auxAoA2 = auxAoA1 /(c*tau_tilde_previo *np.sin(zoa))
         aoanueva = aoa + auxAoA2
 
-        ##################################ZOA#########################
+        ##################################ZoA#########################
         tetaZoA = np.array([[np.cos(zoa) * np.cos(aoa)],
                         [np.cos(zoa) * np.sin(aoa)],
                         [-np.sin(aoa)]]).transpose(2,0,1)
@@ -882,11 +882,11 @@ class ThreeGPPMultipathChannelModel:
         auxZoA3= auxZoA2 / (c*tau_tilde_previo)
         zoanueva = zoa + auxZoA3
         dfsalida = dataframe.copy()
-        dfsalida['TDOA']= tau_nueva
-        dfsalida['AOA'] = aoanueva*180/np.pi
-        dfsalida['AOD'] = aodnueva*180/np.pi
-        dfsalida['ZOA'] = zoanueva*180/np.pi
-        dfsalida['ZOD'] = zodnueva*180/np.pi
+        dfsalida['TDoA']= tau_nueva
+        dfsalida['AoA'] = aoanueva*180/np.pi
+        dfsalida['AoD'] = aodnueva*180/np.pi
+        dfsalida['ZoA'] = zoanueva*180/np.pi
+        dfsalida['ZoD'] = zodnueva*180/np.pi
 
         return (dfsalida)
             
@@ -959,7 +959,7 @@ class ThreeGPPMultipathChannelModel:
             sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
             zsd_mu = param.funZSD_mu(d2D,hut)          
             zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
-            zod_offset_mu = param.funZODoffset(d2D,hut)        
+            zod_offset_mu = param.funZoDoffset(d2D,hut)        
             czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
             smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)
             
@@ -984,66 +984,66 @@ class ThreeGPPMultipathChannelModel:
     # and return the same as output, enabling their infinite pipelining
     ###########################################################################    
        
-    def fullFitAOA(self,txPos,rxPos,plinfo,clusters,subpaths,mode3D=True):
+    def fullFitAoA(self,txPos,rxPos,plinfo,clusters,subpaths,mode3D=True):
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters,mode3D)
         if mode3D:
-            aoa_new,zoa_new,locs = self.fitAOA(txPos,rxPos,clusters.TDOA+ tauOffset,clusters.AOD.to_numpy()*np.pi/180,clusters.ZOD.to_numpy()*np.pi/180)            
-            clusters.ZOA=zoa_new*180/np.pi
+            aoa_new,zoa_new,locs = self.fitAoA(txPos,rxPos,clusters.TDoA+ tauOffset,clusters.AoD.to_numpy()*np.pi/180,clusters.ZoD.to_numpy()*np.pi/180)            
+            clusters.ZoA=zoa_new*180/np.pi
             clusters['Zs']=locs[2,:]
         else:
-            aoa_new,locs = self.fitAOA(txPos,rxPos,clusters.TDOA.to_numpy()+tauOffset,clusters.AOD.to_numpy()*np.pi/180)
-        clusters.AOA=aoa_new*180/np.pi
+            aoa_new,locs = self.fitAoA(txPos,rxPos,clusters.TDoA.to_numpy()+tauOffset,clusters.AoD.to_numpy()*np.pi/180)
+        clusters.AoA=aoa_new*180/np.pi
         clusters['Xs']=locs[0,:]
         clusters['Ys']=locs[1,:]
         if mode3D:
-            aoa_new,zoa_new,locs = self.fitAOA(txPos,rxPos,subpaths.TDOA+ tauOffset,subpaths.AOD.to_numpy()*np.pi/180,subpaths.ZOD.to_numpy()*np.pi/180)            
-            subpaths.ZOA=zoa_new*180/np.pi
+            aoa_new,zoa_new,locs = self.fitAoA(txPos,rxPos,subpaths.TDoA+ tauOffset,subpaths.AoD.to_numpy()*np.pi/180,subpaths.ZoD.to_numpy()*np.pi/180)            
+            subpaths.ZoA=zoa_new*180/np.pi
             subpaths['Zs']=locs[2,:]
         else:
-            aoa_new,locs = self.fitAOA(txPos,rxPos,subpaths.TDOA.to_numpy()+tauOffset,subpaths.AOD.to_numpy()*np.pi/180)
-        subpaths.AOA=aoa_new*180/np.pi
+            aoa_new,locs = self.fitAoA(txPos,rxPos,subpaths.TDoA.to_numpy()+tauOffset,subpaths.AoD.to_numpy()*np.pi/180)
+        subpaths.AoA=aoa_new*180/np.pi
         subpaths['Xs']=locs[0,:]
         subpaths['Ys']=locs[1,:]
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
-    def fullFitAOD(self,txPos,rxPos,plinfo,clusters,subpaths,mode3D=True):
+    def fullFitAoD(self,txPos,rxPos,plinfo,clusters,subpaths,mode3D=True):
         tauOffset = self.fixExcessDelayNLOS(txPos,rxPos,plinfo,clusters,mode3D)
         if mode3D:
-            aod_new,zod_new,locs = self.fitAOD(txPos,rxPos,clusters.TDOA+ tauOffset,clusters.AOA.to_numpy()*np.pi/180,clusters.ZOA.to_numpy()*np.pi/180)            
-            clusters.ZOD=zod_new*180/np.pi
+            aod_new,zod_new,locs = self.fitAoD(txPos,rxPos,clusters.TDoA+ tauOffset,clusters.AoA.to_numpy()*np.pi/180,clusters.ZoA.to_numpy()*np.pi/180)            
+            clusters.ZoD=zod_new*180/np.pi
             clusters['Zs']=locs[2,:]
         else:
-            aod_new,locs = self.fitAOD(txPos,rxPos,clusters.TDOA.to_numpy()+tauOffset,clusters.AOA.to_numpy()*np.pi/180)
-        clusters.AOD=aod_new*180/np.pi
+            aod_new,locs = self.fitAoD(txPos,rxPos,clusters.TDoA.to_numpy()+tauOffset,clusters.AoA.to_numpy()*np.pi/180)
+        clusters.AoD=aod_new*180/np.pi
         clusters['Xs']=locs[0,:]
         clusters['Ys']=locs[1,:]
         if mode3D:
-            aod_new,zod_new,locs = self.fitAOD(txPos,rxPos,subpaths.TDOA+ tauOffset,subpaths.AOA.to_numpy()*np.pi/180,subpaths.ZOA.to_numpy()*np.pi/180)            
-            subpaths.ZOD=zod_new*180/np.pi
+            aod_new,zod_new,locs = self.fitAoD(txPos,rxPos,subpaths.TDoA+ tauOffset,subpaths.AoA.to_numpy()*np.pi/180,subpaths.ZoA.to_numpy()*np.pi/180)            
+            subpaths.ZoD=zod_new*180/np.pi
             subpaths['Zs']=locs[2,:]
         else:
-            aod_new,locs = self.fitAOD(txPos,rxPos,subpaths.TDOA.to_numpy()+tauOffset,subpaths.AOA.to_numpy()*np.pi/180)
-        subpaths.AOD=aod_new*180/np.pi
+            aod_new,locs = self.fitAoD(txPos,rxPos,subpaths.TDoA.to_numpy()+tauOffset,subpaths.AoA.to_numpy()*np.pi/180)
+        subpaths.AoD=aod_new*180/np.pi
         subpaths['Xs']=locs[0,:]
         subpaths['Ys']=locs[1,:]
         return (txPos,rxPos,plinfo,clusters,subpaths)
     
-    def attemptFullFitTDOA(self,txPos,rxPos,plinfo,clusters,subpaths,mode3D=True,fallbackFun=None):
+    def attemptFullFitTDoA(self,txPos,rxPos,plinfo,clusters,subpaths,mode3D=True,fallbackFun=None):
         confRelax3D = ( fallbackFun == "relax3D" )
         if mode3D:
-            tau_new,locs,valid = self.fitTDOA(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.AOD.to_numpy()*np.pi/180,clusters.ZOA.to_numpy()*np.pi/180,clusters.ZOD.to_numpy()*np.pi/180,relax3D=confRelax3D)
+            tau_new,locs,valid = self.fitTDoA(txPos,rxPos,clusters.AoA.to_numpy()*np.pi/180,clusters.AoD.to_numpy()*np.pi/180,clusters.ZoA.to_numpy()*np.pi/180,clusters.ZoD.to_numpy()*np.pi/180,relax3D=confRelax3D)
             clusters['Zs']=locs[2,:]
         else:
-            tau_new,locs,valid = self.fitTDOA(txPos,rxPos,clusters.AOA.to_numpy()*np.pi/180,clusters.AOD.to_numpy()*np.pi/180,relax3D=False)
-        clusters.TDOA[valid]=tau_new[valid]
+            tau_new,locs,valid = self.fitTDoA(txPos,rxPos,clusters.AoA.to_numpy()*np.pi/180,clusters.AoD.to_numpy()*np.pi/180,relax3D=False)
+        clusters.TDoA[valid]=tau_new[valid]
         clusters['Xs']=locs[0,:]#non valids are inf
         clusters['Ys']=locs[1,:]#non valids are inf        
         if mode3D:
-            tau_new,locs,valid = self.fitTDOA(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.AOD.to_numpy()*np.pi/180,subpaths.ZOA.to_numpy()*np.pi/180,subpaths.ZOD.to_numpy()*np.pi/180,relax3D=confRelax3D)
+            tau_new,locs,valid = self.fitTDoA(txPos,rxPos,subpaths.AoA.to_numpy()*np.pi/180,subpaths.AoD.to_numpy()*np.pi/180,subpaths.ZoA.to_numpy()*np.pi/180,subpaths.ZoD.to_numpy()*np.pi/180,relax3D=confRelax3D)
             subpaths['Zs']=locs[2,:]
         else:
-            tau_new,locs,valid = self.fitTDOA(txPos,rxPos,subpaths.AOA.to_numpy()*np.pi/180,subpaths.AOD.to_numpy()*np.pi/180,relax3D=False)
-        subpaths.TDOA[valid]=tau_new[valid]
+            tau_new,locs,valid = self.fitTDoA(txPos,rxPos,subpaths.AoA.to_numpy()*np.pi/180,subpaths.AoD.to_numpy()*np.pi/180,relax3D=False)
+        subpaths.TDoA[valid]=tau_new[valid]
         subpaths['Xs']=locs[0,:]#non valids are inf
         subpaths['Ys']=locs[1,:]#non valids are inf
         #TODO if fallbackFun:
@@ -1096,48 +1096,48 @@ class ThreeGPPMultipathChannelModel:
         transformShiftSubpaths=np.logical_not(indexTopEnergySubpaths)*transformCBroadcastSubpaths
         delta_clusters_broadcast = delta_clusters.reindex(indexTopEnergySubpaths.index,level=0)
         (indexNot,indexAoA,indexAoD,indexToA)= self.getIndicesSubgroups(subpaths,transformShiftSubpaths,maxG=4)
-        subpaths.AOA.loc[indexAoA] = np.mod(subpaths.loc[indexAoA].AOA + delta_clusters_broadcast.loc[indexAoA].AOA,360)
-        subpaths.AOD.loc[indexAoD] = np.mod(subpaths.loc[indexAoD].AOD + delta_clusters_broadcast.loc[indexAoD].AOD,360)
-        subpaths.TDOA.loc[indexToA] += delta_clusters_broadcast.loc[indexToA].TDOA
+        subpaths.AoA.loc[indexAoA] = np.mod(subpaths.loc[indexAoA].AoA + delta_clusters_broadcast.loc[indexAoA].AoA,360)
+        subpaths.AoD.loc[indexAoD] = np.mod(subpaths.loc[indexAoD].AoD + delta_clusters_broadcast.loc[indexAoD].AoD,360)
+        subpaths.TDoA.loc[indexToA] += delta_clusters_broadcast.loc[indexToA].TDoA
         if mode3D:
-            subpaths.ZOA.loc[indexAoA] = np.mod(subpaths.loc[indexAoA].ZOA + delta_clusters_broadcast.loc[indexAoA].ZOA,360)
-            subpaths.ZOD.loc[indexAoD] = np.mod(subpaths.loc[indexAoD].ZOD + delta_clusters_broadcast.loc[indexAoD].ZOD,360)
+            subpaths.ZoA.loc[indexAoA] = np.mod(subpaths.loc[indexAoA].ZoA + delta_clusters_broadcast.loc[indexAoA].ZoA,360)
+            subpaths.ZoD.loc[indexAoD] = np.mod(subpaths.loc[indexAoD].ZoD + delta_clusters_broadcast.loc[indexAoD].ZoD,360)
                 
         return(txPos,rxPos,plinfo,clusters,subpaths)
         
     
-    def fullDeleteBacklobes(self,txPos,rxPos,plinfo,clusters,subpaths,tAOD=0,rAOA=180):
-        tAODmin=np.mod(tAOD-90,360.0)
-        tAODmax=np.mod(tAOD+90,360.0)
-        rAOAmin=np.mod(rAOA-90,360.0)
-        rAOAmax=np.mod(rAOA+90,360.0)        
+    def fullDeleteBacklobes(self,txPos,rxPos,plinfo,clusters,subpaths,tAoD=0,rAoA=180):
+        tAoDmin=np.mod(tAoD-90,360.0)
+        tAoDmax=np.mod(tAoD+90,360.0)
+        rAoAmin=np.mod(rAoA-90,360.0)
+        rAoAmax=np.mod(rAoA+90,360.0)        
         
         ## DEPRECATED cluster validity independently of subpaths
-        # cAOD = np.mod(clusters.AOD,360.0)
-        # cAOA = np.mod(clusters.AOA,360.0)
-        # # cAODValid=(np.mod(cAOD-tAODmin,360)<np.mod(tAODmax-tAODmin,360))
-        # if tAODmin<tAODmax:
-        #     cAODValid = (cAOD>tAODmin)&(cAOD<tAODmax)
+        # cAoD = np.mod(clusters.AoD,360.0)
+        # cAoA = np.mod(clusters.AoA,360.0)
+        # # cAoDValid=(np.mod(cAoD-tAoDmin,360)<np.mod(tAoDmax-tAoDmin,360))
+        # if tAoDmin<tAoDmax:
+        #     cAoDValid = (cAoD>tAoDmin)&(cAoD<tAoDmax)
         # else:
-        #     cAODValid = (cAOD<tAODmax)|(cAOD>tAODmin)
-        # if rAOAmin<rAOAmax:
-        #     cAOAValid = (cAOA>rAOAmin)&(cAOA<rAOAmax)
+        #     cAoDValid = (cAoD<tAoDmax)|(cAoD>tAoDmin)
+        # if rAoAmin<rAoAmax:
+        #     cAoAValid = (cAoA>rAoAmin)&(cAoA<rAoAmax)
         # else:
-        #     cAOAValid = (cAOA<rAOAmax)|(cAOA>rAOAmin)
-        # cValid = cAODValid & cAOAValid
+        #     cAoAValid = (cAoA<rAoAmax)|(cAoA>rAoAmin)
+        # cValid = cAoDValid & cAoAValid
         # clusters = clusters[cValid]       
         
-        sAOD = np.mod(subpaths.AOD,360.0)
-        sAOA = np.mod(subpaths.AOA,360.0)
-        if tAODmin<tAODmax:
-            sAODValid = (sAOD>tAODmin)&(sAOD<tAODmax)
+        sAoD = np.mod(subpaths.AoD,360.0)
+        sAoA = np.mod(subpaths.AoA,360.0)
+        if tAoDmin<tAoDmax:
+            sAoDValid = (sAoD>tAoDmin)&(sAoD<tAoDmax)
         else:
-            sAODValid = (sAOD<tAODmax)|(sAOD>tAODmin)
-        if rAOAmin<rAOAmax:
-            sAOAValid = (sAOA>rAOAmin)&(sAOA<rAOAmax)
+            sAoDValid = (sAoD<tAoDmax)|(sAoD>tAoDmin)
+        if rAoAmin<rAoAmax:
+            sAoAValid = (sAoA>rAoAmin)&(sAoA<rAoAmax)
         else:
-            sAOAValid = (sAOA<rAOAmax)|(sAOA>rAOAmin)
-        sValid = sAODValid & sAOAValid
+            sAoAValid = (sAoA<rAoAmax)|(sAoA>rAoAmin)
+        sValid = sAoDValid & sAoAValid
         subpaths = subpaths[sValid]
         #a cluster remains valid if any of its subpaths is valid
         cValid = [x in subpaths.index.get_level_values(0) for x in clusters.index]
@@ -1169,11 +1169,11 @@ class ThreeGPPMultipathChannelModel:
     def checkValidIntersection2D(self, txPos, rxPos, aoa, aod):
         vLOS = np.array(rxPos) - np.array(txPos)
         aod0 = np.mod(np.arctan(vLOS[1]/vLOS[0])+np.pi*(vLOS[0]<0),2*np.pi)
-        dAOD = np.mod(aod - aod0,2*np.pi)
-        dAOA = np.mod(aoa - aod0,2*np.pi)
+        dAoD = np.mod(aod - aod0,2*np.pi)
+        dAoA = np.mod(aoa - aod0,2*np.pi)
         
-        validIntersectionU = (dAOD<=np.pi)&(dAOA<=np.pi)&(dAOA>dAOD)
-        validIntersectionL = (dAOD>np.pi)&(dAOA>np.pi)&(dAOA<dAOD)        
+        validIntersectionU = (dAoD<=np.pi)&(dAoA<=np.pi)&(dAoA>dAoD)
+        validIntersectionL = (dAoD>np.pi)&(dAoA>np.pi)&(dAoA<dAoD)        
         return( validIntersectionU | validIntersectionL )
     
     def chooseRandomTransform(self,txPos,rxPos,data,P,mode3D):
@@ -1182,9 +1182,9 @@ class ThreeGPPMultipathChannelModel:
         # The last group, with P[-1], only admits paths with a valid intersection
         # for delay adaptation. Bayes is applied to guarantee global probability
         if mode3D:
-            _,_,validIntersection = self.fitTDOA(txPos, rxPos,data.AOA*np.pi/180,data.AOD*np.pi/180,data.ZOA*np.pi/180,data.ZOD*np.pi/180, relax3D = False)
+            _,_,validIntersection = self.fitTDoA(txPos, rxPos,data.AoA*np.pi/180,data.AoD*np.pi/180,data.ZoA*np.pi/180,data.ZoD*np.pi/180, relax3D = False)
         else:
-            validIntersection = self.checkValidIntersection2D(txPos,rxPos,data.AOA*np.pi/180,data.AOD*np.pi/180).to_numpy()
+            validIntersection = self.checkValidIntersection2D(txPos,rxPos,data.AoA*np.pi/180,data.AoD*np.pi/180).to_numpy()
         PV = np.sum(validIntersection)/data.shape[0]#prob adapt tau is valid
         PtoaCV=np.minimum(P[3]/PV,1)# P (adapt toa | valid)
         PothersCV=(1-PtoaCV) * P[0:3] /(np.sum(P[0:3]))# P ( others | valid)
@@ -1221,36 +1221,36 @@ class ThreeGPPMultipathChannelModel:
         return(transformIndexClusters.sort_index())
     
     def applyMultiTransform(self,txPos,rxPos,data,tauOffset,indexAoA,indexAoD,indexToA,mode3D=True):
-        data['Xs']=np.full_like(data.TDOA,fill_value=np.inf)
-        data['Ys']=np.full_like(data.TDOA,fill_value=np.inf)
+        data['Xs']=np.full_like(data.TDoA,fill_value=np.inf)
+        data['Ys']=np.full_like(data.TDoA,fill_value=np.inf)
         if mode3D:
-            data['Zs']=np.full_like(data.TDOA,fill_value=np.inf)
+            data['Zs']=np.full_like(data.TDoA,fill_value=np.inf)
             
         if not indexAoA.empty:
             if mode3D:
-                aoa_new,zoa_new,locs_a = self.fitAOA(txPos,rxPos,data.loc[indexAoA].TDOA+ tauOffset,data.loc[indexAoA].AOD*np.pi/180,data.loc[indexAoA].ZOD*np.pi/180)
+                aoa_new,zoa_new,locs_a = self.fitAoA(txPos,rxPos,data.loc[indexAoA].TDoA+ tauOffset,data.loc[indexAoA].AoD*np.pi/180,data.loc[indexAoA].ZoD*np.pi/180)
                 data.Zs.loc[indexAoA]=locs_a[2,:]
             else:
-                aoa_new,locs_a = self.fitAOA(txPos,rxPos,data.loc[indexAoA].TDOA+ tauOffset,data.loc[indexAoA].AOD*np.pi/180)
-            data.AOA.loc[indexAoA]=aoa_new*180/np.pi
+                aoa_new,locs_a = self.fitAoA(txPos,rxPos,data.loc[indexAoA].TDoA+ tauOffset,data.loc[indexAoA].AoD*np.pi/180)
+            data.AoA.loc[indexAoA]=aoa_new*180/np.pi
             data.Xs.loc[indexAoA]=locs_a[0,:]
             data.Ys.loc[indexAoA]=locs_a[1,:]
         if not indexAoD.empty:
             if mode3D:
-                aod_new,zod_new,locs_d = self.fitAOD(txPos,rxPos,data.loc[indexAoD].TDOA+ tauOffset,data.loc[indexAoD].AOA*np.pi/180,data.loc[indexAoD].ZOA*np.pi/180)
+                aod_new,zod_new,locs_d = self.fitAoD(txPos,rxPos,data.loc[indexAoD].TDoA+ tauOffset,data.loc[indexAoD].AoA*np.pi/180,data.loc[indexAoD].ZoA*np.pi/180)
                 data.Zs.loc[indexAoD]=locs_d[2,:]
             else:
-                aod_new,locs_d = self.fitAOD(txPos,rxPos,data.loc[indexAoD].TDOA+ tauOffset,data.loc[indexAoD].AOA*np.pi/180)
-            data.AOD.loc[indexAoD]=aod_new*180/np.pi
+                aod_new,locs_d = self.fitAoD(txPos,rxPos,data.loc[indexAoD].TDoA+ tauOffset,data.loc[indexAoD].AoA*np.pi/180)
+            data.AoD.loc[indexAoD]=aod_new*180/np.pi
             data.Xs.loc[indexAoD]=locs_d[0,:]
             data.Ys.loc[indexAoD]=locs_d[1,:]
         if not indexToA.empty:
             if mode3D:
-                tau_new,locs_t,valid = self.fitTDOA(txPos,rxPos,data.loc[indexToA].AOA*np.pi/180,data.loc[indexToA].AOD*np.pi/180,data.loc[indexToA].ZOA*np.pi/180,data.loc[indexToA].ZOD*np.pi/180)
+                tau_new,locs_t,valid = self.fitTDoA(txPos,rxPos,data.loc[indexToA].AoA*np.pi/180,data.loc[indexToA].AoD*np.pi/180,data.loc[indexToA].ZoA*np.pi/180,data.loc[indexToA].ZoD*np.pi/180)
                 data.Zs.loc[indexToA]=locs_t[2,:]            
             else:
-                tau_new,locs_t,valid = self.fitTDOA(txPos,rxPos,data.loc[indexToA].AOA*np.pi/180,data.loc[indexToA].AOD*np.pi/180)
-            data.TDOA.loc[indexToA]=tau_new
+                tau_new,locs_t,valid = self.fitTDoA(txPos,rxPos,data.loc[indexToA].AoA*np.pi/180,data.loc[indexToA].AoD*np.pi/180)
+            data.TDoA.loc[indexToA]=tau_new
             data.Xs.loc[indexToA]=locs_t[0,:]
             data.Ys.loc[indexToA]=locs_t[1,:]
             if not np.all(valid):
@@ -1260,28 +1260,28 @@ class ThreeGPPMultipathChannelModel:
     
     def fixExcessDelayNLOS(self,txPos,rxPos,plinfo,clusters,mode3D=True):
         los,PLconst,sfdB = plinfo
-        if not los and (np.min(clusters.TDOA)==0):# attempt to rebuild the initial delay of first  NLOStau observation        
+        if not los and (np.min(clusters.TDoA)==0):# attempt to rebuild the initial delay of first  NLOStau observation        
             #we will always fix this by clusters, subpaths get the same correction factor
-            sortclt = clusters.sort_values("TDOA")
+            sortclt = clusters.sort_values("TDoA")
             ctr = 0
             valid=False
             #find the first cluster which can be leveraged to reconstruct clock offset
             while (( not valid ) and (ctr < sortclt.shape[0]) ):
-                aod=sortclt.iloc[ctr].AOD*np.pi/180
-                aoa=sortclt.iloc[ctr].AOA*np.pi/180
+                aod=sortclt.iloc[ctr].AoD*np.pi/180
+                aoa=sortclt.iloc[ctr].AoA*np.pi/180
                 if mode3D:
-                    zod=sortclt.iloc[ctr].ZOD*np.pi/180
-                    zoa=sortclt.iloc[ctr].ZOA*np.pi/180        
-                    fitted_tdoa,loc,valid = self.fitTDOA(txPos,rxPos,aoa,aod,zoa,zod,relax3D=True)#for tauE fixing in 3D we accept an approximate LS solution
+                    zod=sortclt.iloc[ctr].ZoD*np.pi/180
+                    zoa=sortclt.iloc[ctr].ZoA*np.pi/180        
+                    fitted_tdoa,loc,valid = self.fitTDoA(txPos,rxPos,aoa,aod,zoa,zod,relax3D=True)#for tauE fixing in 3D we accept an approximate LS solution
                 else:
-                    fitted_tdoa,loc,valid = self.fitTDOA(txPos,rxPos,aoa,aod,relax3D=False)#for tauE fixing in 3D the intersection must still be exact
+                    fitted_tdoa,loc,valid = self.fitTDoA(txPos,rxPos,aoa,aod,relax3D=False)#for tauE fixing in 3D the intersection must still be exact
                 if valid:
                     break
                 else:
                     ctr=ctr+1
             if (ctr < sortclt.shape[0]):                
                 #consider the cluster already-reported delay in the clock offset
-                tauE = np.maximum(fitted_tdoa - sortclt.iloc[ctr].TDOA,0) # we cannot make the first cluster arrive earlier than the LOS path
+                tauE = np.maximum(fitted_tdoa - sortclt.iloc[ctr].TDoA,0) # we cannot make the first cluster arrive earlier than the LOS path
                 return( tauE )            
             #else
         #else
@@ -1303,7 +1303,7 @@ class ThreeGPPMultipathChannelModel:
             uv = np.column_stack([np.cos(azimut)*np.sin(zenit),np.sin(azimut)*np.sin(zenit),np.cos(zenit)])
         return(uv)#,av,zv)
     
-    def fitAOA(self, txPos, rxPos, tdoa, aod, zod=None):        
+    def fitAoA(self, txPos, rxPos, tdoa, aod, zod=None):        
         # Datos iniciais - l0
         (dtx,drx) = self.prepLocVectors(txPos,rxPos,clip2D = (zod is None))
         d0 = drx-dtx
@@ -1325,7 +1325,7 @@ class ThreeGPPMultipathChannelModel:
             zoaFix = np.mod(np.pi/2-np.arctan2(dAi[2,:],np.linalg.norm(dAi[0:2,:],axis=0)),2*np.pi)
             return (aoaFix,zoaFix,posLoc)
 
-    def fitAOD(self, txPos, rxPos, tdoa, aoa,  zoa=None):               
+    def fitAoD(self, txPos, rxPos, tdoa, aoa,  zoa=None):               
         # Datos iniciais - l0
         (dtx,drx) = self.prepLocVectors(txPos,rxPos,clip2D = (zoa is None))
         d0 = drx-dtx
@@ -1346,7 +1346,7 @@ class ThreeGPPMultipathChannelModel:
             zodFix = np.mod(np.pi/2-np.arctan2(dDi[2,:],np.linalg.norm(dDi[0:2,:],axis=0)),2*np.pi)
             return (aodFix,zodFix,posLoc)
     
-    def fitTDOA(self, txPos, rxPos, aoa, aod, zoa=None, zod=None,relax3D = False):       
+    def fitTDoA(self, txPos, rxPos, aoa, aod, zoa=None, zod=None,relax3D = False):       
         # Datos iniciais - l0
         (dtx,drx) = self.prepLocVectors(txPos,rxPos,clip2D = ((zoa is None) or (zod is None)) )
         d0 = drx-dtx

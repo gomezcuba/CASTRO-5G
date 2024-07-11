@@ -41,7 +41,7 @@ macro = model.create_macro((txPos[0],txPos[1],rxPos[0],rxPos[1],los))
 sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
 zsd_mu = model.scenarioParams.NLOS.funZSD_mu(d2D,hut)#unlike other statistics, ZSD changes with hut and d2D             
 zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
-zod_offset_mu = model.scenarioParams.NLOS.funZODoffset(d2D,hut)    
+zod_offset_mu = model.scenarioParams.NLOS.funZoDoffset(d2D,hut)    
 czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD    
 smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
 
