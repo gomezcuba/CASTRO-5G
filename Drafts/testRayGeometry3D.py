@@ -120,9 +120,9 @@ d0_est,ToAE_est,d_est=loc.computeAllPaths(paths,rotation=AoA0)
 
 print(f'2D Functions match {np.all(np.isclose(d0_old, d0_est))}  {np.all(np.isclose(ToAE_old, ToAE_est))}  {np.all(np.isclose(d_old, d_est))}' )
 
-%timeit loc.computeAllPathsV1(AoD,AoA,TDoA,0)
-%timeit loc.computeAllPaths(paths)
+%timeit loc.computeAllPathsV1(AoD,DAoA,TDoA,AoA0)
+%timeit loc.computeAllPaths(paths,rotation=AoA0)
 
 paths=pd.DataFrame({'DAoA':DAoA,'AoD':AoD,'TDoA':TDoA,'ZoD':ZoD,'DZoA':ZoA})
-d0_est,ToAE_est,d_est=loc.computeAllPaths(paths,rotation=(AoA0[0],0,0))
+d0_est,ToAE_est,d_est=loc.computeAllPaths(paths,rotation=(AoA0[0],np.pi/2,0))
 print(f'3D Function match {np.all(np.isclose(d0, d0_est))}  {np.all(np.isclose(tauE, ToAE_est))}  {np.all(np.isclose(d, d_est))}' )

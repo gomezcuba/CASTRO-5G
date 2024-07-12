@@ -132,6 +132,24 @@ class MultipathLocationEstimator:
             return( np.vstack([np.cos(A),np.sin(A)]) )
         else:
             return( np.vstack([np.cos(A)*np.sin(Z),np.sin(A)*np.sin(Z),np.cos(Z)]) )
+    def angVector(self,v):
+        if v.ndim==1:
+            AoA=np.arctan2(v[1],v[0])
+            if v.size>2:
+                l=np.linalg.norm(v[0:2])
+                ZoA=np.pi/2-np.arctan2(v[2],l)#recall we use 3GPP Zenith angle convention
+                return(np.array([AoA,ZoA]))
+            else:
+                return(AoA)
+        else:
+            AoA=np.arctan2(v[...,1,:],v[...,0,:])            
+            if v.shape[-2]>2:
+                l=np.linalg.norm(v[...,0:2,:],axis=-2)
+                ZoA=np.pi/2-np.arctan2(v[...,2,:],l)#recall we use 3GPP Zenith angle convention
+                return(np.array([AoA,ZoA]))
+            else:
+                return(AoA)
+        
     def rMatrix2D(self,A):
         """Computes a 2D rotation matrix 
         
@@ -184,7 +202,7 @@ class MultipathLocationEstimator:
         A  : float
             Azimuth, "bearing" yaw of rotation measured counterclockwise from the X axis, around the Z axis
         Z  : float, optional, default = None
-            Zenith, "downtilt" pitch of rotation measured downwards from the Z axis, around the "facing-to-A" horizontal axis. If None, a 2D matrix is returned
+            Zenith, "downtilt" π/2 minius pitch of rotation measured downwards from the Z axis, around the "facing-to-A" horizontal axis. If None, a 2D matrix is returned
         S  : float, optional, default = None
             "Slant" roll of rotation measured form up from the Y axis, around the "facing-to-AZ" axis). If None, a 3D matrix rotated in A,Z is returned
 
@@ -195,10 +213,12 @@ class MultipathLocationEstimator:
         """
         if Z is None:
             return( self.rMatrix2D(A) )
-        elif S is None:
-            return( self.rMatrix3D(A,2)@self.rMatrix3D(Z,1) )
         else:
-            return( self.rMatrix3D(A,2)@self.rMatrix3D(Z,1)@self.rMatrix3D(S,0) )
+            E=np.pi/2-Z#The single-axis rotaiton matrix function is alwas positive, we must replace zenith with elevation
+            if S is None:
+                return( self.rMatrix3D(A,2)@self.rMatrix3D(E,1) )
+            else:
+                return( self.rMatrix3D(A,2)@self.rMatrix3D(E,1)@self.rMatrix3D(S,0) )
     def computeAllPaths(self, paths , rotation=None):       
         Npath=paths.shape[0]
         #TODO choose a library to provide uVector globally to the project
@@ -387,8 +407,8 @@ class MultipathLocationEstimator:
         d0_all = np.zeros((Ngroup,Ndim))
         tauEall = np.zeros(Ngroup)
         for gr in range(Ngroup):
-            # (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
-            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
+            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
+            # (d0_all[gr,:], tauEall[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
         v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)        
         return(v_all)
     
