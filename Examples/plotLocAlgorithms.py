@@ -15,7 +15,7 @@ sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
 
 Npath=20
-Nsims=10
+Nsims=100
 
 Ndim=2#3
 #random locations in a 40m square
@@ -70,7 +70,7 @@ d_b2=np.zeros((Nsims,Npath,Ndim))
 for nsim in tqdm(range(Nsims),desc="brute"):
     (d0_b2[nsim,:],tauE_b2[nsim],d_b2[nsim,:,:],AoA0_b2[nsim],_)= loc.computeAllLocationsFromPaths(allPathsData.loc[nsim,:] ,orientationMethod='brute', orientationMethodArgs={'groupMethod':'drop1','nPoint':100})
 error_brute2=np.linalg.norm(d0-d0_b2,axis=1)
-t_run_b = time.time() - t_start_b
+t_run_b2 = time.time() - t_start_b
 
 t_start_r = time.time()
 AoA0_r=np.zeros(Nsims)

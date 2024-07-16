@@ -27,8 +27,8 @@ d0_true=np.concatenate([x0_true,y0_true,z0_true])
 AoD0_true,ZoD0_true=loc.angVector(d0_true)
 
 AoA0_true=np.random.rand(1)*2*np.pi
-ZoA0_true=np.random.rand(1)*np.pi
-SoA0_true=np.random.rand(1)*2*np.pi
+ZoA0_true=[0]#np.random.rand(1)*np.pi
+SoA0_true=[0]#np.random.rand(1)*2*np.pi
 rotation0_true=np.concatenate([AoA0_true,ZoA0_true,SoA0_true])#yaw=aoa0, pitch = 90-zenit, roll=spin
 print(rotation0_true)
 DoA0_true=loc.uVector(AoA0_true,ZoA0_true)
@@ -51,7 +51,7 @@ DAoA_true,DZoA_true=loc.angVector(DDoA_true)
 c=3e8
 l0=np.linalg.norm(d0_true)
 ToA0_true=l0/c
-li=np.linalg.norm(d_true)+np.linalg.norm(d_true-d0_true) 
+li=np.linalg.norm(d_true,axis=1)+np.linalg.norm(d_true-d0_true,axis=1) 
 ToA_true=li/c
 
 TDoA_true = ToA_true-ToA0_true
@@ -85,30 +85,36 @@ ax.plot3D(0,0,'sb')
 ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
 plt.title("All angles of a multipath channel with correct tau0, random phi0")
 
-searchDim=(10,10,10)
+searchDim=(25,25,1)
 AoA0_search=np.linspace(0,2*np.pi,searchDim[0])
 ZoA0_search=np.linspace(0,np.pi,searchDim[1])
-SoA0_search=np.linspace(0,2*np.pi,searchDim[2])
+SoA0_search=SoA0_true#np.linspace(0,2*np.pi,searchDim[2])
 
-d0_3path=np.zeros((np.prod(searchDim),Npath-2,3))
-tauE_3path=np.zeros((np.prod(searchDim),Npath-2))
+d0_4path=np.zeros((np.prod(searchDim),Npath-3,3))
+tauE_4path=np.zeros((np.prod(searchDim),Npath-3))
 
 for ct in tqdm(range(np.prod(searchDim)),desc=f'searchin 3D rotation in {searchDim} points'):
     c1,c2,c3=np.unravel_index(ct,searchDim)
-    for gr in range(Npath-2):
-        (d0_3path[ct,gr,:],tauE_3path[ct,gr],_)= loc.computeAllPaths(paths[gr:gr+3],rotation=(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
+    for gr in range(Npath-3):
+        (d0_4path[ct,gr,:],tauE_4path[ct,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
 
-fig=plt.figure(2)
+# d0_4path=np.zeros((Npath-3,3))
+# tauE_4path=np.zeros((Npath-2))
+# for gr in range(Npath-3):
+#     (d0_4path[gr,:],tauE_4path[gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=rotation0_true)
+
+# fig=plt.figure(2)
 # ax = fig.add_subplot(111, projection='3d')
 # ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
-# for gr in range(Npath-2):
-#     ax.plot(d0_3path[:,gr,0],d0_3path[:,gr,1],d0_3path[:,gr,2],':', label='_nolegend_')
+# for gr in range(Npath-3):
+#     ax.plot(d0_4path[:,gr,0],d0_4path[:,gr,1],d0_4path[:,gr,2],':', label='_nolegend_')
 
-MSD=np.sum(np.abs(d0_3path-np.mean(d0_3path,axis=1,keepdims=True))**2,axis=(1,2))
-plt.plot(np.arange(np.prod(searchDim)),MSD)
-c1,c2,c3=np.unravel_index(np.argmin(MSD),searchDim)
-print(rotation0_true,(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
-# ax.plot3D(0,0,0,'sb',markersize=10)
+# MSD=np.sum(np.abs(d0_4path-np.mean(d0_4path,axis=1,keepdims=True))**2,axis=(1,2))
+# plt.plot(AoA0_search,MSD)
+# c1,c2,c3=np.unravel_index(np.argmin(MSD),searchDim)
+# plt.axis([0,np.prod(searchDim),0,np.percentile(MSD,80)])
+# print(rotation0_true,(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
+# # ax.plot3D(0,0,0,'sb',markersize=10)
 # ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g',markersize=10)
 # plt.axis([-50,50,-50,50])
 # plt.xlabel('$d_{ox}$ (m)')
@@ -119,12 +125,12 @@ print(rotation0_true,(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
 # plt.figure(3)
 # ax = plt.axes(projection='3d')
 # for gr in range(Npath-2):
-#     ax.plot3D(d0_3path[:,gr,0],d0_3path[:,gr,1],ToA0_true*c+c*tauE_3path[:,gr], ':', label='_nolegend_')
+#     ax.plot3D(d0_4path[:,gr,0],d0_4path[:,gr,1],ToA0_true*c+c*tauE_4path[:,gr], ':', label='_nolegend_')
 # ax.plot3D([0],[0],[0],'sb',markersize=10)
 # ax.plot3D(x0_true,y0_true,ToA0_true*c*np.ones_like(y0_true),'^g',markersize=10)
 # ax.set_xlim(-50,50)
 # ax.set_ylim(-50,50)
-# ax.set_zlim(0,np.max(ToA0_true*c+3e8*tauE_3path[tauE_3path>0]))
+# ax.set_zlim(0,np.max(ToA0_true*c+3e8*tauE_4path[tauE_4path>0]))
 # ax.set_xlabel('$d_{ox}$ (m)')
 # ax.set_ylabel('$d_{oy}$ (m)')
 # ax.set_zlabel('$\\ell_e$ (m)')

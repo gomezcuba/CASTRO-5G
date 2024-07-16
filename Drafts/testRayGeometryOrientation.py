@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 plt.close('all')
 
@@ -58,11 +59,11 @@ AoA0_search=np.linspace(0,2*np.pi,1000)
 d0_3path=np.zeros((1000,Npath-2,2))
 tauE_3path=np.zeros((1000,Npath-2))
 
-for ct in range(AoA0_search.size):
+for ct in tqdm(range(AoA0_search.size),desc=f'searchin rotation using 3 path groups'):
     for gr in range(Npath-2):
         (d0_3path[ct,gr,:],tauE_3path[ct,gr],_)= loc.computeAllPaths(paths[gr:gr+3],rotation=AoA0_search[ct])
 
-plt.figure(2)
+plt.figure(1)
 
 plt.plot([0,x0_true[0]],[0,y0_true[0]],':g', label='_nolegend_')
 plt.plot(d0_3path[:,:,0],d0_3path[:,:,1],':', label='_nolegend_')
@@ -73,6 +74,12 @@ plt.xlabel('$d_{ox}$ (m)')
 plt.ylabel('$d_{oy}$ (m)')
 plt.legend(['Transmitter','Receiver'])
 plt.savefig('../Figures/graphsol%d.svg'%(Npath))
+
+plt.figure(2)
+
+MSD=np.mean(np.abs(d0_3path-np.mean(d0_3path,axis=1,keepdims=True))**2,axis=(1,2))
+plt.plot(AoA0_search,MSD)
+plt.axis([0,2*np.pi,0,np.percentile(MSD,80)])
 
 plt.figure(3)
 ax = plt.axes(projection='3d')
@@ -91,7 +98,7 @@ plt.savefig('../Figures/graph3Dsol%d.svg'%(Npath))
 
 d0_drop1=np.zeros((1000,Npath,2))
 tauE_drop1=np.zeros((1000,Npath))
-for ct in range(AoA0_search.size):
+for ct in  tqdm(range(AoA0_search.size),desc=f'searchin rotation using drop-1 groups'):
     for gr in range(Npath):
         (d0_drop1[ct,gr,:],tauE_drop1[ct,gr],_)=loc.computeAllPaths(paths[np.arange(Npath)!=gr],rotation=AoA0_search[ct])
 
@@ -121,10 +128,17 @@ ax.set_zlabel('$\\ell_e$ (m)')
 plt.legend(['Transmitter','Receiver'])
 plt.savefig('../Figures/graph3Dsoldrop1%d.svg'%(Npath))
 
+
+plt.figure(6)
+
+MSD=np.mean(np.abs(d0_drop1-np.mean(d0_drop1,axis=1,keepdims=True))**2,axis=(1,2))
+plt.plot(AoA0_search,MSD)
+plt.axis([0,2*np.pi,0,np.percentile(MSD,80)])
+
 (d0_brute,tauE_brute,d_brute,AoA0_brute,covAoA0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
 print(np.mod(AoA0_brute,2*np.pi),AoA0_true[0])
     
-plt.figure(6)
+plt.figure(7)
 plt.plot(0,0,'sb')
 plt.plot(x0_true,y0_true,'^g')
 plt.plot([0,x0_true[0]],[0,y0_true[0]],':g')

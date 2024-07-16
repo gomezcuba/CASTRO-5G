@@ -17,6 +17,36 @@ class MultipathLocationEstimator:
     non-linear system equation solver. Also, different methods have been included to find the UE position dealing with clock
     and orientation error.
     """
+    
+    tableMethodsScipyRoot=[
+        'hybr',
+        'lm',
+        'broyden1',
+        'broyden2',
+        'anderson',
+        'linearmixing',
+        'diagbroyden',
+        'excitingmixing',
+        'krylov',
+        'df-sane'
+        ]
+    tableMethodsScipyMinimize=[
+        'Nelder-Mead',
+        'Powell',
+        'CG',
+        'BFGS',
+        'Newton-CG',
+        'L-BFGS-B',
+        'TNC',
+        'COBYLA',
+        'COBYQA',
+        'SLSQP',
+        'trust-constr',
+        'dogleg',
+        'trust-ncg',
+        'trust-exact',
+        'trust-krylov',
+        ]
    
     def __init__(self, orientationMethod='lm', nPoint=100, groupMethod='drop1'):
         """ MultipathLocationEstimator constructor.
@@ -137,7 +167,7 @@ class MultipathLocationEstimator:
             AoA=np.arctan2(v[1],v[0])
             if v.size>2:
                 l=np.linalg.norm(v[0:2])
-                ZoA=np.pi/2-np.arctan2(v[2],l)#recall we use 3GPP Zenith angle convention
+                ZoA=np.arctan2(l,v[2])#recall we use 3GPP Zenith angle convention
                 return(np.array([AoA,ZoA]))
             else:
                 return(AoA)
@@ -145,7 +175,7 @@ class MultipathLocationEstimator:
             AoA=np.arctan2(v[...,1,:],v[...,0,:])            
             if v.shape[-2]>2:
                 l=np.linalg.norm(v[...,0:2,:],axis=-2)
-                ZoA=np.pi/2-np.arctan2(v[...,2,:],l)#recall we use 3GPP Zenith angle convention
+                ZoA=np.arctan2(l,v[...,2,:])#recall we use 3GPP Zenith angle convention
                 return(np.array([AoA,ZoA]))
             else:
                 return(AoA)
@@ -407,8 +437,8 @@ class MultipathLocationEstimator:
         d0_all = np.zeros((Ngroup,Ndim))
         tauEall = np.zeros(Ngroup)
         for gr in range(Ngroup):
-            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
-            # (d0_all[gr,:], tauEall[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
+            # (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
+            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
         v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)        
         return(v_all)
     
@@ -435,7 +465,7 @@ class MultipathLocationEstimator:
                 v_big[n2*Ng+n1:n2*Ng+n1+3]=v_all[n1]-v_all[n2+1*(n2>=n1)]
         return( v_big )
 
-    def bruteAoA0ForAllPaths(self, paths, nPoint=None, groupMethod='drop1'):
+    def bruteAoA0ByPathGroups(self, paths, nPoint=None, groupMethod='drop1'):
         """Estimates the value of the receiver Azimuth AoA0 by brute force by minimizing the
         mean squared distance between location solutions of multiple groups. Finds the best
         of nPoints between 0 and 2π
@@ -450,26 +480,32 @@ class MultipathLocationEstimator:
 
         return(interval[distind])
     
-    def solveAoA0ForAllPaths(self, paths, init_AoA0, groupMethod='drop1', orientationMethod='lm'):
+    def numericAoA0ByPathGroups(self, paths, init_AoA0, groupMethod='drop1', orientationMethod='lm'):
         """Performs the estimation of the value of AoA0 using the scipy.optimize.root function.        
         The value of the estimated offset angle of the UE orientation is obtained by finding the zeros of the 
         minimum mean square error (MMSE) equation defined by feval_wrapper_AllPathsByGroups. For this purpose, it is used
         the method root() to find the solutions of this function.
         In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.                  
         """
-        # res = opt.root(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
-        res = opt.root(self.locDifByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
-        # res = opt.minimize(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method='nelder-mead')
-        if not res.success:
-        #print("Attempting to correct initialization problem")
-            niter = 0 
-            while (not res.success) and (niter<1000):
-                res = opt.root(self.locMSEByPathGroups, x0=2*np.pi*np.random.rand(1), args=(paths, groupMethod), method=orientationMethod)
-                niter += 1
+        if orientationMethod in self.tableMethodsScipyRoot:
+            # res = opt.root(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
+            res = opt.root(self.locDifByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
+        elif orientationMethod in self.tableMethodsScipyMinimize:
+             #generally the 'lm' method above is recommended to minimize non-linear least squares, before the methods in the following
+            res = opt.minimize(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
+        # if not res.success:
+        # #print("Attempting to correct initialization problem")
+        #     niter = 0 
+        #     while (not res.success) and (niter<1000):
+        #         res = opt.root(self.locMSEByPathGroups, x0=2*np.pi*np.random.rand(1), args=(paths, groupMethod), method=orientationMethod)
+        #         niter += 1
         #print("Final Niter %d"%niter)
+        
         if res.success:
-            return (res.x,res.cov_x)
-            # return (res.x,None)
+            if hasattr(res, 'cov_x'):
+                return (res.x,res.cov_x)
+            else:
+                return (res.x,None)
         else:
             print("ERROR: AoA0 root not found")
             return (np.array(0.0),np.inf)
@@ -524,9 +560,9 @@ class MultipathLocationEstimator:
                 nPoint =  orientationMethodArgs["nPoint"]
             else:
                 nPoint = self.nPoint
-            rotation_est = self.bruteAoA0ForAllPaths(paths, nPoint, groupMethod)
+            rotation_est = self.bruteAoA0ByPathGroups(paths, nPoint, groupMethod)
             rotation_cov = np.pi/nPoint
-        elif themethod in ['lm','hybr']:
+        elif themethod in (self.tableMethodsScipyRoot+self.tableMethodsScipyMinimize):
             if "groupMethod" in orientationMethodArgs:
                 groupMethod = orientationMethodArgs["groupMethod"]        
             else:
@@ -535,8 +571,8 @@ class MultipathLocationEstimator:
                 initRotation = orientationMethodArgs["initRotation"]
             else:
                 #coarse linear approximation for initialization
-                initRotation = self.bruteAoA0ForAllPaths(paths, 100, groupMethod)
-            (rotation_est, rotation_cov) = self.solveAoA0ForAllPaths(paths, initRotation, groupMethod, themethod)
+                initRotation = self.bruteAoA0ByPathGroups(paths, 100, groupMethod)
+            (rotation_est, rotation_cov) = self.numericAoA0ByPathGroups(paths, initRotation, groupMethod, themethod)
             rotation_est=rotation_est[0]
         else:
             print("unsupported method")
