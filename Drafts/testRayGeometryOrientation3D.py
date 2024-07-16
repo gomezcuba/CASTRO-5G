@@ -85,7 +85,7 @@ ax.plot3D(0,0,'sb')
 ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
 plt.title("All angles of a multipath channel with correct tau0, random phi0")
 
-searchDim=(25,25,25)
+searchDim=(10,10,10)
 AoA0_search=np.linspace(0,2*np.pi,searchDim[0])
 ZoA0_search=np.linspace(0,np.pi,searchDim[1])
 SoA0_search=np.linspace(0,2*np.pi,searchDim[2])
