@@ -5,7 +5,7 @@ import scipy.optimize as opt
 import argparse
 import pandas as pd
 from collections.abc import Iterable
-
+from tqdm import tqdm
 
 class MultipathLocationEstimator:
     """Class used to calculate 5G UE (User Equipment) location in 2D and 3D. 
@@ -288,14 +288,14 @@ class MultipathLocationEstimator:
         d_est = np.vstack([vxest,vyest]).T
         return(d0_est, ToA0_est, d_est)
         
-    def gen3PathGroup(self, Npath):
-        """Returns a Npath-2 x Npath boolean table representing paths belonging to 3-path groups.
+    def genKPathGroup(self, Npath, K=3):
+        """Returns a Npath-K+1 x Npath boolean table representing paths belonging to K-path groups.
         
-        Divides the set {1, 2, 3, . . ., Npath} into Npath-2 groups of paths G1={1, 2, 3},
+        Divides the set {1, 2, 3, . . ., Npath} into Npath-K groups of paths G1={1, 2, 3},
         G2={2, 3, 4} , G3{3, 4, 5}, . . ., Gm={Npath-2, Npath-1, Npath}. 
         
         E.g.:
-        Npath = 5, the groups includes paths as:        
+        Npath = 5, K=3 the groups includes paths as:        
                                                 G1 = {1,2,3}
                                                 G2 = {2,3,4}
                                                 G3 = {3,4,5}        
@@ -316,10 +316,10 @@ class MultipathLocationEstimator:
         table_group : ndarray
             Boolean array that contains all the 3-path groups.
         """        
-        table_group = np.empty((Npath-2, Npath), dtype=bool)
+        table_group = np.empty((Npath-K+1, Npath), dtype=bool)
 
-        for gr in range(Npath-2):
-            path_indices = [gr, gr+1, gr+2]
+        for gr in range(Npath-K+1):
+            path_indices = gr+np.arange(0,K).astype(int)
             table_group[gr,:] = np.isin(np.arange(Npath), path_indices)        
         
         return table_group
@@ -418,8 +418,8 @@ class MultipathLocationEstimator:
         """
         Npath = paths.index.size
         if isinstance(groupMethod,str):
-            if groupMethod == '3path':
-                table_group = self.gen3PathGroup(Npath)            
+            if 'path' in groupMethod:
+                table_group = self.genKPathGroup(Npath,K=int(groupMethod.strip('path')))      
             elif groupMethod == 'drop1':
                 table_group = self.genDrop1Group(Npath)            
             elif groupMethod == 'random':
@@ -479,6 +479,29 @@ class MultipathLocationEstimator:
         distind = np.argmin(MSE)
 
         return(interval[distind])
+    
+    def brute3DRotByPathGroups(self, paths, nPoint=None, groupMethod='drop1'):
+        """Estimates the value of the receiver Asimuth, Zenith and Spin by brute force by minimizing the
+        mean squared distance between location solutions of multiple groups. Finds the best
+        of nPoints^3 in the intervals [0,2π)x[0,π)x[0,2π) 
+        """        
+        if nPoint is None:
+            nPoint = self.nPoint
+        if isinstance(nPoint,tuple):
+            dims=nPoint
+        else:
+            dims=(nPoint,nPoint,nPoint)
+        intervalAoA0 = np.linspace(0,  2*np.pi, dims[0])
+        intervalZoA0 = np.linspace(0,  np.pi, dims[1])
+        intervalSoA0 = np.linspace(0,  2*np.pi, dims[2])
+        
+        MSE = np.zeros(dims)
+        for n in tqdm(range(np.prod(dims))):
+            n1,n2,n3=np.unravel_index(n,(dims))
+            MSE[n1,n2,n3] = self.locMSEByPathGroups((intervalAoA0[n1],intervalZoA0[n2],intervalSoA0[n3]), paths, groupMethod)
+        n1,n2,n3 = np.unravel_index(np.argmin(MSE),dims)
+
+        return((intervalAoA0[n1],intervalZoA0[n2],intervalSoA0[n3]))
     
     def numericAoA0ByPathGroups(self, paths, init_AoA0, groupMethod='drop1', orientationMethod='lm'):
         """Performs the estimation of the value of AoA0 using the scipy.optimize.root function.        
@@ -549,7 +572,7 @@ class MultipathLocationEstimator:
             The inverse of the Hessian matrix of AoA0.
                         
         """
-        
+        mode3D = ('ZoD' in paths.columns) and ('DZoA' in paths.columns)
         themethod = orientationMethod if orientationMethod is not None else self.orientationMethod
         if themethod == 'brute':
             if "groupMethod" in orientationMethodArgs:
@@ -560,8 +583,14 @@ class MultipathLocationEstimator:
                 nPoint =  orientationMethodArgs["nPoint"]
             else:
                 nPoint = self.nPoint
-            rotation_est = self.bruteAoA0ByPathGroups(paths, nPoint, groupMethod)
-            rotation_cov = np.pi/nPoint
+            if mode3D:
+                rotation_est = self.brute3DRotByPathGroups(paths, nPoint, groupMethod)
+            else:
+                rotation_est = self.bruteAoA0ByPathGroups(paths, nPoint, groupMethod)                
+            if isinstance(nPoint,tuple):
+                rotation_cov = np.pi/nPoint[0]
+            else:
+                rotation_cov = np.pi/nPoint
         elif themethod in (self.tableMethodsScipyRoot+self.tableMethodsScipyMinimize):
             if "groupMethod" in orientationMethodArgs:
                 groupMethod = orientationMethodArgs["groupMethod"]        

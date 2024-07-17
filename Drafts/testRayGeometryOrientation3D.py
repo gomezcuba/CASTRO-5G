@@ -2,6 +2,7 @@
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
+from matplotlib import cm
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
 loc=MultipathLocationEstimator.MultipathLocationEstimator()
 
+fig_ctr=0
 Npath=10
 x_true=np.random.rand(Npath)*40-20
 y_true=np.random.rand(Npath)*40-20
@@ -27,8 +29,8 @@ d0_true=np.concatenate([x0_true,y0_true,z0_true])
 AoD0_true,ZoD0_true=loc.angVector(d0_true)
 
 AoA0_true=np.random.rand(1)*2*np.pi
-ZoA0_true=[0]#np.random.rand(1)*np.pi
-SoA0_true=[0]#np.random.rand(1)*2*np.pi
+ZoA0_true=np.random.rand(1)*np.pi
+SoA0_true=np.random.rand(1)*2*np.pi
 rotation0_true=np.concatenate([AoA0_true,ZoA0_true,SoA0_true])#yaw=aoa0, pitch = 90-zenit, roll=spin
 print(rotation0_true)
 DoA0_true=loc.uVector(AoA0_true,ZoA0_true)
@@ -64,113 +66,219 @@ paths=pd.DataFrame({
     'TDoA':TDoA_true
     })
 
-
-fig=plt.figure(1)
-ax = fig.add_subplot(111, projection='3d')
-ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
-ax.plot3D(d_true[:,0],d_true[:,1],d_true[:,2],'or')
-scaleguide=np.max(np.abs(np.concatenate([d_true,d0_true[None,:]])))
-
-# plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
-for n in range(Npath):
-    ax.plot3D([0,d_true[n,0],d0_true[0]],[0,d_true[n,1],d0_true[1]],[0,d_true[n,2],d0_true[2]],':k')
-    t=np.linspace(0,1,21)
-    plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n]*t),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n]*t),0,'k')
-    plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoD_true[n])),'k')
-    
-    plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n]*t),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n]*t),d0_true[2],'k')
-    plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[2]+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoA_true[n])),'k')
-
-ax.plot3D(0,0,'sb')
-ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
-plt.title("All angles of a multipath channel with correct tau0, random phi0")
-
-searchDim=(25,25,1)
-AoA0_search=np.linspace(0,2*np.pi,searchDim[0])
-ZoA0_search=np.linspace(0,np.pi,searchDim[1])
-SoA0_search=SoA0_true#np.linspace(0,2*np.pi,searchDim[2])
-
-d0_4path=np.zeros((np.prod(searchDim),Npath-3,3))
-tauE_4path=np.zeros((np.prod(searchDim),Npath-3))
-
-for ct in tqdm(range(np.prod(searchDim)),desc=f'searchin 3D rotation in {searchDim} points'):
-    c1,c2,c3=np.unravel_index(ct,searchDim)
-    for gr in range(Npath-3):
-        (d0_4path[ct,gr,:],tauE_4path[ct,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
-
-# d0_4path=np.zeros((Npath-3,3))
-# tauE_4path=np.zeros((Npath-2))
-# for gr in range(Npath-3):
-#     (d0_4path[gr,:],tauE_4path[gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=rotation0_true)
-
-# fig=plt.figure(2)
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
 # ax = fig.add_subplot(111, projection='3d')
+# scaleguide=np.max(np.abs(np.concatenate([d_true,d0_true[None,:]])))
+
+# # plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
+# for n in range(Npath):
+#     ax.plot3D([0,d_true[n,0],d0_true[0]],[0,d_true[n,1],d0_true[1]],[0,d_true[n,2],d0_true[2]],':k')
+#     t=np.linspace(0,1,21)
+#     plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n]*t),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n]*t),0,'k')
+#     plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoD_true[n])),'k')
+    
+#     plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n]*t),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n]*t),d0_true[2],'k')
+#     plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[2]+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoA_true[n])),'k')
+
 # ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
-# for gr in range(Npath-3):
-#     ax.plot(d0_4path[:,gr,0],d0_4path[:,gr,1],d0_4path[:,gr,2],':', label='_nolegend_')
+# ax.plot3D(d_true[:,0],d_true[:,1],d_true[:,2],'or')
+# ax.plot3D(0,0,'sb')
+# ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
+# plt.title("All angles of a multipath channel with correct tau0, random phi0")
 
-# MSD=np.sum(np.abs(d0_4path-np.mean(d0_4path,axis=1,keepdims=True))**2,axis=(1,2))
-# plt.plot(AoA0_search,MSD)
+# searchDim=100
+# AoA0_search=np.linspace(0,2*np.pi,searchDim)
+
+# d0_4path_1D=np.zeros((searchDim,Npath-3,3))
+# tauE_4path_1D=np.zeros((searchDim,Npath-3))
+
+# for ct in tqdm(range(searchDim),desc=f'searchin 1D rotation in {searchDim} points'):
+#     for gr in range(Npath-3):
+#         (d0_4path_1D[ct,gr,:],tauE_4path_1D[ct,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[ct],rotation0_true[1],rotation0_true[2]))
+
+
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# ax = fig.add_subplot(111, projection='3d')
+# for gr in range(3):
+#     ax.plot(d0_4path_1D[:,gr,0],d0_4path_1D[:,gr,1],d0_4path_1D[:,gr,2],':', label='_nolegend_')
+# ax.plot3D(0,0,'sb')
+# ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
+# ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
+# ax.set_zlim(0,10)
+# ax.set_xlim(-40,40)
+# ax.set_ylim(-40,40)
+# ax.set_xlabel('$d_{ox}$ (m)')
+# ax.set_ylabel('$d_{oy}$ (m)')
+# ax.set_zlabel('$d_{oz}$ (m)')
+# plt.legend(['Transmitter','Receiver'])
+# plt.savefig('../Figures/graphsol3DS1%d.svg'%(Npath))
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# MSD=np.sum(np.abs(d0_4path_1D-np.mean(d0_4path_1D,axis=1,keepdims=True))**2,axis=(1,2))
+# plt.semilogy(AoA0_search,MSD)
+# ctm=np.argmin(MSD)
+# plt.plot(AoA0_true[0],MSD[ctm],'sg')
+# plt.plot(AoA0_search[ctm],MSD[ctm],'xr')
+# plt.xlabel("AoA0 search")
+# plt.ylabel("MSD 4-path")
+# plt.savefig('../Figures/graphcost3DS1%d.svg'%(Npath))
+
+
+# searchDim=(100,100)
+# AoA0_search=np.linspace(0,2*np.pi,searchDim[0])
+# ZoA0_search=np.linspace(0,np.pi,searchDim[1])
+
+# d0_4path_2D=np.zeros(searchDim+(Npath-3,3))
+# tauE_4path_2D=np.zeros(searchDim+(Npath-3,))
+
+# for ct in tqdm(range(np.prod(searchDim)),desc=f'searchin 2D rotation in {searchDim} points'):
+#     c1,c2=np.unravel_index(ct,searchDim)
+#     for gr in range(Npath-3):
+#         (d0_4path_2D[c1,c2,gr,:],tauE_4path_2D[c1,c2,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[c1],ZoA0_search[c2],rotation0_true[2]))
+
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# ax = fig.add_subplot(111, projection='3d')
+# for gr in range(3):
+#     ax.plot(d0_4path_2D[:,:,gr,0].reshape(-1),d0_4path_2D[:,:,gr,1].reshape(-1),d0_4path_2D[:,:,gr,2].reshape(-1),':', label='_nolegend_')
+# ax.plot3D(0,0,'sb')
+# ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
+# ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
+# ax.set_zlim(0,10)
+# ax.set_xlim(-40,40)
+# ax.set_ylim(-40,40)
+# ax.set_xlabel('$d_{ox}$ (m)')
+# ax.set_ylabel('$d_{oy}$ (m)')
+# ax.set_zlabel('$d_{oz}$ (m)')
+# plt.legend(['Transmitter','Receiver'])
+# plt.savefig('../Figures/graphsol3DS2%d.svg'%(Npath))
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# MSD=np.sum(np.abs(d0_4path_2D-np.mean(d0_4path_2D,axis=2,keepdims=True))**2,axis=(2,3))
+# X,Y=np.meshgrid(AoA0_search,ZoA0_search)
+# plt.pcolor(X.T,Y.T,np.log10(MSD),cmap=cm.coolwarm,linewidth=0)
+# c1,c2=np.unravel_index(np.argmin(MSD),searchDim)
+# plt.plot(AoA0_true[0],ZoA0_true[0],'sg')
+# plt.plot(AoA0_search[c1],ZoA0_search[c2],'xr')
+# plt.xlabel("AoA0 search")
+# plt.ylabel("ZoA0 search")
+# plt.colorbar(label="log MSD (log-m)")
+# plt.savefig('../Figures/graphcost3DS2%d.svg'%(Npath))
+
+
+# searchDim=(25,25,25)
+# AoA0_search=np.linspace(0,2*np.pi,searchDim[0])
+# ZoA0_search=np.linspace(0,np.pi,searchDim[1])
+# SoA0_search=np.linspace(0,2*np.pi,searchDim[2])
+
+# d0_4path_3D=np.zeros(searchDim+(Npath-3,3))
+# tauE_4path_3D=np.zeros(searchDim+(Npath-3,))
+
+# for ct in tqdm(range(np.prod(searchDim)),desc=f'searchin 3D rotation in {searchDim} points'):
+#     c1,c2,c3=np.unravel_index(ct,searchDim)
+#     for gr in range(Npath-3):
+#         (d0_4path_3D[c1,c2,c3,gr,:],tauE_4path_3D[c1,c2,c3,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
+
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# ax = fig.add_subplot(111, projection='3d')
+# for gr in range(3):
+#     ax.plot(d0_4path_3D[:,:,:,gr,0].reshape(-1),d0_4path_3D[:,:,:,gr,1].reshape(-1),d0_4path_3D[:,:,:,gr,2].reshape(-1),':', label='_nolegend_')
+# ax.plot3D(0,0,'sb')
+# ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
+# ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
+# ax.set_zlim(0,10)
+# ax.set_xlim(-40,40)
+# ax.set_ylim(-40,40)
+# ax.set_xlabel('$d_{ox}$ (m)')
+# ax.set_ylabel('$d_{oy}$ (m)')
+# ax.set_zlabel('$d_{oz}$ (m)')
+# plt.legend(['Transmitter','Receiver'])
+# plt.savefig('../Figures/graphsol3DS3%d.svg'%(Npath))
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# MSD=np.sum(np.abs(d0_4path_3D-np.mean(d0_4path_3D,axis=3,keepdims=True))**2,axis=(3,4))
 # c1,c2,c3=np.unravel_index(np.argmin(MSD),searchDim)
-# plt.axis([0,np.prod(searchDim),0,np.percentile(MSD,80)])
-# print(rotation0_true,(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
-# # ax.plot3D(0,0,0,'sb',markersize=10)
-# ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g',markersize=10)
-# plt.axis([-50,50,-50,50])
-# plt.xlabel('$d_{ox}$ (m)')
-# plt.ylabel('$d_{oy}$ (m)')
-# plt.legend(['Transmitter','Receiver'])
-# plt.savefig('../Figures/graphsol%d.svg'%(Npath))
+# fig=plt.subplot(221)
+# X,Y=np.meshgrid(AoA0_search,ZoA0_search)
+# plt.pcolor(X.T,Y.T,np.log10(np.min(MSD,axis=2)),cmap=cm.coolwarm,linewidth=0)
+# plt.plot(AoA0_true[0],ZoA0_true[0],'sg')
+# plt.plot(AoA0_search[c1],ZoA0_search[c2],'xr')
+# plt.xlabel("AoA0 search")
+# plt.ylabel("ZoA0 search")
+# fig=plt.subplot(222)
+# X,Y=np.meshgrid(AoA0_search,SoA0_search)
+# plt.pcolor(X.T,Y.T,np.log10(np.min(MSD,axis=1)),cmap=cm.coolwarm,linewidth=0)
+# plt.plot(AoA0_true[0],SoA0_true[0],'sg')
+# plt.plot(AoA0_search[c1],SoA0_search[c3],'xr')
+# plt.xlabel("AoA0 search")
+# plt.ylabel("SoA0 search")
+# fig=plt.subplot(223)
+# X,Y=np.meshgrid(ZoA0_search,SoA0_search)
+# plt.pcolor(X.T,Y.T,np.log10(np.min(MSD,axis=0)),cmap=cm.coolwarm,linewidth=0)
+# plt.plot(ZoA0_true[0],SoA0_true[0],'sg')
+# plt.plot(ZoA0_search[c2],SoA0_search[c3],'xr')
+# plt.xlabel("ZoA0 search")
+# plt.ylabel("SoA0 search")
+# plt.savefig('../Figures/graphcost3DS3%d.svg'%(Npath))
 
-# plt.figure(3)
-# ax = plt.axes(projection='3d')
-# for gr in range(Npath-2):
-#     ax.plot3D(d0_4path[:,gr,0],d0_4path[:,gr,1],ToA0_true*c+c*tauE_4path[:,gr], ':', label='_nolegend_')
-# ax.plot3D([0],[0],[0],'sb',markersize=10)
-# ax.plot3D(x0_true,y0_true,ToA0_true*c*np.ones_like(y0_true),'^g',markersize=10)
-# ax.set_xlim(-50,50)
-# ax.set_ylim(-50,50)
-# ax.set_zlim(0,np.max(ToA0_true*c+3e8*tauE_4path[tauE_4path>0]))
-# ax.set_xlabel('$d_{ox}$ (m)')
-# ax.set_ylabel('$d_{oy}$ (m)')
-# ax.set_zlabel('$\\ell_e$ (m)')
-# plt.legend(['Transmitter','Receiver'])
-# plt.savefig('../Figures/graph3Dsol%d.svg'%(Npath))
+# d0_drop1_3D=np.zeros(searchDim+(Npath,3))
+# tauE_drop1_3D=np.zeros(searchDim+(Npath,))
 
-# d0_drop1=np.zeros((1000,Npath,2))
-# tauE_drop1=np.zeros((1000,Npath))
-# for ct in range(AoA0_search.size):
+# for ct in tqdm(range(np.prod(searchDim)),desc=f'searchin 3D rotation in {searchDim} points'):
+#     c1,c2,c3=np.unravel_index(ct,searchDim)
 #     for gr in range(Npath):
-#         (d0_drop1[ct,gr,:],tauE_drop1[ct,gr],_)=loc.computeAllPaths(paths[np.arange(Npath)!=gr],rotation=AoA0_search[ct])
+#         (d0_drop1_3D[c1,c2,c3,gr,:],tauE_drop1_3D[c1,c2,c3,gr],_)= loc.computeAllPaths(paths[np.arange(Npath)!=gr],rotation=(AoA0_search[c1],ZoA0_search[c2],SoA0_search[c3]))
 
-
-# plt.figure(4)
-# plt.plot(d0_drop1[:,:,0],d0_drop1[:,:,1],':', label='_nolegend_')
-# plt.plot(0,0,'sb',markersize=10)
-# plt.plot(x0_true,y0_true,'^g',markersize=10)
-# plt.axis([-50,50,-50,50])
-# plt.xlabel('$d_{ox}$ (m)')
-# plt.ylabel('$d_{oy}$ (m)')
-# plt.legend(['Transmitter','Receiver'])
-# plt.savefig('../Figures/graphsoldrop1%d.svg'%(Npath))
-
-# plt.figure(5)
-# ax = plt.axes(projection='3d')
-# for gr in range(Npath):
-#     ax.plot3D(d0_drop1[:,gr,0],d0_drop1[:,gr,1],ToA0_true*c+c*tauE_drop1[:,gr], ':', label='_nolegend_')
-# ax.plot3D([0],[0],[0],'sb',markersize=10)
-# ax.plot3D(x0_true,y0_true,ToA0_true*c*np.ones_like(y0_true),'^g',markersize=10)
-# ax.set_xlim(-50,50)
-# ax.set_ylim(-50,50)
-# ax.set_zlim(0,np.max(ToA0_true*c+c*tauE_drop1[tauE_drop1>0]))
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# ax = fig.add_subplot(111, projection='3d')
+# for gr in range(3):
+#     ax.plot(d0_drop1_3D[:,:,:,gr,0].reshape(-1),d0_drop1_3D[:,:,:,gr,1].reshape(-1),d0_drop1_3D[:,:,:,gr,2].reshape(-1),':', label='_nolegend_')
+# ax.plot3D(0,0,'sb')
+# ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
+# ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
+# ax.set_zlim(0,10)
+# ax.set_xlim(-40,40)
+# ax.set_ylim(-40,40)
 # ax.set_xlabel('$d_{ox}$ (m)')
 # ax.set_ylabel('$d_{oy}$ (m)')
-# ax.set_zlabel('$\\ell_e$ (m)')
+# ax.set_zlabel('$d_{oz}$ (m)')
 # plt.legend(['Transmitter','Receiver'])
-# plt.savefig('../Figures/graph3Dsoldrop1%d.svg'%(Npath))
+# plt.savefig('../Figures/graphsol3DS3d1%d.svg'%(Npath))
+# fig_ctr+=1
+# fig=plt.figure(fig_ctr)
+# MSD=np.sum(np.abs(d0_drop1_3D-np.mean(d0_drop1_3D,axis=3,keepdims=True))**2,axis=(3,4))
+# c1,c2,c3=np.unravel_index(np.argmin(MSD),searchDim)
+# fig=plt.subplot(221)
+# X,Y=np.meshgrid(AoA0_search,ZoA0_search)
+# plt.pcolor(X.T,Y.T,np.log10(np.min(MSD,axis=2)),cmap=cm.coolwarm,linewidth=0)
+# plt.plot(AoA0_true[0],ZoA0_true[0],'sg')
+# plt.plot(AoA0_search[c1],ZoA0_search[c2],'xr')
+# plt.xlabel("AoA0 search")
+# plt.ylabel("ZoA0 search")
+# fig=plt.subplot(222)
+# X,Y=np.meshgrid(AoA0_search,SoA0_search)
+# plt.pcolor(X.T,Y.T,np.log10(np.min(MSD,axis=1)),cmap=cm.coolwarm,linewidth=0)
+# plt.plot(AoA0_true[0],SoA0_true[0],'sg')
+# plt.plot(AoA0_search[c1],SoA0_search[c3],'xr')
+# plt.xlabel("AoA0 search")
+# plt.ylabel("SoA0 search")
+# fig=plt.subplot(223)
+# X,Y=np.meshgrid(ZoA0_search,SoA0_search)
+# plt.pcolor(X.T,Y.T,np.log10(np.min(MSD,axis=0)),cmap=cm.coolwarm,linewidth=0)
+# plt.plot(ZoA0_true[0],SoA0_true[0],'sg')
+# plt.plot(ZoA0_search[c2],SoA0_search[c3],'xr')
+# plt.xlabel("ZoA0 search")
+# plt.ylabel("SoA0 search")
+# plt.savefig('../Figures/graphcost3DS3d1%d.svg'%(Npath))
 
-# (d0_brute,tauE_brute,d_brute,AoA0_brute,covAoA0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'3path','nPoint':100})
-# print(np.mod(AoA0_brute,2*np.pi),AoA0_true[0])
+(d0_brute,tauE_brute,d_brute,rotation0_brute,covR0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'4path','nPoint':(25,25,25)})
+print(rotation0_true,rotation0_brute)
+print(0,tauE_brute)
+print(d0_true,d0_brute)
     
 # plt.figure(6)
 # plt.plot(0,0,'sb')
