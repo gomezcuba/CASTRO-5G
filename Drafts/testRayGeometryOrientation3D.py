@@ -13,13 +13,13 @@ plt.close('all')
 import sys
 sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
-loc=MultipathLocationEstimator.MultipathLocationEstimator()
+loc=MultipathLocationEstimator.MultipathLocationEstimator(disableTQDM=False)
 
 fig_ctr=0
 Npath=10
 x_true=np.random.rand(Npath)*40-20
 y_true=np.random.rand(Npath)*40-20
-z_true=np.random.rand(Npath)*5
+z_true=np.random.rand(Npath)*10
 d_true=np.column_stack([x_true,y_true,z_true])
 x0_true=np.random.rand(1)*40-10
 y0_true=np.random.rand(1)*40-10
@@ -275,84 +275,94 @@ paths=pd.DataFrame({
 # plt.ylabel("SoA0 search")
 # plt.savefig('../Figures/graphcost3DS3d1%d.svg'%(Npath))
 
-(d0_brute,tauE_brute,d_brute,rotation0_brute,covR0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'4path','nPoint':(25,25,25)})
-print(rotation0_true,rotation0_brute)
-print(0,tauE_brute)
-print(d0_true,d0_brute)
-    
-# plt.figure(6)
-# plt.plot(0,0,'sb')
-# plt.plot(x0_true,y0_true,'^g')
-# plt.plot([0,x0_true[0]],[0,y0_true[0]],':g')
-# plt.plot(d0_brute[0],d0_brute[1],'^c')
-# plt.plot([0,d0_brute[0]],[0,d0_brute[1]],':c')
-# plt.plot(x_true,y_true,'or')
-# plt.plot(d_brute[:,0],d_brute[:,1],'oy')
-# scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
+(d0_brute,tauE_brute,d_brute,rotation0_brute,covR0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'4path','nPoint':(20,20,20)})
+print("Rotation results: true ",rotation0_true," brute ",rotation0_brute)
+print("Clock results: true ",0," brute ",tauE_brute)
+print("Position results: true ",d0_true," brute ",d0_brute)
 # plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
 # plt.plot([d0_brute[0],d0_brute[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_brute)],[d0_brute[1],d0_brute[1]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_brute)],'m')
 
 # for p in range(np.shape(AoD_true)[0]):
-#     plt.plot([0,x_true[p],x0_true[0]],[0,y_true[p],y0_true[0]],':k')
 #     t=np.linspace(0,1,21)
 #     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
 #     plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_true),'k')
-#     plt.plot([0,d_brute[p,0],d0_brute[0]],[0,d_brute[p,1],d0_brute[1]],':m')
 #     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'m')
 #     plt.plot(d0_brute[0]+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_brute),d0_brute[1]+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_brute),'m')
 
 # plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with bisec")
 
-# loc.orientationMethod='lm'
-# (d0_root,tauE_root,d_root,AoA0_root,covAoA0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'3path'})
-# print(np.mod(AoA0_root,np.pi*2),AoA0_true[0])
+fig_ctr+=1
+fig=plt.figure(fig_ctr)
+ax = fig.add_subplot(111, projection='3d')
+scaleguide=np.max(np.abs(np.concatenate([d_true,d0_true[None,:]])))
 
-# plt.figure(7)
-# plt.plot(0,0,'sb')
-# plt.plot(x0_true,y0_true,'^g')
-# plt.plot([0,x0_true[0]],[0,y0_true[0]],':g')
-# plt.plot(d0_root[0],d0_root[1],'^c')
-# plt.plot([0,d0_root[0]],[0,d0_root[1]],':c')
-# plt.plot(x_true,y_true,'or')
-# plt.plot(d_root[:,0],d_root[:,1],'oy')
-# scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
-# plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
-# plt.plot([d0_root[0],d0_root[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_root)],[d0_root[1],d0_root[1]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_root)],'m')
-# for p in range(np.shape(AoD_true)[0]):
-#     plt.plot([0,x_true[p],x0_true[0]],[0,y_true[p],y0_true[0]],':k')
-#     t=np.linspace(0,1,21)
-#     plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
-#     plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_true),'k')
-#     plt.plot([0,d_root[p,0],d0_root[0]],[0,d_root[p,1],d0_root[1]],':m')
-# #    plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'m')
-#     plt.plot(d0_root[0]+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_root),d0_root[1]+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_root),'m')
+# plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
+R0_brute=loc.rMatrix(*rotation0_brute)
+DoA_brute = R0_brute@DDoA_true
+AoA_brute,ZoA_brute=loc.angVector(DoA_brute)
+for n in range(Npath):
+    ax.plot3D([0,d_true[n,0],d0_true[0]],[0,d_true[n,1],d0_true[1]],[0,d_true[n,2],d0_true[2]],':k')
+    t=np.linspace(0,1,21)
+    plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n]*t),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n]*t),0,'k')
+    plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoD_true[n])),'k')
+    
+    plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n]*t),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n]*t),d0_true[2],'k')
+    plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[2]+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoA_true[n])),'k')
+        
+    ax.plot3D([0,d_brute[n,0],d0_brute[0]],[0,d_brute[n,1],d0_brute[1]],[0,d_brute[n,2],d0_brute[2]],':m')
+    plt.plot(d0_brute[0]+scaleguide*.05*(n+1)*np.cos(AoA_brute[n]*t),d0_brute[1]+scaleguide*.05*(n+1)*np.sin(AoA_brute[n]*t),d0_brute[2],'m')
+    plt.plot(d0_brute[0]+scaleguide*.05*(n+1)*np.cos(AoA_brute[n])*np.cos(t*(np.pi/2-ZoA_brute[n])),d0_brute[1]+scaleguide*.05*(n+1)*np.sin(AoA_brute[n])*np.cos(t*(np.pi/2-ZoA_brute[n])),d0_brute[2]+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoA_brute[n])),'m')
+    
 
-# plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with root method")
-# plt.savefig('../Figures/locfromAoAAoD.svg')
+ax.plot3D(d_true[:,0],d_true[:,1],d_true[:,2],'or')
+plt.plot(d_brute[:,0],d_brute[:,1],d_brute[:,2],'oy')
+ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
+ax.plot3D(0,0,'sb')
+ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
+plt.plot([0,d0_brute[0]],[0,d0_brute[1]],[0,d0_brute[2]],':c')
+plt.plot(d0_brute[0],d0_brute[1],d0_brute[2],'^c')
+plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with brute")
+plt.savefig('../Figures/locfromDAoAAoDbrute.svg')
 
-# error_brute=np.sqrt(np.abs(x0_true-d0_brute[0])**2+np.abs(y0_true-d0_brute[1]))
-# error_root=np.sqrt(np.abs(x0_true-d0_root[0])**2+np.abs(y0_true-d0_root[1]))
+(d0_root,tauE_root,d_root,rotation0_root,covR0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'4path','initRotation':rotation0_brute})
 
-# print(error_brute,error_root)
+print("Rotation results: true ",rotation0_true," root ",rotation0_root)
+print("Clock results: true ",0," root ",tauE_root)
+print("Position results: true ",d0_true," root ",d0_root)
+fig_ctr+=1
+fig=plt.figure(fig_ctr)
+ax = fig.add_subplot(111, projection='3d')
+scaleguide=np.max(np.abs(np.concatenate([d_true,d0_true[None,:]])))
 
-# #experimental code to find the correct AoA_true as a function of TDoA , AoD_true, x0 and y0; used in mmwave sim to modify channel model
-# #AoD_dif=AoD_true-AoD0_true
-# #l0_true=np.sqrt(x0_true**2+y0_true**2)
-# #l_true=l0_true+(ToA_true-ToA0_true)*c
-# #C=l_true/np.tan(AoD_dif)-l0_true/np.sin(AoD_dif)
-# #L=l_true**2
-# #Z=l0_true**2
-# #S=(C*l0_true+np.sqrt( Z*(C**2) - (C**2+L)*(Z-L) ))/(C**2+L)
-# #S2=(C*l0_true-np.sqrt( Z*(C**2) - (C**2+L)*(Z-L) ))/(C**2+L)
-# #AoA_dif=np.zeros((4,AoD_true.size))
-# #AoA_dif[0,:]=np.arcsin(S)
-# #AoA_dif[1,:]=np.arcsin(S2)
-# #AoA_dif[2,:]=np.pi-np.arcsin(S)
-# #AoA_dif[3,:]=np.pi-np.arcsin(S2)
-# #
-# #x=(y0_true+x0_true*np.tan(AoA_dif-AoD0_true))/(np.tan(AoD_true)+np.tan(AoA_dif-AoD0_true))
-# #y=x*np.tan(AoD_true)
-# #
-# #dist=np.sqrt(x**2+y**2)+np.sqrt((x-x0_true)**2+(y-y0_true)**2)
-# #
-# #AoA_dif_final=AoA_dif[np.argmin(np.abs(dist-l_true),0),range(l_true.size)]
+# plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
+R0_root=loc.rMatrix(*rotation0_root)
+DoA_root = R0_root@DDoA_true
+AoA_root,ZoA_root=loc.angVector(DoA_root)
+for n in range(Npath):
+    ax.plot3D([0,d_true[n,0],d0_true[0]],[0,d_true[n,1],d0_true[1]],[0,d_true[n,2],d0_true[2]],':k')
+    t=np.linspace(0,1,21)
+    plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n]*t),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n]*t),0,'k')
+    plt.plot(0+scaleguide*.05*(n+1)*np.cos(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(AoD_true[n])*np.cos(t*(np.pi/2-ZoD_true[n])),0+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoD_true[n])),'k')
+    
+    plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n]*t),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n]*t),d0_true[2],'k')
+    plt.plot(d0_true[0]+scaleguide*.05*(n+1)*np.cos(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[1]+scaleguide*.05*(n+1)*np.sin(AoA_true[n])*np.cos(t*(np.pi/2-ZoA_true[n])),d0_true[2]+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoA_true[n])),'k')
+        
+    ax.plot3D([0,d_root[n,0],d0_root[0]],[0,d_root[n,1],d0_root[1]],[0,d_root[n,2],d0_root[2]],':m')
+    plt.plot(d0_root[0]+scaleguide*.05*(n+1)*np.cos(AoA_root[n]*t),d0_root[1]+scaleguide*.05*(n+1)*np.sin(AoA_root[n]*t),d0_root[2],'m')
+    plt.plot(d0_root[0]+scaleguide*.05*(n+1)*np.cos(AoA_root[n])*np.cos(t*(np.pi/2-ZoA_root[n])),d0_root[1]+scaleguide*.05*(n+1)*np.sin(AoA_root[n])*np.cos(t*(np.pi/2-ZoA_root[n])),d0_root[2]+scaleguide*.05*(n+1)*np.sin(t*(np.pi/2-ZoA_root[n])),'m')
+    
+
+ax.plot3D(d_true[:,0],d_true[:,1],d_true[:,2],'or')
+plt.plot(d_root[:,0],d_root[:,1],d_root[:,2],'oy')
+ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
+ax.plot3D(0,0,'sb')
+ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')
+plt.plot([0,d0_root[0]],[0,d0_root[1]],[0,d0_root[2]],':c')
+plt.plot(d0_root[0],d0_root[1],d0_root[2],'^c')
+plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with root method")
+plt.savefig('../Figures/locfromDAoAAoDroot.svg')
+
+error_brute=np.linalg.norm(d0_true-d0_brute)
+error_root=np.linalg.norm(d0_true-d0_root)
+
+print(error_brute,error_root)

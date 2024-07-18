@@ -48,7 +48,7 @@ class MultipathLocationEstimator:
         'trust-krylov',
         ]
    
-    def __init__(self, orientationMethod='lm', nPoint=100, groupMethod='drop1'):
+    def __init__(self, orientationMethod='lm', nPoint=100, groupMethod='drop1', disableTQDM=True):
         """ MultipathLocationEstimator constructor.
         
         Parameters
@@ -70,6 +70,7 @@ class MultipathLocationEstimator:
         #default args
         self.nPoint = nPoint
         self.groupMethod = groupMethod
+        self.disableTQDM = disableTQDM
     
     def computeAllPathsV1(self, AoD, DAoA, TDoA, AoA0_est):
         """Calculates the possible UE vector positions in 2D using the LS method.
@@ -359,7 +360,20 @@ class MultipathLocationEstimator:
             table_group[gr,:] = np.isin(np.arange(Npath), [gr], invert=True)
         
         return table_group
-
+    
+    def genOrthoGroup(self, Npath, K=2):
+        """Returns a K x Npath boolean table representing paths evenly split in K orthogonal groups.
+                              
+        -------------------------------------------------------------------------------------------
+        """
+        table_group = np.empty((K, Npath), dtype=bool)
+    
+        for gr in range(K):
+            path_indices = gr*(Npath//(K+1))+np.arange(K).astype(int)
+            table_group[gr,:] = np.isin(np.arange(Npath), path_indices)        
+        
+        return table_group
+        
     def genRandomGroup(self, Npath, Ngroups, Nmembers):
         """Returns a Ngroup x Npath boolean table representing paths belonging to random groups.
         
@@ -419,8 +433,10 @@ class MultipathLocationEstimator:
         Npath = paths.index.size
         if isinstance(groupMethod,str):
             if 'path' in groupMethod:
-                table_group = self.genKPathGroup(Npath,K=int(groupMethod.strip('path')))      
-            elif groupMethod == 'drop1':
+                table_group = self.genKPathGroup(Npath,K=int(groupMethod.strip('path')))    
+            elif 'ortho' in groupMethod:
+                table_group = self.genKPathGroup(Npath,K=int(groupMethod.strip('ortho')))      
+            elif 'drop' in groupMethod:
                 table_group = self.genDrop1Group(Npath)            
             elif groupMethod == 'random':
                 Ngroups = Npath
@@ -459,10 +475,11 @@ class MultipathLocationEstimator:
         # v_all=(v_all[1:,:]-np.mean(v_all,axis=0)).reshape(-1)
         # return( v_all )
         Ng=v_all.shape[0]
-        v_big=np.zeros(Ng*(Ng-1)*3)
+        Ndim=v_all.shape[1]
+        v_big=np.zeros(Ng*(Ng-1)*Ndim)
         for n1 in range(Ng):
             for n2 in range(Ng-1):
-                v_big[n2*Ng+n1:n2*Ng+n1+3]=v_all[n1]-v_all[n2+1*(n2>=n1)]
+                v_big[n2*Ng+n1:n2*Ng+n1+Ndim]=v_all[n1]-v_all[n2+1*(n2>=n1)]
         return( v_big )
 
     def bruteAoA0ByPathGroups(self, paths, nPoint=None, groupMethod='drop1'):
@@ -474,7 +491,7 @@ class MultipathLocationEstimator:
             nPoint = self.nPoint            
         interval = np.linspace(0,  2*np.pi, nPoint)
         MSE = np.zeros(nPoint)
-        for n in range(nPoint):
+        for n in tqdm(range(nPoint), desc='MultipathLocationEstimator brute force 2D rotation estimation' ,disable=self.disableTQDM):
             MSE[n] = self.locMSEByPathGroups(interval[n], paths, groupMethod)        
         distind = np.argmin(MSE)
 
@@ -496,14 +513,14 @@ class MultipathLocationEstimator:
         intervalSoA0 = np.linspace(0,  2*np.pi, dims[2])
         
         MSE = np.zeros(dims)
-        for n in tqdm(range(np.prod(dims))):
+        for n in tqdm(range(np.prod(dims)), desc='MultipathLocationEstimator brute force 3D rotation estimation' ,disable=self.disableTQDM):
             n1,n2,n3=np.unravel_index(n,(dims))
             MSE[n1,n2,n3] = self.locMSEByPathGroups((intervalAoA0[n1],intervalZoA0[n2],intervalSoA0[n3]), paths, groupMethod)
         n1,n2,n3 = np.unravel_index(np.argmin(MSE),dims)
 
         return((intervalAoA0[n1],intervalZoA0[n2],intervalSoA0[n3]))
     
-    def numericAoA0ByPathGroups(self, paths, init_AoA0, groupMethod='drop1', orientationMethod='lm'):
+    def numericRot0ByPathGroups(self, paths, init_AoA0, groupMethod='drop1', orientationMethod='lm'):
         """Performs the estimation of the value of AoA0 using the scipy.optimize.root function.        
         The value of the estimated offset angle of the UE orientation is obtained by finding the zeros of the 
         minimum mean square error (MMSE) equation defined by feval_wrapper_AllPathsByGroups. For this purpose, it is used
@@ -523,7 +540,7 @@ class MultipathLocationEstimator:
         #         res = opt.root(self.locMSEByPathGroups, x0=2*np.pi*np.random.rand(1), args=(paths, groupMethod), method=orientationMethod)
         #         niter += 1
         #print("Final Niter %d"%niter)
-        
+        # print(res)
         if res.success:
             if hasattr(res, 'cov_x'):
                 return (res.x,res.cov_x)
@@ -599,10 +616,14 @@ class MultipathLocationEstimator:
             if "initRotation" in orientationMethodArgs:
                 initRotation = orientationMethodArgs["initRotation"]
             else:
-                #coarse linear approximation for initialization
-                initRotation = self.bruteAoA0ByPathGroups(paths, 100, groupMethod)
-            (rotation_est, rotation_cov) = self.numericAoA0ByPathGroups(paths, initRotation, groupMethod, themethod)
-            rotation_est=rotation_est[0]
+                #coarse brute approximation for initialization
+                if mode3D:
+                    initRotation = self.brute3DRotByPathGroups(paths, (10,10,10), groupMethod)
+                else:
+                    initRotation = self.bruteAoA0ByPathGroups(paths, 100, groupMethod)
+            (rotation_est, rotation_cov) = self.numericRot0ByPathGroups(paths, initRotation, groupMethod, themethod)
+            if not mode3D:
+                rotation_est=rotation_est[0]
         else:
             print("unsupported method")
             return(None)
