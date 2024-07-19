@@ -127,7 +127,7 @@ print(f'2D Functions match {np.all(np.isclose(d0_old, d0_est))}  {np.all(np.iscl
 
 rotation0_1D=np.concatenate([AoA0,[np.pi/2],[0]])
 R0_1D=loc.rMatrix(*rotation0_1D)
-DDoA_1D=R0_1D.T@DoA.T
+DDoA_1D=( R0_1D.T@DoA.T ).T
 DAoA_1D,ZoA_1D=loc.angVector(DDoA_1D)
 print(f'3D AoA 1D-rotation is equivalent to additive {np.all(np.isclose(np.mod(DAoA,2*np.pi), np.mod(DAoA_1D,2*np.pi)))}, {np.all(np.isclose(np.mod(ZoA,2*np.pi), np.mod(ZoA_1D,2*np.pi)))}' )
 paths_1D=pd.DataFrame({'DAoA':DAoA,'AoD':AoD,'TDoA':TDoA,'ZoD':ZoD,'DZoA':ZoA})
@@ -137,7 +137,7 @@ print(f'3D Location 1D-rotation-H match {np.all(np.isclose(d0, d0_est))}  {np.al
 rotation0_1DZ=np.concatenate([[0],ZoA0,[0]])
 DZoA_additive=ZoA-ZoA0
 R0_1DZ=loc.rMatrix(*rotation0_1DZ)
-DDoA_1DZ=R0_1DZ.T@DoA.T
+DDoA_1DZ=( R0_1DZ.T@DoA.T ).T
 DAoA_1DZ,DZoA_1DZ=loc.angVector(DDoA_1DZ)
 #the trick here is that a ZoA displacement above the Z axis flips AoA by pi
 print(f'3D ZoA 1D-rotation is NOT equivalent to additive {np.all(np.isclose(np.mod(AoA,2*np.pi), np.mod(DAoA_1DZ,2*np.pi)))}, {np.all(np.isclose(np.mod(DZoA_additive,2*np.pi), np.mod(DZoA_1DZ,2*np.pi)))}' )
@@ -148,7 +148,7 @@ print(f'3D Location 1D-rotation-V match {np.all(np.isclose(d0, d0_est))}  {np.al
 
 rotation0_2D=np.concatenate([AoA0,ZoA0,[0]])
 R0_2D=loc.rMatrix(*rotation0_2D)
-DDoA_2D=R0_2D.T@DoA.T
+DDoA_2D=( R0_2D.T@DoA.T ).T
 DAoA_2D,DZoA_2D=loc.angVector(DDoA_2D)
 paths_2D=pd.DataFrame({'DAoA':DAoA_2D,'AoD':AoD,'TDoA':TDoA,'ZoD':ZoD,'DZoA':DZoA_2D})
 d0_est,ToAE_est,d_est=loc.computeAllPaths(paths_2D,rotation=rotation0_2D)
@@ -156,7 +156,7 @@ print(f'3D Location 2D-rotation match {np.all(np.isclose(d0, d0_est))}  {np.all(
 
 rotation0_3D=np.concatenate([AoA0,ZoA0,SoA0])
 R0_3D=loc.rMatrix(*rotation0_3D)
-DDoA_3D=R0_3D.T@DoA.T
+DDoA_3D=( R0_3D.T@DoA.T ).T
 DAoA_3D,DZoA_3D=loc.angVector(DDoA_3D)
 paths_3D=pd.DataFrame({'DAoA':DAoA_3D,'AoD':AoD,'TDoA':TDoA,'ZoD':ZoD,'DZoA':DZoA_3D})
 d0_est,ToAE_est,d_est=loc.computeAllPaths(paths_3D,rotation=rotation0_3D)

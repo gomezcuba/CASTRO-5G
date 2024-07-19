@@ -207,10 +207,10 @@ for p in range(np.shape(AoD_true)[0]):
 plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with root method")
 plt.savefig('../Figures/locfromAoAAoD.svg')
 
-# error_brute=np.sqrt(np.abs(x0_true-d0_brute[0])**2+np.abs(y0_true-d0_brute[1]))
-# error_root=np.sqrt(np.abs(x0_true-d0_root[0])**2+np.abs(y0_true-d0_root[1]))
+error_brute=np.sqrt(np.abs(x0_true-d0_brute[0])**2+np.abs(y0_true-d0_brute[1]))
+error_root=np.sqrt(np.abs(x0_true-d0_root[0])**2+np.abs(y0_true-d0_root[1]))
 
-# print(error_brute,error_root)
+print(error_brute,error_root)
 
 # #experimental code to find the correct AoA_true as a function of TDoA , AoD_true, x0 and y0; used in mmwave sim to modify channel model
 # #AoD_dif=AoD_true-AoD0_true

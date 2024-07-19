@@ -164,19 +164,10 @@ class MultipathLocationEstimator:
         else:
             return( np.vstack([np.cos(A)*np.sin(Z),np.sin(A)*np.sin(Z),np.cos(Z)]) )
     def angVector(self,v):
-        if v.ndim==1:
-            AoA=np.arctan2(v[1],v[0])
-            if v.size>2:
-                l=np.linalg.norm(v[0:2])
-                ZoA=np.arctan2(l,v[2])#recall we use 3GPP Zenith angle convention
-                return(np.array([AoA,ZoA]))
-            else:
-                return(AoA)
-        else:
-            AoA=np.arctan2(v[...,1,:],v[...,0,:])            
-            if v.shape[-2]>2:
-                l=np.linalg.norm(v[...,0:2,:],axis=-2)
-                ZoA=np.arctan2(l,v[...,2,:])#recall we use 3GPP Zenith angle convention
+            AoA=np.arctan2(v[...,1],v[...,0])
+            if v.shape[-1]>2:
+                l=np.linalg.norm(v[...,0:2],axis=-1)
+                ZoA=np.arctan2(l,v[...,2])#recall we use 3GPP Zenith angle convention
                 return(np.array([AoA,ZoA]))
             else:
                 return(AoA)

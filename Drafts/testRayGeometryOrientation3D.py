@@ -31,22 +31,22 @@ AoD0_true,ZoD0_true=loc.angVector(d0_true)
 AoA0_true=np.random.rand(1)*2*np.pi
 ZoA0_true=np.random.rand(1)*np.pi
 SoA0_true=np.random.rand(1)*2*np.pi
-rotation0_true=np.concatenate([AoA0_true,ZoA0_true,SoA0_true])#yaw=aoa0, pitch = 90-zenit, roll=spin
-print(rotation0_true)
+RoT0_true=np.concatenate([AoA0_true,ZoA0_true,SoA0_true])#yaw=aoa0, pitch = 90-zenit, roll=spin
+print(RoT0_true)
 DoA0_true=loc.uVector(AoA0_true,ZoA0_true)
 print(DoA0_true)
-R0_true=loc.rMatrix(*rotation0_true)
+R0_true=loc.rMatrix(*RoT0_true)
 print(R0_true)
 DDoA0_true=R0_true.T@DoA0_true
 print(DDoA0_true)
 
-DoD_true=d_true.T/np.linalg.norm(d_true,axis=1)
+DoD_true=d_true/np.linalg.norm(d_true,axis=1,keepdims=True)
 AoD_true,ZoD_true=loc.angVector(DoD_true)
-DoA_true=(d_true-d0_true).T/np.linalg.norm(d_true-d0_true,axis=1)
+DoA_true=(d_true-d0_true)/np.linalg.norm(d_true-d0_true,axis=1,keepdims=True)
 AoA_true,ZoA_true=loc.angVector(DoA_true)
 #for debuging
 # DoA_true=np.concatenate([[[0],[1],[0]],DoA_true],axis=1)
-DDoA_true=R0_true.T@DoA_true
+DDoA_true=( R0_true.T@DoA_true.T ).T
 # print(DDoA_true[:,0:1])
 DAoA_true,DZoA_true=loc.angVector(DDoA_true)
 
@@ -95,7 +95,7 @@ paths=pd.DataFrame({
 
 # for ct in tqdm(range(searchDim),desc=f'searchin 1D rotation in {searchDim} points'):
 #     for gr in range(Npath-3):
-#         (d0_4path_1D[ct,gr,:],tauE_4path_1D[ct,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[ct],rotation0_true[1],rotation0_true[2]))
+#         (d0_4path_1D[ct,gr,:],tauE_4path_1D[ct,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[ct],RoT0_true[1],RoT0_true[2]))
 
 
 # fig_ctr+=1
@@ -136,7 +136,7 @@ paths=pd.DataFrame({
 # for ct in tqdm(range(np.prod(searchDim)),desc=f'searchin 2D rotation in {searchDim} points'):
 #     c1,c2=np.unravel_index(ct,searchDim)
 #     for gr in range(Npath-3):
-#         (d0_4path_2D[c1,c2,gr,:],tauE_4path_2D[c1,c2,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[c1],ZoA0_search[c2],rotation0_true[2]))
+#         (d0_4path_2D[c1,c2,gr,:],tauE_4path_2D[c1,c2,gr],_)= loc.computeAllPaths(paths[gr:gr+4],rotation=(AoA0_search[c1],ZoA0_search[c2],RoT0_true[2]))
 
 # fig_ctr+=1
 # fig=plt.figure(fig_ctr)
@@ -275,8 +275,8 @@ paths=pd.DataFrame({
 # plt.ylabel("SoA0 search")
 # plt.savefig('../Figures/graphcost3DS3d1%d.svg'%(Npath))
 
-(d0_brute,tauE_brute,d_brute,rotation0_brute,covR0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'4path','nPoint':(20,20,20)})
-print("Rotation results: true ",rotation0_true," brute ",rotation0_brute)
+(d0_brute,tauE_brute,d_brute,RoT0_brute,covRoT0_brute)= loc.computeAllLocationsFromPaths(paths,orientationMethod='brute', orientationMethodArgs={'groupMethod':'4path','nPoint':(10,10,10)})
+print("Rotation results: true ",RoT0_true," brute ",RoT0_brute)
 print("Clock results: true ",0," brute ",tauE_brute)
 print("Position results: true ",d0_true," brute ",d0_brute)
 # plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
@@ -297,8 +297,8 @@ ax = fig.add_subplot(111, projection='3d')
 scaleguide=np.max(np.abs(np.concatenate([d_true,d0_true[None,:]])))
 
 # plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
-R0_brute=loc.rMatrix(*rotation0_brute)
-DoA_brute = R0_brute@DDoA_true
+R0_brute=loc.rMatrix(*RoT0_brute)
+DoA_brute = ( R0_brute@DDoA_true.T ).T
 AoA_brute,ZoA_brute=loc.angVector(DoA_brute)
 for n in range(Npath):
     ax.plot3D([0,d_true[n,0],d0_true[0]],[0,d_true[n,1],d0_true[1]],[0,d_true[n,2],d0_true[2]],':k')
@@ -324,9 +324,9 @@ plt.plot(d0_brute[0],d0_brute[1],d0_brute[2],'^c')
 plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with brute")
 plt.savefig('../Figures/locfromDAoAAoDbrute.svg')
 
-(d0_root,tauE_root,d_root,rotation0_root,covR0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'4path','initRotation':rotation0_brute})
+(d0_root,tauE_root,d_root,RoT0_root,covRoT0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'4path','initRotation':RoT0_brute})
 
-print("Rotation results: true ",rotation0_true," root ",rotation0_root)
+print("Rotation results: true ",RoT0_true," root ",RoT0_root)
 print("Clock results: true ",0," root ",tauE_root)
 print("Position results: true ",d0_true," root ",d0_root)
 fig_ctr+=1
@@ -335,8 +335,8 @@ ax = fig.add_subplot(111, projection='3d')
 scaleguide=np.max(np.abs(np.concatenate([d_true,d0_true[None,:]])))
 
 # plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.cos(phi0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(theta_true)[0]*np.sin(phi0_true)],'k')
-R0_root=loc.rMatrix(*rotation0_root)
-DoA_root = R0_root@DDoA_true
+R0_root=loc.rMatrix(*RoT0_root)
+DoA_root = ( R0_root@DDoA_true.T ).T
 AoA_root,ZoA_root=loc.angVector(DoA_root)
 for n in range(Npath):
     ax.plot3D([0,d_true[n,0],d0_true[0]],[0,d_true[n,1],d0_true[1]],[0,d_true[n,2],d0_true[2]],':k')
