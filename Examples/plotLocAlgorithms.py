@@ -14,18 +14,22 @@ import sys
 sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
 
-loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')
-
 bScenario3D = True
-bErr = True
+bErr = False
 
-Npath=8
-Nsims=2
+loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm',disableTQDM= True)
+
+Npath=20
+Nsims=20
 
 Ndim= 3 if bScenario3D else 2
 #random locations in a 40m square
-d0=np.random.rand(Nsims,Ndim)*100-50
-d=np.random.rand(Nsims,Npath,Ndim)*100-50
+Dmax0=np.array([100,100,1.5])
+Dmin0=np.array([-100,-100,0])
+Dmax=np.array([100,100,15])
+Dmin=np.array([-100,-100,-5])
+d0=np.random.rand(Nsims,Ndim)*(Dmax0-Dmin0)+Dmin0
+d=np.random.rand(Nsims,Npath,Ndim)*(Dmax-Dmin)+Dmin
 
 #delays based on distance
 c=3e8
@@ -82,12 +86,14 @@ if bScenario3D:
     
 RoT0_coarse=np.round(RoT0*256/np.pi/2)*np.pi*2/256
 tableMethods=[
-    ("BF 3P","brute",{'groupMethod':'3path','nPoint':(10,10,10) if bScenario3D else 100},'-','x','r'),
-    ("BF D1","brute",{'groupMethod':'drop1','nPoint':(10,10,10) if bScenario3D else 100},'-.','s','r'),
-    ("LM 3P","lm",{'groupMethod':'3path'},'-','*','g'),
-    ("LM D1","lm",{'groupMethod':'drop1'},'-.','o','g'),
-    ("LMh 3P","lm",{'groupMethod':'3path','initRotation':None},'-','+','b'),
+    # ("BF 3P","brute",{'groupMethod':'4path' if bScenario3D else '3path','nPoint':(10,10,10) if bScenario3D else 100},'-','x','r'),
+    # ("BF D1","brute",{'groupMethod':'drop1','nPoint':(20,10,20) if bScenario3D else 100},'-.','s','r'),
+    # ("BF D1","brute",{'groupMethod':'ortho3','nPoint':(20,10,20) if bScenario3D else 100},'--','s','r'),
+    # ("LM 3P","lm",{'groupMethod':'4path' if bScenario3D else '3path'},'-','*','g'),
+    # ("LM D1","lm",{'groupMethod':'drop1'},'-.','o','g'),
+    # ("LMh 3P","lm",{'groupMethod':'4path' if bScenario3D else '3path','initRotation':None},'-','+','b'),
     ("LMh D1","lm",{'groupMethod':'drop1','initRotation':None},'-.','d','b'),
+    # ("LMh O3","lm",{'groupMethod':'ortho3','initRotation':None},'--','+','b'),
     ("lin oracle","linear",RoT0,'-','^','k'),
     ("lin gyro","linear",RoT0_coarse,'-.','v','k')
     ]
@@ -128,11 +134,21 @@ plt.ylabel('C.D.F.')
 plt.legend()
 plt.savefig('../Figures/cdflocgeosim.svg')
 
-plt.figure(2)
-for m in range(Nmeth):
-    legStr,meth,arg,lin,mrk,clr=tableMethods[m]  
-    plt.plot(np.vstack((d0[:,0],d0_est[m,:,0])),np.vstack((d0[:,1],d0_est[m,:,1])),linestyle=':',color=clr,marker=mrk,label=legStr)
-plt.plot(d0[:,0].T,d0[:,1].T,'ok',label='locations')
+fig=plt.figure(2)
+if bScenario3D:
+    ax=fig.add_subplot(111, projection='3d')    
+    for m in range(Nmeth):
+        legStr,meth,arg,lin,mrk,clr=tableMethods[m]  
+        for nsim in range(Nsims):        
+            ax.plot3D([d0[nsim,0],d0_est[m,nsim,0]],[d0[nsim,1],d0_est[m,nsim,1]],[d0[nsim,2],d0_est[m,nsim,2]],linestyle=':',color=clr,marker=mrk,label=legStr)    
+    for nsim in range(Nsims):        
+        ax.plot([d0[nsim,0],d0[nsim,0]],[d0[nsim,1],d0[nsim,1]],[d0[nsim,2],0],':k',label='locations')
+    ax.plot(d0[:,0],d0[:,1],d0[:,2],'ok',label='locations')    
+else:
+    for m in range(Nmeth):
+        legStr,meth,arg,lin,mrk,clr=tableMethods[m]  
+        plt.plot(np.vstack((d0[:,0],d0_est[m,:,0])),np.vstack((d0[:,1],d0_est[m,:,1])),linestyle=':',color=clr,marker=mrk,label=legStr)
+    plt.plot(d0[:,0].T,d0[:,1].T,'ok',label='locations')
 handles, labels = plt.gca().get_legend_handles_labels()
 # # labels will be the keys of the dict, handles will be values
 temp = {k:v for k,v in zip(labels, handles)}

@@ -315,7 +315,7 @@ for n in range(Npath):
     
 
 ax.plot3D(d_true[:,0],d_true[:,1],d_true[:,2],'or')
-plt.plot(d_brute[:,0],d_brute[:,1],d_brute[:,2],'oy')
+ax.plot3D(d_brute[:,0],d_brute[:,1],d_brute[:,2],'oy')
 ax.plot3D([0,d0_true[0]],[0,d0_true[1]],[0,d0_true[2]],':g')
 ax.plot3D(0,0,'sb')
 ax.plot3D(d0_true[0],d0_true[1],d0_true[2],'^g')

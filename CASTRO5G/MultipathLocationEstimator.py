@@ -472,6 +472,16 @@ class MultipathLocationEstimator:
             for n2 in range(Ng-1):
                 v_big[n2*Ng+n1:n2*Ng+n1+Ndim]=v_all[n1]-v_all[n2+1*(n2>=n1)]
         return( v_big )
+    
+    def locCheckAtRotation(self,rotation,paths,d0,tauE):
+        DoD = self.uVector(paths.AoD,paths.ZoD).T
+        Rm=self.rMatrix(*rotation)
+        DDoA = self.uVector(paths.DAoA,paths.DZoA).T
+        DoA=DDoA@Rm.T        
+        C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
+        li=np.linalg.norm(d0)+tauE+paths.TDoA*self.c
+        return( li*(1+C12)+DDoA@Rm.T@d0-DoD@d0 )       
+        
 
     def bruteAoA0ByPathGroups(self, paths, nPoint=None, groupMethod='drop1'):
         """Estimates the value of the receiver Azimuth AoA0 by brute force by minimizing the
@@ -504,7 +514,7 @@ class MultipathLocationEstimator:
         intervalSoA0 = np.linspace(0,  2*np.pi, dims[2])
         
         MSE = np.zeros(dims)
-        for n in tqdm(range(np.prod(dims)), desc='MultipathLocationEstimator brute force 3D rotation estimation' ,disable=self.disableTQDM):
+        for n in tqdm(range(np.prod(dims)), desc='MultipathLocationEstimator brute force 3D rotation estimation' ,disable=self.disableTQDM, leave=False, position=1):
             n1,n2,n3=np.unravel_index(n,(dims))
             MSE[n1,n2,n3] = self.locMSEByPathGroups((intervalAoA0[n1],intervalZoA0[n2],intervalSoA0[n3]), paths, groupMethod)
         n1,n2,n3 = np.unravel_index(np.argmin(MSE),dims)
@@ -525,10 +535,14 @@ class MultipathLocationEstimator:
              #generally the 'lm' method above is recommended to minimize non-linear least squares, before the methods in the following
             res = opt.minimize(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
         # if not res.success:
-        # #print("Attempting to correct initialization problem")
+        #     print("Attempting to correct initialization problem")
         #     niter = 0 
-        #     while (not res.success) and (niter<1000):
-        #         res = opt.root(self.locMSEByPathGroups, x0=2*np.pi*np.random.rand(1), args=(paths, groupMethod), method=orientationMethod)
+        #     while (not res.success) and (niter<100):
+        #         if len(init_AoA0)==3:
+        #             random_init=np.random.rand(3)*np.pi*[2,1,2]
+        #         else:
+        #             random_init=2*np.pi*np.random.rand(len(init_AoA0))#should only be called with 1 but just in case
+        #         res = opt.root(self.locMSEByPathGroups, x0=random_init, args=(paths, groupMethod), method=orientationMethod)
         #         niter += 1
         #print("Final Niter %d"%niter)
         # print(res)
@@ -609,6 +623,8 @@ class MultipathLocationEstimator:
             else:
                 #coarse brute approximation for initialization
                 if mode3D:
+                    #use random init because brute force is unbearably slow in 3D and performs poorly anayways
+                    # initRotation = np.random.rand(3)*[2,1,2]*np.pi
                     initRotation = self.brute3DRotByPathGroups(paths, (10,10,10), groupMethod)
                 else:
                     initRotation = self.bruteAoA0ByPathGroups(paths, 100, groupMethod)
