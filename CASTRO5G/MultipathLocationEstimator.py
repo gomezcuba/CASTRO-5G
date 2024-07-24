@@ -258,7 +258,11 @@ class MultipathLocationEstimator:
             DoD = self.uVector(paths.AoD).T
             DoA = self.uVector(paths.DAoA+ (rotation if rotation is not None else 0) ).T
         C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
+        # print(C12)
         M=np.column_stack([(DoD-DoA)/(1+C12),-np.ones((Npath,1))])
+        if np.any(C12[:,0]==-1):#fix the indetermination case DoD=-DoA
+            M[C12[:,0]==-1,0:-1]=DoD[C12[:,0]==-1,:]
+        
         result_est=np.linalg.lstsq(M, paths.TDoA*self.c, rcond=None)[0]
         d0_est = result_est[0:-1]
         l0err = result_est[-1]

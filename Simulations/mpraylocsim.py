@@ -19,17 +19,14 @@ from CASTRO5G import threeGPPMultipathGenerator as mpg
 parser = argparse.ArgumentParser(description='Multipath Location Estimation Simulator')
 #parameters that affect number of simulations
 parser.add_argument('-N', type=int,help='No. simulated channels')
+parser.add_argument('--z3D', action='store_true', help='Activate 3d simulation mode')
+parser.add_argument('-M',type=str,help='Comma separated min,max Map dimensions')
+
 #parameters that affect error
-
-# case 1: no error
-parser.add_argument('--noerror', help='Zero error case', action='store_true')
-
-# case 2: add a personalized number of error points
-parser.add_argument('-S', type=str,help='S:min:max S gaussian error points with stds min-max in dB')
-parser.add_argument('-D', type=str,help='64:64:64,64:128:inf Quantization error models, comma separated')
+parser.add_argument('-E', type=str,help='comma-separated list of angle error models. N for no error, S:n:min:max for n gaussian error points with stds min-max in dB, D:m:n:k for n-quantization error models')
 
 #parameters that affect multipath generator
-parser.add_argument('-G', type=str,help='Type of generator')
+parser.add_argument('-G', type=str,help='Type of generator. "3gpp" or "Geo:N" for N scatterers contained in Map')
 
 #parameters that affect location algorithms
 parser.add_argument('--algs', type=str,help='comma-separated list of algorithms')
@@ -46,41 +43,32 @@ parser.add_argument('--nosave', help='Do not save simulation data to new results
 parser.add_argument('--nompg',help='Do not perform multipath generation, load existing file', action='store_true')
 parser.add_argument('--noloc',help='Do not perform location estimation, load existing file', action='store_true')
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
-parser.add_argument('--print', help='Save plot files in eps to results folder', action='store_true')
-# parser.add_argument('--svg', help='Save plot files in svg to results folder', action='store_true')
+parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
-## TO DO: (In progress) -- CLI arguments (line100)
-#parser.add_argument('-xmax',type=int,help='Simulation model x-axis max. size coordinate (meters from the origin)')
-#parser.add_argument('-xmin',type=int,help='Simulation model x-axis min. size coordinate (meters from the origin)')
-#parser.add_argument('-ymax',type=int,help='Simulation model y-axis max. size coordinate (meters from the origin)')
-#parser.add_argument('-ymin',type=int,help='Simulation model y-axis min. size coordinate (meters from the origin)')
 #refine to make it consistent before reestructuring all this code
 
-# args = parser.parse_args("--nompg --noloc -N 1000 -S 7 -D 16:16:16,64:64:64,256:256:256,1024:1024:1024,4096:4096:4096,16:inf:inf,64:inf:inf,256:inf:inf,1024:inf:inf,4096:inf:inf,inf:inf:16,inf:inf:64,inf:inf:256,inf:inf:1024,inf:inf:4096 --noerror --label test --show --print".split(' '))
+##############copy paste from here
+#-G Geo:20 3gpp
 
-# args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label newadapt --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:50 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
-# args = parser.parse_args("--noloc --nompg -N 100 --noerror -D=16:16:16,64:64:64,128:128:128,256:256:256,512:512:512,1024:1024:1024 -G 3gpp --noerror --label test --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:75 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
-# args = parser.parse_args("-N 1000 --nompg --noloc -G Geo:20 --noerror -D=64:64:64,256:256:256,1024:1024:1024 --label test --show --print --cdf=no:0:0:0,dic:256:256:256 --pcl=dic:80 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
-args = parser.parse_args("-N 100 --nompg -G 3gpp --noerror -S=2:0:20 -D=16:16:16,64:64:64,256:256:256 --label test --show --print --cdf=no:0:0:0,dic:16:16:16,dic:64:64:64,dic:256:256:256 --pcl=dic:80 --map=no:0:0:0,dic:256:256:256 --vso=no:0:0:0,dic:256:256:256".split(' '))
+#-E=
+#NO,
+#S:7:0:20,
+#D:16x16x16:64x64x64:256x256x256:1024x1024x1024:4096x4096x4096
+#16xinfxinf:64xinfxinf:256xinfxinf:1024xinfxinf:4096xinfxinf
+#infxinfx16:infxinfx64:infxinfx256:infxinfx1024:infxinfx4096
+
+args = parser.parse_args("--z3D -N 5 -G Geo:20 -E=NO,D:16x16x16:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
-
-# error vector modeling
-if args.noerror:
-    lErrMod=[('no','0','0','0')]
+bMode3D = args.z3D
+Ndim = 3 if bMode3D else 2
+if args.M:
+    mapDims = [float(x) for x in args.M.split(',')]
 else:
-    lErrMod=[]
-if args.S:
-    NS,minStd,maxStd = args.S.split(':')
-    lSTD=np.logspace(float(minStd)/10,float(maxStd)/10,int(NS))
-    lErrMod = lErrMod+[('std',x,x,x) for x in lSTD]
-if args.D:
-    lDicSizes=[tuple(['dic']+[x for x in y.split(':')]) for y in args.D.split(',') ]
-    lErrMod = lErrMod+lDicSizes    
-#TODO add ifs etc. to make this selectable with OMP
-NerrMod=len(lErrMod)
-
+    mapDims = [-100,100,-100,100] + ([-100,100] if bMode3D else[])
+dmax=np.array(mapDims[1::2])
+dmin=np.array(mapDims[0::2])
 # multipath generator
 if args.G:
     mpgenInfo = args.G.split(':')
@@ -88,6 +76,27 @@ else:
     mpgenInfo = ['Geo','20']
 mpgen=mpgenInfo[0]
 #TODO: Aquí parece que hai bastantes parametros que completar
+
+# error vector modeling
+def parseErrStr(s):
+    if 'NO' in s:
+        return([('no',)])
+    elif 'S' in s:
+        _,NS,minStd,maxStd = s.split(':')
+        lSTD=np.logspace(float(minStd)/10,float(maxStd)/10,int(NS))
+        return( [('std',x) for x in lSTD] )
+    elif 'D' in s:
+        l=s.split(':')        
+        lDicSizes=[tuple(['dic']+y.split('x')) for y in l[1:] ]
+        return( lDicSizes )
+    else:
+        print(f'unrecognized error type {s}')
+    #TODO add ifs etc. to make this selectable with OMP
+if args.E:
+    lErrMod = sum([parseErrStr(x) for x in args.E.split(',')],[])
+else:
+    lErrMod = []
+NerrMod=len(lErrMod)
 
 #location algorythms - evolución de location estimator
 if args.algs:
@@ -98,18 +107,14 @@ if args.algs:
     #TODO define more elegant syntax for cases and better parser that converts bool properly
 else:
     lLocAlgs=[#a opriori aoa0, quantized aoa0, grouping method, optimization method
-       (True,np.inf,'',''),
-        # (True,64,'',''),
-       # (False,np.inf,'3path','brute'),
-       # (False,np.inf,'3path','lm'),
-#       (False,np.inf,'3path','zero'),
-       # (False,64,'3path','lm'),
-#       (False,64,'3path','zero'),
-#       (False,np.inf,'drop1','brute'),
-        # (False,np.inf,'drop1','lm'),
-#       (False,np.inf,'drop1','zero'),
-        (False,64,'drop1','lm'),
-#       (False,64,'drop1','zero'),
+        (True,np.inf,'',''),
+        (True,256,'',''),
+       #  (False,np.inf,'3path','brute'),
+       #  (False,np.inf,'3path','lm'),
+       #  (False,64,'3path','lm'),
+       #  (False,np.inf,'drop1','brute'),
+       #  (False,np.inf,'drop1','lm'),
+       #  (False,64,'drop1','lm'),
        ]
 NlocAlg =len(lLocAlgs)
 
@@ -121,8 +126,6 @@ if not os.path.isdir(outfoldername):
     os.mkdir(outfoldername)
 
 #TODO: create command line arguments for these parameters
-dmax=np.array([100,100])
-dmin=np.array([-100,-100])
 c=3e8
 Ts=1.0/400e6 #2.5ns
 Ds=320e-9 #Ts*128 FIR filter
@@ -131,15 +134,18 @@ sigmaTauE=40e-9
 # if this parameter is present we get the mpg data from a known file (better for teset&debug)
 if args.nompg:    
     allUserData=pd.read_csv(outfoldername+'/userGenData.csv',index_col=['ue']) 
-    allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n','m']) 
+    if mpgen == 'Geo':  
+        allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n']) 
+    elif mpgen == "3gpp":        
+        allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n','m']) 
 else:        
     t_start_gen=time.time()
     # TODO: this has to be modeled in a separate class
-    d0=np.random.rand(Nsims,2)*(dmax-dmin)+dmin
+    d0=np.random.rand(Nsims,Ndim)*(dmax-dmin)+dmin
     aod0=np.mod( np.arctan2(d0[:,1],d0[:,0]) , 2*np.pi)
     aoa0=np.random.rand(Nsims)*2*np.pi #receiver angular measurement offset
     toa0=np.linalg.norm(d0,axis=-1)/c
-    tauE=np.random.rand(Nsims)*sigmaTauE
+    tauE=np.random.rand(Nsims)*sigmaTauE    
     allUserData = pd.DataFrame(index=pd.Index(np.arange(Nsims),name="ue"),
                                data={
                                    "X0":d0[:,0],
@@ -148,10 +154,18 @@ else:
                                    "AoA0":aoa0,
                                    "tauE":tauE
                                    })
+    if bMode3D:
+        l02D=np.linalg.norm(d0[:,0:-1],axis=-1)
+        zod0=np.arctan2(l02D,d0[:,2])
+        zoa0=np.random.rand(Nsims)*np.pi
+        soa0=np.random.rand(Nsims)*2*np.pi
+        allUserData['ZoD0'] = zod0
+        allUserData['ZoA0'] = zoa0
+        allUserData['SoA0'] = soa0
     if mpgen == 'Geo':        
         Npath=int(mpgenInfo[1])
         #generate locations and compute multipath 
-        d=np.random.rand(Nsims,Npath,2)*(dmax-dmin)+dmin
+        d=np.random.rand(Nsims,Npath,Ndim)*(dmax-dmin)+dmin
         #angles from locations
         #TODO 3D
         aod=np.mod( np.arctan2(d[:,:,1],d[:,:,0]) , 2*np.pi)
@@ -164,7 +178,7 @@ else:
         allPathsData = pd.DataFrame(index=pd.MultiIndex.from_product([np.arange(Nsims),np.arange(Npath)],names=["ue","n"]),
                                     data={
                                         "AoD" : aod.reshape(-1),
-                                        "AoA" : daoa.reshape(-1),
+                                        "DAoA" : daoa.reshape(-1),
                                         "TDoA" : tdoa.reshape(-1),
                                         "Xs": d[:,:,0].reshape(-1),
                                         "Ys": d[:,:,1].reshape(-1)
@@ -223,17 +237,19 @@ Nmaxpath=np.max(nPathAll)
 t_start_err = time.time()
 lErrorPathDFs = []
 for nv in tqdm(range(NerrMod),desc='applying error models to paths'):
-    (errType,c1,c2,c3)=lErrMod[nv]
+    errType=lErrMod[nv][0]
     if errType=='no':
         errPathDF = allPathsData.copy()
     elif errType=='std': 
         errPathDF = allPathsData.copy()
         Ntot = errPathDF.shape[0]
-        errPathDF.AoD  = np.mod(errPathDF.AoD +float(c1)*2*np.pi*np.random.randn(Ntot),2*np.pi)
-        errPathDF.DAoA = np.mod(errPathDF.DAoA+float(c2)*2*np.pi*np.random.randn(Ntot),2*np.pi)
-        errPathDF.TDoA += float(c3)*Ds*np.random.randn(Ntot)
+        errStd=lErrMod[nv][1]        
+        errPathDF.AoD  = np.mod(errPathDF.AoD +errStd*2*np.pi*np.random.randn(Ntot),2*np.pi)
+        errPathDF.DAoA = np.mod(errPathDF.DAoA+errStd*2*np.pi*np.random.randn(Ntot),2*np.pi)
+        errPathDF.TDoA += errStd*Ds*np.random.randn(Ntot)
     elif errType=='dic':
         errPathDF = allPathsData.copy()
+        c1,c2,c3=lErrMod[nv][1:]
         if not c1=='inf':
             errPathDF.AoD  = np.mod(np.round( errPathDF.AoD  *int(c1)/2/np.pi)*2*np.pi/int(c1),2*np.pi)
         if not c2=='inf':
@@ -244,7 +260,11 @@ for nv in tqdm(range(NerrMod),desc='applying error models to paths'):
     else:
         print("Multipath estimation error model %s to be written"%errType)
     lErrorPathDFs.append(errPathDF)
-errPathDF=pd.concat(lErrorPathDFs,keys=range(NerrMod),names=["errNo","ue",'n','m'])
+if mpgen == "3gpp":     
+    errPathDF=pd.concat(lErrorPathDFs,keys=range(NerrMod),names=["errNo","ue",'n','m'])
+elif mpgen == "Geo":
+    errPathDF=pd.concat(lErrorPathDFs,keys=range(NerrMod),names=["errNo","ue",'n'])
+    
 
 print("Total Multipath Estimation Time:%s seconds"%(time.time()-t_start_err))
 
@@ -319,7 +339,7 @@ plt.close('all')
 def lineCfgFromAlg(algCfg):
     aoa0Apriori,aoa0Quant,grouping,orientMthd=algCfg
     if aoa0Apriori:
-        caseStr="LS Location" if np.isinf(aoa0Quant) else "aoa0 quantized sensor"
+        caseStr="LS Location" if np.isinf(aoa0Quant) else f'LS {aoa0Quant}-Q(AoA0)'
         color='b'
         marker='o' if np.isinf(aoa0Quant) else '*'
         line=':'
@@ -333,7 +353,7 @@ def lineCfgFromAlg(algCfg):
 fig_ctr=0
 if args.cdf:
     lCDF =[
-        tuple(cdfcase.split(':'))
+        tuple(cdfcase.split('x'))
         for cdfcase in args.cdf.split(',')
     ]
     for cdf in lCDF:
@@ -357,7 +377,7 @@ if args.cdf:
         plt.ylabel('C.D.F.')
         plt.legend()
         if args.print:
-            plt.savefig(outfoldername+('/cdflocerr_%s-%s-%s-%s.svg'%tuple(cdf)))
+            plt.savefig(outfoldername+(f'/cdflocerr_{cdf}.svg'))
             
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
@@ -379,7 +399,7 @@ if args.cdf:
         plt.ylabel('C.D.F.')
         plt.legend()
         if args.print:
-            plt.savefig(outfoldername+('/cdfmaperr_%s-%s-%s-%s.svg'%tuple(cdf)))
+            plt.savefig(outfoldername+(f'/cdfmaperr_{cdf}.svg'))
 
 
 if args.pcl:
@@ -467,7 +487,7 @@ if args.pcl:
 
 if args.map:
     lMAP =[
-        tuple(case.split(':'))
+        tuple(case.split('x'))
         for case in args.map.split(',')
     ]
     
@@ -486,11 +506,11 @@ if args.map:
         plt.xlabel('$d_{ox}$ (m)')
         plt.ylabel('$d_{oy}$ (m)')
         if args.print:
-            plt.savefig(outfoldername+'/errormap_%s-%s-%s-%s.svg'%tuple(cdf))
+            plt.savefig(outfoldername+f'/errormap_{cdf}.svg')
        
 if args.vso:
     lVSO =[
-        tuple(case.split(':'))
+        tuple(case.split('x'))
         for case in args.vso.split(',')
     ]
     
@@ -505,7 +525,7 @@ if args.vso:
         plt.ylabel('Location error (m)')
         plt.legend()
         if args.print:
-            plt.savefig(outfoldername+'/err_vs_aoa0_%s-%s-%s-%s.svg'%tuple(cdf))
+            plt.savefig(outfoldername+f'/err_vs_aoa0_{cdf}.svg')
         
 
 if args.show:

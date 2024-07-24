@@ -42,14 +42,14 @@ fig_ctr+=1
 fig=plt.figure(fig_ctr)
 plt.plot([0,x0_true[0]],[0,y0_true[0]],':g')
 plt.plot(x_true,y_true,'or')
-scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
+scaleAngRuler=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 
-plt.plot([x0_true[0],x0_true[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true[0])],[y0_true[0],y0_true[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true[0])],'k')
+plt.plot([x0_true[0],x0_true[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true[0])],[y0_true[0],y0_true[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true[0])],'k')
 for p in range(np.shape(AoD_true)[0]):
     plt.plot([0,x_true[p],x0_true[0]],[0,y_true[p],y0_true[0]],':k')
     t=np.linspace(0,1,21)
-    plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
-    plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_true),'k')
+    plt.plot(0+scaleAngRuler*((p+1)/Npath)*np.cos(AoD[p]*t),0+scaleAngRuler*((p+1)/Npath)*np.sin(AoD[p]*t),'k')
+    plt.plot(x0_true+scaleAngRuler*((p+1)/Npath)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleAngRuler*((p+1)/Npath)*np.sin(DAoA[p]*t+AoA0_true),'k')
 
 plt.plot(0,0,'sb')
 plt.plot(x0_true,y0_true,'^g')
@@ -89,7 +89,7 @@ ctm=np.argmin(MSD)
 plt.plot(AoA0_true[0],MSD[ctm],'sg')
 plt.plot(AoA0_search[ctm],MSD[ctm],'xr')
 plt.xlabel("AoA0 search")
-plt.ylabel("MSD 4-path")
+plt.ylabel("MSD 3-path")
 plt.savefig('../Figures/graphcost3P%d.svg'%(Npath))
 
 fig_ctr+=1
@@ -166,19 +166,20 @@ plt.plot(d0_brute[0],d0_brute[1],'^c')
 plt.plot([0,d0_brute[0]],[0,d0_brute[1]],':c')
 plt.plot(x_true,y_true,'or')
 plt.plot(d_brute[:,0],d_brute[:,1],'oy')
-scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
-plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
-plt.plot([d0_brute[0],d0_brute[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_brute)],[d0_brute[1],d0_brute[1]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_brute)],'m')
+scaleAngRuler=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
+plt.plot([x0_true,x0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
+plt.plot([d0_brute[0],d0_brute[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_brute)],[d0_brute[1],d0_brute[1]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_brute)],'m')
 
 for p in range(np.shape(AoD_true)[0]):
     plt.plot([0,x_true[p],x0_true[0]],[0,y_true[p],y0_true[0]],':k')
     t=np.linspace(0,1,21)
-    plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
-    plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_true),'k')
+    plt.plot(0+scaleAngRuler*((p+1)/Npath)*np.cos(AoD[p]*t),0+scaleAngRuler*((p+1)/Npath)*np.sin(AoD[p]*t),'k')
+    plt.plot(x0_true+scaleAngRuler*((p+1)/Npath)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleAngRuler*((p+1)/Npath)*np.sin(DAoA[p]*t+AoA0_true),'k')
     plt.plot([0,d_brute[p,0],d0_brute[0]],[0,d_brute[p,1],d0_brute[1]],':m')
-    plt.plot(d0_brute[0]+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_brute),d0_brute[1]+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_brute),'m')
+    plt.plot(d0_brute[0]+scaleAngRuler*((p+1)/Npath)*np.cos(DAoA[p]*t+AoA0_brute),d0_brute[1]+scaleAngRuler*((p+1)/Npath)*np.sin(DAoA[p]*t+AoA0_brute),'m')
 
 plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with brute")
+plt.savefig('../Figures/locfromDAoAAoDbrute.svg')
 
 loc.orientationMethod='lm'
 (d0_root,tauE_root,d_root,AoA0_root,covAoA0_root)= loc.computeAllLocationsFromPaths(paths,orientationMethod='lm', orientationMethodArgs={'groupMethod':'3path'})
@@ -193,43 +194,21 @@ plt.plot(d0_root[0],d0_root[1],'^c')
 plt.plot([0,d0_root[0]],[0,d0_root[1]],':c')
 plt.plot(x_true,y_true,'or')
 plt.plot(d_root[:,0],d_root[:,1],'oy')
-scaleguide=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
-plt.plot([x0_true,x0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
-plt.plot([d0_root[0],d0_root[0]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.cos(AoA0_root)],[d0_root[1],d0_root[1]+1.2*scaleguide*.05*np.shape(AoD_true)[0]*np.sin(AoA0_root)],'m')
+scaleAngRuler=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
+plt.plot([x0_true,x0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
+plt.plot([d0_root[0],d0_root[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_root)],[d0_root[1],d0_root[1]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_root)],'m')
 for p in range(np.shape(AoD_true)[0]):
     plt.plot([0,x_true[p],x0_true[0]],[0,y_true[p],y0_true[0]],':k')
     t=np.linspace(0,1,21)
-    plt.plot(0+scaleguide*.05*(p+1)*np.cos(AoD[p]*t),0+scaleguide*.05*(p+1)*np.sin(AoD[p]*t),'k')
-    plt.plot(x0_true+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_true),'k')
+    plt.plot(0+scaleAngRuler*((p+1)/Npath)*np.cos(AoD[p]*t),0+scaleAngRuler*((p+1)/Npath)*np.sin(AoD[p]*t),'k')
+    plt.plot(x0_true+scaleAngRuler*((p+1)/Npath)*np.cos(DAoA[p]*t+AoA0_true),y0_true+scaleAngRuler*((p+1)/Npath)*np.sin(DAoA[p]*t+AoA0_true),'k')
     plt.plot([0,d_root[p,0],d0_root[0]],[0,d_root[p,1],d0_root[1]],':m')
-    plt.plot(d0_root[0]+scaleguide*.05*(p+1)*np.cos(DAoA[p]*t+AoA0_root),d0_root[1]+scaleguide*.05*(p+1)*np.sin(DAoA[p]*t+AoA0_root),'m')
+    plt.plot(d0_root[0]+scaleAngRuler*((p+1)/Npath)*np.cos(DAoA[p]*t+AoA0_root),d0_root[1]+scaleAngRuler*((p+1)/Npath)*np.sin(DAoA[p]*t+AoA0_root),'m')
 
 plt.title("All estimations of position for the full set of multipaths, after AoA0 is estimated with root method")
-plt.savefig('../Figures/locfromAoAAoD.svg')
+plt.savefig('../Figures/locfromDAoAAoDroot.svg')
 
 error_brute=np.sqrt(np.abs(x0_true-d0_brute[0])**2+np.abs(y0_true-d0_brute[1]))
 error_root=np.sqrt(np.abs(x0_true-d0_root[0])**2+np.abs(y0_true-d0_root[1]))
 
 print(error_brute,error_root)
-
-# #experimental code to find the correct AoA_true as a function of TDoA , AoD_true, x0 and y0; used in mmwave sim to modify channel model
-# #AoD_dif=AoD_true-AoD0_true
-# #l0_true=np.sqrt(x0_true**2+y0_true**2)
-# #l_true=l0_true+(ToA_true-ToA0_true)*c
-# #C=l_true/np.tan(AoD_dif)-l0_true/np.sin(AoD_dif)
-# #L=l_true**2
-# #Z=l0_true**2
-# #S=(C*l0_true+np.sqrt( Z*(C**2) - (C**2+L)*(Z-L) ))/(C**2+L)
-# #S2=(C*l0_true-np.sqrt( Z*(C**2) - (C**2+L)*(Z-L) ))/(C**2+L)
-# #AoA_dif=np.zeros((4,AoD_true.size))
-# #AoA_dif[0,:]=np.arcsin(S)
-# #AoA_dif[1,:]=np.arcsin(S2)
-# #AoA_dif[2,:]=np.pi-np.arcsin(S)
-# #AoA_dif[3,:]=np.pi-np.arcsin(S2)
-# #
-# #x=(y0_true+x0_true*np.tan(AoA_dif-AoD0_true))/(np.tan(AoD_true)+np.tan(AoA_dif-AoD0_true))
-# #y=x*np.tan(AoD_true)
-# #
-# #dist=np.sqrt(x**2+y**2)+np.sqrt((x-x0_true)**2+(y-y0_true)**2)
-# #
-# #AoA_dif_final=AoA_dif[np.argmin(np.abs(dist-l_true),0),range(l_true.size)]
