@@ -57,7 +57,13 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #16xinfxinf:64xinfxinf:256xinfxinf:1024xinfxinf:4096xinfxinf
 #infxinfx16:infxinfx64:infxinfx256:infxinfx1024:infxinfx4096
 
-args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32x32x32:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+#2D simulation with Geometric ray tracing simple channel model
+# args = parser.parse_args("-N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO202D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+#2D simulation with 3gpp channels with first reflection fitted multipath
+# args = parser.parse_args("-N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP2D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+#2D simulation with Geometric ray tracing simple channel model
+args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--z3D -N 20 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -69,7 +75,7 @@ Ndim = 3 if bMode3D else 2
 if args.M:
     mapDims = [float(x) for x in args.M.split(',')]
 else:
-    mapDims = [-100,100,-100,100] + ([-5,20] if bMode3D else[])
+    mapDims = [-100,100,-100,100] + ([-20,20] if bMode3D else[]) #note that this is w.r.t. BS height at zero
 dmax=np.array(mapDims[1::2])
 dmin=np.array(mapDims[0::2])
 # multipath generator
@@ -111,13 +117,13 @@ if args.algs:
 else:
     lLocAlgs=[#a opriori aoa0, quantized aoa0, grouping method, optimization method
         (True,np.inf,'',''),
-        # (True,256,'',''),
+        (True,256,'',''),
        #  (False,np.inf,'3path','brute'),
        #  (False,np.inf,'3path','lm'),
        #  (False,64,'3path','lm'),
        #  (False,np.inf,'drop1','brute'),
-       #  (False,np.inf,'drop1','lm'),
-       #  (False,64,'drop1','lm'),
+         # (False,np.inf,'drop1','lm'),
+          (False,64,'drop1','lm'),
        ]
 NlocAlg =len(lLocAlgs)
 
@@ -203,21 +209,21 @@ else:
     elif mpgen == "3gpp":        
         # TODO: introducir param de entrada para regular blargeBW, scenario, etc
         # Tamen mais tarde - Elección de escenario vía param. de entrada
-        model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)        
-        txPos = (0,0,10)
+        model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)   
         Npath = 50
         # Npath = model.maxM*np.max( model.scenarioParams.loc['N'] )                
         lpathDFs = []
         losAll = np.zeros((Nsims),dtype=bool)
-        for n in tqdm(range(Nsims),desc=f'Generating {Nsims} 3GPP multipath channels'):
-            #TODO 3D
+        PLall = np.zeros((Nsims,2))# deterministic PL, shadowing in dB
+        for n in tqdm(range(Nsims),desc=f'Generating {Nsims} 3GPP multipath channels'):        
+            txPos = (0,0,10)
             if bMode3D:
-                rxPos = (d0[n,0],d0[n,1],d0[n,2]-8.5)#location has tx at 0 but 3gpp considers 10m BS height and 1.5m pedestrian height, this adjust the z axis
+                rxPos = (d0[n,0],d0[n,1],d0[n,2]+10)#location has tx at 0 but 3gpp considers 10m BS height and 1.5m pedestrian height, this adjust the z axis
             else:
-                rxPos = (d0[n,0],d0[n,1],1.5)
-            
+                rxPos = (d0[n,0],d0[n,1],1.5)# for 2D case height is used in pathloss calculations but not angle fitting
             plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
             losAll[n]=plinfo[0]
+            PLall[n,:]=plinfo[1:]
             # (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullFitAoA(txPos,rxPos,plinfo,clusters,subpaths)
             (txPos,rxPos,plinfo,clusters,subpaths)  = model.randomFitEpctClusters(txPos,rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=[0,.5,.5,0],mode3D= bMode3D)
             # txArrayAngle = 0#deg
@@ -240,9 +246,9 @@ else:
             #     tau1stlos = (lD+lA)/c
             #     tauE[n] = tauE[n] - (tau1stlos-toa0[n])
             subpathsProcessed.TDoA -= tauE[n]
-            subpathsProcessed.AoD = np.mod( subpathsProcessed.AoD*np.pi/180 , 2*np.pi)
+            subpathsProcessed.AoD = subpathsProcessed.AoD*np.pi/180
             if bMode3D:
-                subpathsProcessed.ZoD = np.mod( subpathsProcessed.ZoD*np.pi/180 , 2*np.pi)
+                subpathsProcessed.ZoD = subpathsProcessed.ZoD*np.pi/180
                 DoA=loc.uVector(subpathsProcessed.AoA*np.pi/180 , subpathsProcessed.ZoA*np.pi/180 ).T                
                 R0=loc.rMatrix(rot0[n,0],rot0[n,1],rot0[n,2])
                 DDoA=DoA@R0
@@ -251,7 +257,7 @@ else:
                 daoa,dzoa=loc.angVector(DDoA)     
                 subpathsProcessed.DAoA = daoa
                 subpathsProcessed.DZoA = dzoa
-                subpathsProcessed.Zs = subpathsProcessed.Zs +8.5#location has tx at 0 but 3gpp considers 10m BS height and 1.5m pedestrian height, this adjust the z axis
+                subpathsProcessed.Zs = subpathsProcessed.Zs -10#location has tx at 0 but 3gpp considers 10m BS height and 1.5m pedestrian height, this adjust the z axis
             else:
                 subpathsProcessed.AoA = np.mod( subpathsProcessed.AoA*np.pi/180 -rot0[n], 2*np.pi)                
                 subpathsProcessed.rename(inplace=True,columns={"AoA":"DAoA"})       
@@ -261,6 +267,8 @@ else:
                                                             "m":"Subpath",})            
             lpathDFs.append(subpathsProcessed)
         allPathsData=pd.concat(lpathDFs,keys=np.arange(Nsims),names=["ue",'n'])
+        # allUserData["LOS"]=losAll
+        # allUserData[["DeterministicPLdB","ShadowingdB"]]=PLall
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
     
@@ -334,10 +342,10 @@ else:
                 else:
                 #TODO make changes in location estimator and get rid of these ifs
                     if not np.isinf(aoa0Quant):
-                        o_args= { 'groupMethod':grouping,'hintRotation': np.round(allUserData.loc[ns][rotColNames].to_numpy() *aoa0Quant/(np.pi*2))*2*np.pi/aoa0Quant  }
+                        o_args= { 'groupMethod':grouping,'initRotation': np.round(allUserData.loc[ns][rotColNames].to_numpy() *aoa0Quant/(np.pi*2))*2*np.pi/aoa0Quant  }
                     else:
                         o_args= { 'groupMethod':grouping}
-                    (d0_est[nc,nv,ns,:],tauE_est[nc,nv,ns],d_est,aoa0_est[nc,nv,ns],_)= loc.computeAllLocationsFromPaths(errPathDF.loc[nv,ns],orientationMethod=orientMthd,orientationMethodArgs=o_args)
+                    (d0_est[nc,nv,ns,:],tauE_est[nc,nv,ns],d_est,rot0_est[nc,nv,ns],_)= loc.computeAllLocationsFromPaths(errPathDF.loc[nv,ns],orientationMethod=orientMthd,orientationMethodArgs=o_args)
                 run_time[nc,nv,ns] = time.time() - t_start_point
                 lMapEstDFs.append(pd.DataFrame(data=d_est,columns=( ['Xs','Ys','Zs'] if bMode3D else  ['Xs','Ys'])))
     if bMode3D:        

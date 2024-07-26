@@ -557,7 +557,7 @@ class MultipathLocationEstimator:
                 return (res.x,None)
         else:
             print("ERROR: AoA0 root not found")
-            return (np.array(0.0),np.inf)
+            return (init_AoA0,np.inf)
                 
 
     def computeAllLocationsFromPaths(self, paths, orientationMethod=None, orientationMethodArgs={'groupMethod':'drop1','hintRotation':None}):

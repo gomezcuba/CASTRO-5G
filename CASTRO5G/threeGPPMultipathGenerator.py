@@ -1230,6 +1230,7 @@ class ThreeGPPMultipathChannelModel:
             if mode3D:
                 aoa_new,zoa_new,locs_a = self.fitAoA(txPos,rxPos,data.loc[indexAoA].TDoA+ tauOffset,data.loc[indexAoA].AoD*np.pi/180,data.loc[indexAoA].ZoD*np.pi/180)
                 data.Zs.loc[indexAoA]=locs_a[2,:]
+                data.ZoA.loc[indexAoA]=zoa_new*180/np.pi
             else:
                 aoa_new,locs_a = self.fitAoA(txPos,rxPos,data.loc[indexAoA].TDoA+ tauOffset,data.loc[indexAoA].AoD*np.pi/180)
             data.AoA.loc[indexAoA]=aoa_new*180/np.pi
@@ -1239,6 +1240,7 @@ class ThreeGPPMultipathChannelModel:
             if mode3D:
                 aod_new,zod_new,locs_d = self.fitAoD(txPos,rxPos,data.loc[indexAoD].TDoA+ tauOffset,data.loc[indexAoD].AoA*np.pi/180,data.loc[indexAoD].ZoA*np.pi/180)
                 data.Zs.loc[indexAoD]=locs_d[2,:]
+                data.ZoD.loc[indexAoD]=zod_new*180/np.pi
             else:
                 aod_new,locs_d = self.fitAoD(txPos,rxPos,data.loc[indexAoD].TDoA+ tauOffset,data.loc[indexAoD].AoA*np.pi/180)
             data.AoD.loc[indexAoD]=aod_new*180/np.pi
