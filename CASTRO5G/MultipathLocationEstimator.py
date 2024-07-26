@@ -627,9 +627,10 @@ class MultipathLocationEstimator:
             else:
                 #coarse brute approximation for initialization
                 if mode3D:
-                    #use random init because brute force is unbearably slow in 3D and performs poorly anayways
+                    #we could use random init because brute force is unbearably slow in 3D and performs poorly anayways
                     # initRotation = np.random.rand(3)*[2,1,2]*np.pi
-                    initRotation = self.brute3DRotByPathGroups(paths, (10,10,10), groupMethod)
+                    # found that 25x is the minimum to avoid local minima often enough
+                    initRotation = self.brute3DRotByPathGroups(paths, (25,25,25), groupMethod)
                 else:
                     initRotation = self.bruteAoA0ByPathGroups(paths, 100, groupMethod)
             (rotation_est, rotation_cov) = self.numericRot0ByPathGroups(paths, initRotation, groupMethod, themethod)

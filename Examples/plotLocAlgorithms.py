@@ -15,7 +15,7 @@ sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
 
 bScenario3D = True
-bErr = False
+bMultipathErrors = True
 
 loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm',disableTQDM= True)
 
@@ -60,16 +60,16 @@ else:
     # print(np.isclose(DAoA,np.mod(AoA-RoT0[:,None]+np.pi,2*np.pi)-np.pi))
     
 
-if bErr:
-    #typical channel multipath estimation outputs
-    #AoD = np.mod(AoD,2*np.pi)
-    Tserr=2.5e-9
-    Nanterr=1024
+if bMultipathErrors:
+    #dictionary channel multipath estimation outputs modelled as Additive Uniform Noise
+    maxSynchErr=40/c # 40m at lightspeed in seconds
+    Tserr=2.5e-9 # Nyquist sampling period for B=400MHz
+    Nanterr=1024 # Overcomplete beamforming codebook with 1024 beams
+    clock_error=maxSynchErr*np.random.rand(Nsims) #delay estimation error
+    TDoA_error=(Tserr)*np.random.randn(Nsims,Npath) #delay estimation error
+    TDoA = TDoA + clock_error[:,None]+TDoA_error
     AoD = np.mod(AoD+np.random.rand(Nsims,Npath)*2*np.pi/Nanterr,2*np.pi)
     DAoA = np.mod(DAoA+np.random.rand(Nsims,Npath)*2*np.pi/Nanterr,2*np.pi)
-    clock_error=(40/c)*np.random.rand(Nsims) #delay estimation error
-    del_error=(Tserr)*np.random.randn(Nsims,Npath) #delay estimation error
-    TDoA = TDoA + clock_error[:,None]+del_error
     if bScenario3D:
         ZoD = np.mod(ZoD+np.random.rand(Nsims,Npath)*2*np.pi/Nanterr,2*np.pi)
         DZoA = np.mod(DZoA+np.random.rand(Nsims,Npath)*2*np.pi/Nanterr,2*np.pi)
@@ -84,7 +84,8 @@ if bScenario3D:
     allPathsData['ZoD'] = ZoD.reshape(-1)
     allPathsData['DZoA'] = DZoA.reshape(-1)
     
-RoT0_coarse=np.round(RoT0*256/np.pi/2)*np.pi*2/256
+RoT0_coarse=np.round(RoT0*32/np.pi/2)*np.pi*2/32
+#TODO until we find faster algorithms for brute force 3D orientation, BF with large size and LM without hint should not be used
 tableMethods=[
     # ("BF 3P","brute",{'groupMethod':'4path' if bScenario3D else '3path','nPoint':(10,10,10) if bScenario3D else 100},'-','x','r'),
     # ("BF D1","brute",{'groupMethod':'drop1','nPoint':(20,10,20) if bScenario3D else 100},'-.','s','r'),

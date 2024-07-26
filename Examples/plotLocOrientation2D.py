@@ -42,7 +42,7 @@ fig_ctr+=1
 fig=plt.figure(fig_ctr)
 plt.plot([0,x0_true[0]],[0,y0_true[0]],':g')
 plt.plot(x_true,y_true,'or')
-scaleAngRuler=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
+scaleAngRuler=.4*np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 
 plt.plot([x0_true[0],x0_true[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true[0])],[y0_true[0],y0_true[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true[0])],'k')
 for p in range(np.shape(AoD_true)[0]):
@@ -166,7 +166,7 @@ plt.plot(d0_brute[0],d0_brute[1],'^c')
 plt.plot([0,d0_brute[0]],[0,d0_brute[1]],':c')
 plt.plot(x_true,y_true,'or')
 plt.plot(d_brute[:,0],d_brute[:,1],'oy')
-scaleAngRuler=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
+scaleAngRuler=0.4*np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 plt.plot([x0_true,x0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
 plt.plot([d0_brute[0],d0_brute[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_brute)],[d0_brute[1],d0_brute[1]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_brute)],'m')
 
@@ -194,7 +194,7 @@ plt.plot(d0_root[0],d0_root[1],'^c')
 plt.plot([0,d0_root[0]],[0,d0_root[1]],':c')
 plt.plot(x_true,y_true,'or')
 plt.plot(d_root[:,0],d_root[:,1],'oy')
-scaleAngRuler=np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
+scaleAngRuler=0.4*np.max(np.abs(np.concatenate([y_true,y0_true,x_true,x0_true],0)))
 plt.plot([x0_true,x0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_true)],[y0_true,y0_true+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_true)],'k')
 plt.plot([d0_root[0],d0_root[0]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.cos(AoA0_root)],[d0_root[1],d0_root[1]+1.2*scaleAngRuler*.05*np.shape(AoD_true)[0]*np.sin(AoA0_root)],'m')
 for p in range(np.shape(AoD_true)[0]):

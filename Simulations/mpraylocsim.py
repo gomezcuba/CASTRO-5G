@@ -57,16 +57,19 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #16xinfxinf:64xinfxinf:256xinfxinf:1024xinfxinf:4096xinfxinf
 #infxinfx16:infxinfx64:infxinfx256:infxinfx1024:infxinfx4096
 
-args = parser.parse_args("--z3D -N 5 -G Geo:20 -E=NO,D:16x16x16:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32x32x32:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
 bMode3D = args.z3D
+locColNames=['X0','Y0','Z0'] if bMode3D else ['X0','Y0']
+rotColNames=['AoA0','ZoA0','SoA0'] if bMode3D else ['AoA0']
+mapColNames=['Xs','Ys','Zs'] if bMode3D else ['Xs','Ys']
 Ndim = 3 if bMode3D else 2
 if args.M:
     mapDims = [float(x) for x in args.M.split(',')]
 else:
-    mapDims = [-100,100,-100,100] + ([-100,100] if bMode3D else[])
+    mapDims = [-100,100,-100,100] + ([-5,20] if bMode3D else[])
 dmax=np.array(mapDims[1::2])
 dmin=np.array(mapDims[0::2])
 # multipath generator
@@ -108,7 +111,7 @@ if args.algs:
 else:
     lLocAlgs=[#a opriori aoa0, quantized aoa0, grouping method, optimization method
         (True,np.inf,'',''),
-        (True,256,'',''),
+        # (True,256,'',''),
        #  (False,np.inf,'3path','brute'),
        #  (False,np.inf,'3path','lm'),
        #  (False,64,'3path','lm'),
@@ -131,21 +134,26 @@ Ts=1.0/400e6 #2.5ns
 Ds=320e-9 #Ts*128 FIR filter
 sigmaTauE=40e-9
 
+loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')    
+
 # if this parameter is present we get the mpg data from a known file (better for teset&debug)
 if args.nompg:    
     allUserData=pd.read_csv(outfoldername+'/userGenData.csv',index_col=['ue']) 
-    if mpgen == 'Geo':  
-        allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n']) 
-    elif mpgen == "3gpp":        
-        allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n','m']) 
+    allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n']) 
 else:        
     t_start_gen=time.time()
     # TODO: this has to be modeled in a separate class
-    d0=np.random.rand(Nsims,Ndim)*(dmax-dmin)+dmin
-    aod0=np.mod( np.arctan2(d0[:,1],d0[:,0]) , 2*np.pi)
-    aoa0=np.random.rand(Nsims)*2*np.pi #receiver angular measurement offset
+    d0=np.random.rand(Nsims,Ndim)*(dmax-dmin)+dmin    
     toa0=np.linalg.norm(d0,axis=-1)/c
     tauE=np.random.rand(Nsims)*sigmaTauE    
+    if bMode3D:
+        aod0,zod0=loc.angVector(d0)
+        rot0=np.random.rand(Nsims,3)*np.array([2,1,2])*np.pi #receiver angular measurement offset
+        aoa0=rot0[:,0]
+    else:    
+        aod0=loc.angVector(d0)
+        rot0=np.random.rand(Nsims)*2*np.pi #receiver angular measurement offset
+        aoa0=rot0
     allUserData = pd.DataFrame(index=pd.Index(np.arange(Nsims),name="ue"),
                                data={
                                    "X0":d0[:,0],
@@ -155,26 +163,31 @@ else:
                                    "tauE":tauE
                                    })
     if bMode3D:
-        l02D=np.linalg.norm(d0[:,0:-1],axis=-1)
-        zod0=np.arctan2(l02D,d0[:,2])
-        zoa0=np.random.rand(Nsims)*np.pi
-        soa0=np.random.rand(Nsims)*2*np.pi
+        allUserData['Z0'] = d0[:,2]
         allUserData['ZoD0'] = zod0
-        allUserData['ZoA0'] = zoa0
-        allUserData['SoA0'] = soa0
+        allUserData['ZoA0'] = rot0[:,1]
+        allUserData['SoA0'] = rot0[:,2]
     if mpgen == 'Geo':        
         Npath=int(mpgenInfo[1])
         #generate locations and compute multipath 
-        d=np.random.rand(Nsims,Npath,Ndim)*(dmax-dmin)+dmin
-        #angles from locations
-        #TODO 3D
-        aod=np.mod( np.arctan2(d[:,:,1],d[:,:,0]) , 2*np.pi)
-        aoa=np.mod( np.arctan2((d[:,:,1]-d0[:,None,1]),(d[:,:,0]-d0[:,None,0])) , 2*np.pi)
-        daoa=np.mod(aoa-aoa0[:,None],2*np.pi)
+        d=np.random.rand(Nsims,Npath,Ndim)*(dmax-dmin)+dmin    
+        DoD=d/np.linalg.norm(d,axis=2,keepdims=True)
+        DoA=(d-d0[:,None,:])/np.linalg.norm( d-d0[:,None,:] ,axis=2,keepdims=True)   
         #delays based on distance
         li=np.linalg.norm(d,axis=-1)+np.linalg.norm(d-d0[:,None,:],axis=-1)
         toa=li/c
-        tdoa=toa-toa0[:,None]-tauE[:,None]
+        tdoa=toa-toa0[:,None]-tauE[:,None]        
+        #angles from locations
+        if bMode3D:
+            aod,zod=loc.angVector(DoD)
+            R0=np.array([ loc.rMatrix(*x) for x in rot0])
+            DDoA=DoA@R0 #transpose of R0.T @ DoA.transpose([0,2,1])
+            daoa,dzoa=loc.angVector(DDoA)
+        else:
+            aod=loc.angVector(DoD)
+            R0=np.array([ loc.rMatrix(x) for x in aoa0])
+            DDoA=DoA@R0 #transpose of R0.T @ DoA.transpose([0,2,1])
+            daoa=loc.angVector(DDoA)
         allPathsData = pd.DataFrame(index=pd.MultiIndex.from_product([np.arange(Nsims),np.arange(Npath)],names=["ue","n"]),
                                     data={
                                         "AoD" : aod.reshape(-1),
@@ -182,23 +195,31 @@ else:
                                         "TDoA" : tdoa.reshape(-1),
                                         "Xs": d[:,:,0].reshape(-1),
                                         "Ys": d[:,:,1].reshape(-1)
-                                        })
+                                        })        
+        if bMode3D:
+            allPathsData['Zs'] = d[:,:,2].reshape(-1)
+            allPathsData['ZoD'] = zod.reshape(-1)
+            allPathsData['DZoA'] = dzoa.reshape(-1)
     elif mpgen == "3gpp":        
         # TODO: introducir param de entrada para regular blargeBW, scenario, etc
         # Tamen mais tarde - Elección de escenario vía param. de entrada
         model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)        
-        txPos = (0,0,10)        
+        txPos = (0,0,10)
         Npath = 50
         # Npath = model.maxM*np.max( model.scenarioParams.loc['N'] )                
         lpathDFs = []
         losAll = np.zeros((Nsims),dtype=bool)
         for n in tqdm(range(Nsims),desc=f'Generating {Nsims} 3GPP multipath channels'):
             #TODO 3D
-            rxPos = (d0[n,0],d0[n,1],1.5)
+            if bMode3D:
+                rxPos = (d0[n,0],d0[n,1],d0[n,2]-8.5)#location has tx at 0 but 3gpp considers 10m BS height and 1.5m pedestrian height, this adjust the z axis
+            else:
+                rxPos = (d0[n,0],d0[n,1],1.5)
+            
             plinfo,macro,clusters,subpaths = model.create_channel(txPos,rxPos)
             losAll[n]=plinfo[0]
             # (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullFitAoA(txPos,rxPos,plinfo,clusters,subpaths)
-            (txPos,rxPos,plinfo,clusters,subpaths)  = model.randomFitEpctClusters(txPos,rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=[0,.5,.5,0],mode3D=False)
+            (txPos,rxPos,plinfo,clusters,subpaths)  = model.randomFitEpctClusters(txPos,rxPos,plinfo,clusters,subpaths,Ec=.75,Es=.75,P=[0,.5,.5,0],mode3D= bMode3D)
             # txArrayAngle = 0#deg
             # rxArrayAngle = np.mod(np.pi+np.arctan2(y0[n],x0[n]),2*np.pi)*180/np.pi
             # (txPos,rxPos,plinfo,clusters,subpaths)  = model.fullDeleteBacklobes(txPos,rxPos,plinfo,clusters,subpaths,tAoD=txArrayAngle,rAoA=rxArrayAngle)
@@ -220,9 +241,26 @@ else:
             #     tauE[n] = tauE[n] - (tau1stlos-toa0[n])
             subpathsProcessed.TDoA -= tauE[n]
             subpathsProcessed.AoD = np.mod( subpathsProcessed.AoD*np.pi/180 , 2*np.pi)
-            subpathsProcessed.AoA = np.mod( subpathsProcessed.AoA*np.pi/180 -aoa0[n], 2*np.pi)
-            lpathDFs.append(subpathsProcessed.rename(columns={"AoA":"DAoA"}))
-        allPathsData=pd.concat(lpathDFs,keys=np.arange(Nsims),names=["ue",'n','m'])
+            if bMode3D:
+                subpathsProcessed.ZoD = np.mod( subpathsProcessed.ZoD*np.pi/180 , 2*np.pi)
+                DoA=loc.uVector(subpathsProcessed.AoA*np.pi/180 , subpathsProcessed.ZoA*np.pi/180 ).T                
+                R0=loc.rMatrix(rot0[n,0],rot0[n,1],rot0[n,2])
+                DDoA=DoA@R0
+                subpathsProcessed.rename(inplace=True,columns={"AoA":"DAoA",
+                                                               "ZoA":"DZoA",})  
+                daoa,dzoa=loc.angVector(DDoA)     
+                subpathsProcessed.DAoA = daoa
+                subpathsProcessed.DZoA = dzoa
+                subpathsProcessed.Zs = subpathsProcessed.Zs +8.5#location has tx at 0 but 3gpp considers 10m BS height and 1.5m pedestrian height, this adjust the z axis
+            else:
+                subpathsProcessed.AoA = np.mod( subpathsProcessed.AoA*np.pi/180 -rot0[n], 2*np.pi)                
+                subpathsProcessed.rename(inplace=True,columns={"AoA":"DAoA"})       
+                subpathsProcessed.drop(inplace=True,columns=["ZoA","ZoD"])
+            subpathsProcessed.reset_index(inplace=True)#moves cluster-subpath pairs n,m to normal columns
+            subpathsProcessed.rename(inplace=True, columns={"n":"Cluster",
+                                                            "m":"Subpath",})            
+            lpathDFs.append(subpathsProcessed)
+        allPathsData=pd.concat(lpathDFs,keys=np.arange(Nsims),names=["ue",'n'])
     else:
         print("MultiPath generation method %s not recognized"%mpgen)
     
@@ -260,10 +298,8 @@ for nv in tqdm(range(NerrMod),desc='applying error models to paths'):
     else:
         print("Multipath estimation error model %s to be written"%errType)
     lErrorPathDFs.append(errPathDF)
-if mpgen == "3gpp":     
-    errPathDF=pd.concat(lErrorPathDFs,keys=range(NerrMod),names=["errNo","ue",'n','m'])
-elif mpgen == "Geo":
-    errPathDF=pd.concat(lErrorPathDFs,keys=range(NerrMod),names=["errNo","ue",'n'])
+errPathDF=pd.concat(lErrorPathDFs,keys=range(NerrMod),names=["errNo","ue",'n'])
+# errPathDF.to_csv(outfoldername+'/pathErrData.csv')
     
 
 print("Total Multipath Estimation Time:%s seconds"%(time.time()-t_start_err))
@@ -272,68 +308,74 @@ if args.noloc:
     data=np.load(outfoldername+'/locEstData.npz') 
     aoa0_est=data["aoa0_est"]
     d0_est=data["d0_est"]
-    d_est=data["d_est"]
     tauE_est=data["tauE_est"]
     run_time=data["run_time"]    
     # errPathDF=pd.read_csv(outfoldername+'/pathErrData.csv',index_col=['errNo','ue','n','m'])
-    loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')    
 else:
     t_start_loc=time.time() 
-    aoa0_est=np.zeros((NlocAlg,NerrMod,Nsims))
-    d0_est=np.zeros((NlocAlg,NerrMod,Nsims,2))
-    d_est=np.zeros((NlocAlg,NerrMod,Nsims,Nmaxpath,2))
+    rot0_est=np.zeros((NlocAlg,NerrMod,Nsims,3)) if bMode3D else np.zeros((NlocAlg,NerrMod,Nsims))
+    d0_est=np.zeros((NlocAlg,NerrMod,Nsims,Ndim))
     tauE_est=np.zeros((NlocAlg,NerrMod,Nsims))
-    run_time=np.zeros((NlocAlg,NerrMod))
+    run_time=np.zeros((NlocAlg,NerrMod,Nsims))
     
-    loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm')
-    
+    lMapEstDFs = []
     for nc in range(NlocAlg):
         (aoa0Apriori,aoa0Quant,grouping,orientMthd)=lLocAlgs[nc]
         for nv in range(NerrMod):  
-            t_start_point = time.time()
             for ns in tqdm(range(Nsims),desc=f'Location with {lLocAlgs[nc]} err {lErrMod[nv]}'):
                 Np=errPathDF.loc[nv,ns].shape[0]
+                t_start_point = time.time()
                 if aoa0Apriori:
                     if not np.isinf(aoa0Quant):
-                        aoa0_est[nc,nv,ns]= np.round( allUserData.loc[ns].AoA0 *aoa0Quant/(np.pi*2))*2*np.pi/aoa0Quant        
+                        rot0_est[nc,nv,ns]= np.round(allUserData.loc[ns][rotColNames] *aoa0Quant/(np.pi*2))*2*np.pi/aoa0Quant        
                     else:
-                        aoa0_est[nc,nv,ns]= allUserData.loc[ns].AoA0
-                    (d0_est[nc,nv,ns,:],tauE_est[nc,nv,ns],d_est[nc,nv,ns,0:Np,:])=loc.computeAllPaths(errPathDF.loc[nv,ns],rotation=aoa0_est[nc,nv,ns])
+                        rot0_est[nc,nv,ns]= allUserData.loc[ns][rotColNames]
+                    (d0_est[nc,nv,ns,:],tauE_est[nc,nv,ns],d_est)=loc.computeAllPaths(errPathDF.loc[nv,ns],rotation=rot0_est[nc,nv,ns])
                 else:
                 #TODO make changes in location estimator and get rid of these ifs
                     if not np.isinf(aoa0Quant):
-                        o_args= { 'groupMethod':grouping,'hintRotation': np.round(allUserData.AoA0.loc[ns]*aoa0Quant/(np.pi*2))*2*np.pi/aoa0Quant }
+                        o_args= { 'groupMethod':grouping,'hintRotation': np.round(allUserData.loc[ns][rotColNames].to_numpy() *aoa0Quant/(np.pi*2))*2*np.pi/aoa0Quant  }
                     else:
                         o_args= { 'groupMethod':grouping}
-                    (d0_est[nc,nv,ns],tauE_est[nc,nv,ns],d_est[nc,nv,ns,0:Np,:],aoa0_est[nc,nv,ns],_)= loc.computeAllLocationsFromPaths(errPathDF.loc[nv,ns],orientationMethod=orientMthd,orientationMethodArgs=o_args)
-            run_time[nc,nv] = time.time() - t_start_point
+                    (d0_est[nc,nv,ns,:],tauE_est[nc,nv,ns],d_est,aoa0_est[nc,nv,ns],_)= loc.computeAllLocationsFromPaths(errPathDF.loc[nv,ns],orientationMethod=orientMthd,orientationMethodArgs=o_args)
+                run_time[nc,nv,ns] = time.time() - t_start_point
+                lMapEstDFs.append(pd.DataFrame(data=d_est,columns=( ['Xs','Ys','Zs'] if bMode3D else  ['Xs','Ys'])))
+    if bMode3D:        
+        aoa0_est=rot0_est[:,:,:,0]
+    else:
+        aoa0_est=rot0_est
+    allLocEstData=pd.DataFrame(index=pd.MultiIndex.from_product([range(NlocAlg), range(NerrMod),range(Nsims)],names=["alg","errNo","ue"]),
+                                columns=['X0','Y0','tauE','AoA0','runtime'],
+                                data=np.column_stack([
+                                    d0_est[:,:,:,0].reshape(-1),
+                                    d0_est[:,:,:,1].reshape(-1),
+                                    tauE_est.reshape(-1),
+                                    aoa0_est.reshape(-1),
+                                    run_time.reshape(-1)
+                                    ]))
+    if bMode3D:
+        allLocEstData['Z0']=d0_est[:,:,:,2].reshape(-1)
+        allLocEstData['ZoA0']=rot0_est[:,:,:,1].reshape(-1)
+        allLocEstData['SoA0']=rot0_est[:,:,:,2].reshape(-1)
+    allMapEstData=pd.concat(lMapEstDFs,names=["alg","errNo","ue",'n'],keys=pd.MultiIndex.from_product([range(NlocAlg), range(NerrMod),range(Nsims)]))
     if not args.nosave: 
-        np.savez(outfoldername+'/locEstData.npz',
-                aoa0_est=aoa0_est,
-                d0_est=d0_est,
-                d_est=d_est,
-                tauE_est=tauE_est,
-                run_time=run_time)
-        # errPathDF.to_csv(outfoldername+'/pathErrData.csv')
+        allLocEstData.to_csv(outfoldername+'/locEstData.csv') 
+        allMapEstData.to_csv(outfoldername+'/mapEstData.csv') 
     print("Total Location Time:%s seconds"%(time.time()-t_start_loc))
 
-d0=allUserData[['X0','Y0']].to_numpy()
-location_error=np.linalg.norm(d0_est-d0,axis=-1)
-# mapping_dist=allPathsData[['Xs','Ys']]-errPathDF[['Xs','Ys']]
-# mapping_dist.apply(np.linalg.norm,axis=1)
-# mapping_error=mapping_dist.apply(np.linalg.norm,axis=1).groupby(['errNo','ue']).sum().to_numpy().reshape(NlocAlg,NerrMod,Nsims)
-d=np.zeros((Nsims,Nmaxpath,2))
-for ns in range(Nsims):
-    d[ns,0:nPathAll[ns],:]=allPathsData[['Xs','Ys']].loc[ns]
-mapping_error=np.sum(np.linalg.norm(d-d_est,axis=-1),axis=-1)/nPathAll
+
+location_error=np.linalg.norm( allLocEstData[locColNames]-allUserData[locColNames] ,axis=-1).reshape(NlocAlg,NerrMod,Nsims)
+mapping_dif=allMapEstData[mapColNames]-allPathsData[mapColNames]
+mapping_meandist=mapping_dif.apply(np.linalg.norm,axis=1).groupby(["alg","errNo","ue"]).mean()
+mapping_error=mapping_meandist.to_numpy().reshape(NlocAlg,NerrMod,Nsims)
 
 # mapping_error[:,:,x==0]=np.inf#fix better
-tauE_err = np.abs(tauE_est+allUserData.tauE.to_numpy())
-aoa0_err=np.abs(allUserData.AoA0.to_numpy()-aoa0_est)*180/np.pi
-d0_dumb=np.random.rand(Nsims,2)*(dmax-dmin)+dmin
-error_dumb=np.linalg.norm(d0-d0_dumb,axis=-1)
-d_dumb=np.random.rand(Nsims,Nmaxpath,2)*(dmax-dmin)+dmin
-map_dumb=np.linalg.norm(d-d_dumb,axis=-1)
+tauE_err = np.abs( allLocEstData['tauE']-allUserData['tauE'] ).to_numpy().reshape(NlocAlg,NerrMod,Nsims)
+rot0_err=np.mean(np.abs(allLocEstData[rotColNames] - allUserData[rotColNames]),axis=1).to_numpy().reshape(NlocAlg,NerrMod,Nsims)
+d0_dumb=np.random.rand(Nsims,Ndim)*(dmax-dmin)+dmin
+error_dumb=np.linalg.norm(d0_dumb-allUserData[locColNames],axis=-1)
+d_dumb=np.random.rand(*allMapEstData.shape)*(dmax-dmin)+dmin
+map_dumb=(allMapEstData-d_dumb).apply(np.linalg.norm,axis=1).groupby(["alg","errNo","ue"]).mean().to_numpy().reshape(NlocAlg,NerrMod,Nsims)
 plt.close('all')
 
 def lineCfgFromAlg(algCfg):
@@ -476,7 +518,7 @@ if args.pcl:
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
-            plt.semilogy(np.arange(len(errLabels)),np.percentile(aoa0_err[nc,errCaseMask,:],Pctl,axis=(1)),line+marker+color,label=caseStr)
+            plt.semilogy(np.arange(len(errLabels)),np.percentile(rot0_err[nc,errCaseMask,:],Pctl,axis=(1)),line+marker+color,label=caseStr)
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel('Channel Error')
         plt.ylabel('%.1f percentile AoA0 error(º)'%(Pctl))
