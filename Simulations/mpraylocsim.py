@@ -36,6 +36,7 @@ parser.add_argument('--cdf', type=str,help='plot CDF for a given comma-separated
 parser.add_argument('--pcl', type=str,help='comma-separated list of error axis-percentile plots (example "D:80")')
 parser.add_argument('--map', type=str,help='plot map')
 parser.add_argument('--vso', type=str,help='scatter plot of location error vs orientation')
+parser.add_argument('--rtm', type=str,help='bar plot of algorithm run times')
 
 #parameters that affect workflow
 parser.add_argument('--label', type=str,help='str label appended to storage files')
@@ -66,7 +67,7 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #2D simulation with Geometric ray tracing simple channel model
 # args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
 
-args = parser.parse_args("--z3D -N 3 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+args = parser.parse_args("--nompg --noloc --z3D -N 3 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -317,12 +318,8 @@ errPathDF=pd.concat(lErrorPathDFs,keys=range(NerrMod),names=["errNo","ue",'n'])
 print("Total Multipath Estimation Time:%s seconds"%(time.time()-t_start_err))
 
 if args.noloc: 
-    data=np.load(outfoldername+'/locEstData.npz') 
-    aoa0_est=data["aoa0_est"]
-    d0_est=data["d0_est"]
-    tauE_est=data["tauE_est"]
-    run_time=data["run_time"]    
-    # errPathDF=pd.read_csv(outfoldername+'/pathErrData.csv',index_col=['errNo','ue','n','m'])
+    allLocEstData=pd.read_csv(outfoldername+'/locEstData.csv',index_col=['alg','errNo','ue']) 
+    allMapEstData=pd.read_csv(outfoldername+'/mapEstData.csv',index_col=['alg','errNo','ue','n']) 
 else:
     t_start_loc=time.time() 
     rot0_est=np.zeros((NlocAlg,NerrMod,Nsims,3)) if bMode3D else np.zeros((NlocAlg,NerrMod,Nsims))
@@ -388,6 +385,8 @@ d0_dumb=np.random.rand(Nsims,Ndim)*(dmax-dmin)+dmin
 error_dumb=np.linalg.norm(d0_dumb-allUserData[locColNames],axis=-1)
 d_dumb=np.random.rand(*allMapEstData.shape)*(dmax-dmin)+dmin
 map_dumb=(allMapEstData-d_dumb).apply(np.linalg.norm,axis=1).groupby(["alg","errNo","ue"]).mean().to_numpy().reshape(NlocAlg,NerrMod,Nsims)
+runtime = allLocEstData.runtime.to_numpy().reshape(NlocAlg,NerrMod,Nsims)
+
 plt.close('all')
 
 def lineCfgFromAlg(algCfg):
@@ -551,8 +550,8 @@ if args.map:
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
-            plt.plot(np.vstack((d0[:,0],d0_est[nc,indErr,:,0])),np.vstack((d0[:,1],d0_est[nc,indErr,:,1])),line+marker+color,label=caseStr)
-        plt.plot(d0[:,0].T,d0[:,1].T,'ok',label='locations')
+            plt.plot(np.vstack((allUserData.X0,allLocEstData.loc[nc,indErr].X0)),np.vstack((allUserData.Y0,allLocEstData.loc[nc,indErr].Y0)),line+marker+color,label=caseStr)
+        plt.plot(allUserData.X0,allUserData.Y0,'ok',label='locations')
         handles, labels = plt.gca().get_legend_handles_labels()
         # labels will be the keys of the dict, handles will be values
         temp = {k:v for k,v in zip(labels, handles)}
@@ -574,13 +573,28 @@ if args.vso:
         plt.figure(fig_ctr)  
         for nc in range(NlocAlg):
             caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
-            plt.loglog(np.abs(aoa0_est[nc,indErr,:]-allUserData.AoA0.to_numpy()),location_error[nc,indErr,:],marker+color,label=caseStr)
+            plt.loglog(rot0_err[nc,indErr,:],location_error[nc,indErr,:],marker+color,label=caseStr)
         plt.xlabel('$\hat{aoa}$_o error (rad)')
         plt.ylabel('Location error (m)')
         plt.legend()
         if args.print:
-            plt.savefig(outfoldername+f'/err_vs_aoa0_{cdf}.svg')
-        
+            plt.savefig(outfoldername+f'/err_vs_aoa0_{vso}.svg')
+
+if args.rtm:
+    lRTM =[#TODO multi color bar plot per dictionaries instead
+        tuple(case.split('x'))
+        for case in args.rtm.split(',')
+    ]
+    for rtm in lRTM:
+        indErr = lErrMod.index(rtm)         
+        fig_ctr=fig_ctr+1
+        plt.figure(fig_ctr)
+        plt.bar(range(NlocAlg),np.mean(runtime[:,indErr,:],axis=1))
+        plt.xlabel('Algoritm')
+        plt.ylabel('Run time per iteration')
+        plt.legend()
+        if args.print:
+            plt.savefig(outfoldername+f'/runtime_{rtm}.svg')
 
 if args.show:
     plt.show()
