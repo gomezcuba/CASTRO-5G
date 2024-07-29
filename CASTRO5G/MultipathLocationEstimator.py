@@ -273,6 +273,8 @@ class MultipathLocationEstimator:
         l0est = np.linalg.norm(d0_est)
         ToA0_est = (l0est - l0err)/self.c
         Vi=(DoD+C12[:,None]*DoA)/(1-C12[:,None]**2)
+        if np.any(C12==-1):#fix the indetermination case DoD=-DoA
+            Vi[C12==-1,:]=DoD[C12==-1,:]
         liD_est=Vi@d0_est
         d_est=liD_est[:,None]*DoD
         return(d0_est,ToA0_est,d_est)

@@ -59,15 +59,15 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #infxinfx16:infxinfx64:infxinfx256:infxinfx1024:infxinfx4096
 
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("-N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO202D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO202D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 #2D simulation with 3gpp channels with first reflection fitted multipath
-# args = parser.parse_args("-N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP2D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP2D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 
-args = parser.parse_args("--nompg --noloc --z3D -N 3 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--z3D -N 20 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -120,15 +120,15 @@ if args.algs:
     #TODO define more elegant syntax for cases and better parser that converts bool properly
 else:
     lLocAlgs=[#a opriori aoa0, quantized aoa0, grouping method, optimization method
-        (True,np.inf,'',''),
-        (True,256,'',''),
-       #  (False,np.inf,'3path','brute'),
-       #  (False,np.inf,'3path','lm'),
-       #  (False,64,'3path','lm'),
-       #  (False,np.inf,'drop1','brute'),
-         # (False,np.inf,'drop1','lm'),
-        (False,64,'drop1','lm'),
-        (False,64,'','margin'),
+        (True,np.inf,'','','LS-pure',':','o','b'),
+        (True,64,'','','LS-Q64',':','*','b'),
+       #  (False,np.inf,'3path','brute','Brute3P',':','s','r'),
+       #  (False,np.inf,'3path','lm','Root3P','-.','s','g'),
+       #  (False,64,'3path','lm','Root3Ph','-.','x','g'),
+       #  (False,np.inf,'drop1','brute','BruteD1','-','s','r'),
+         # (False,np.inf,'drop1','lm','RootD1','-','s','g'),
+        (False,64,'drop1','lm','RootD1h','-','x','g'),
+        (False,64,'','margin','Margin','--','d','m'),
        ]
 NlocAlg =len(lLocAlgs)
 
@@ -329,9 +329,9 @@ else:
     
     lMapEstDFs = []
     for nc in range(NlocAlg):
-        (aoa0Apriori,aoa0Quant,grouping,orientMthd)=lLocAlgs[nc]
+        (aoa0Apriori,aoa0Quant,grouping,orientMthd)=lLocAlgs[nc][0:4]
         for nv in range(NerrMod):  
-            for ns in tqdm(range(Nsims),desc=f'Location with {lLocAlgs[nc]} err {lErrMod[nv]}'):
+            for ns in tqdm(range(Nsims),desc=f'Location with {lLocAlgs[nc][4]} err {lErrMod[nv]}'):
                 Np=errPathDF.loc[nv,ns].shape[0]
                 t_start_point = time.time()
                 if aoa0Apriori:
@@ -389,20 +389,6 @@ runtime = allLocEstData.runtime.to_numpy().reshape(NlocAlg,NerrMod,Nsims)
 
 plt.close('all')
 
-def lineCfgFromAlg(algCfg):
-    aoa0Apriori,aoa0Quant,grouping,orientMthd=algCfg
-    if aoa0Apriori:
-        caseStr="LS Location" if np.isinf(aoa0Quant) else f'LS {aoa0Quant}-Q(AoA0)'
-        color='b'
-        marker='o' if np.isinf(aoa0Quant) else '*'
-        line=':'
-    else:
-        caseStr="%s - %s %s"%(grouping,orientMthd,('Q-ini' if aoa0Quant else 'BF-ini') if orientMthd == 'lm' else '')
-        line='-' if grouping=='drop1' else ('-.' if orientMthd == 'lm' else ':')
-        marker='x' if aoa0Quant else 's'
-        color='r' if orientMthd=='brute' else 'g'        
-    return(caseStr,line,marker,color)
-
 fig_ctr=0
 if args.cdf:
     lCDF =[
@@ -415,7 +401,7 @@ if args.cdf:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogx(np.percentile(location_error[nc,indErr,~np.isnan(location_error[nc,indErr,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)        
         plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
         # Ts = loc.getTParamToLoc(d0[:,0],d0[:,1],toa0+tauE,aoa0,allPathsData.Xs.to_numpy(),allPathsData.Ys.to_numpy(),['dDAoA',],['dx0','dy0'])
@@ -435,7 +421,7 @@ if args.cdf:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             mapping_error_data_valid = mapping_error[nc,indErr,(~np.isnan(mapping_error[nc,indErr,:]))&(~np.isinf(mapping_error[nc,indErr,:]))]
             plt.semilogx(np.percentile(mapping_error_data_valid,np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
         plt.semilogx(np.percentile(map_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
@@ -475,7 +461,7 @@ if args.pcl:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[nc,errCaseMask,:],Pctl,axis=1),line+marker+color,label=caseStr)
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'r',label=caseStr)
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,~losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'g',label=caseStr)
@@ -496,7 +482,7 @@ if args.pcl:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogy(np.arange(len(errLabels)),np.percentile(mapping_error[nc,errCaseMask,:],Pctl,axis=1),line+marker+color,label=caseStr)
         plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(map_dumb,80),':k',label="random guess")
         # if Npath<=50:
@@ -517,7 +503,7 @@ if args.pcl:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogy(np.arange(len(errLabels)),np.percentile(1e9*tauE_err[nc,errCaseMask,:],Pctl,axis=(1)),line+marker+color,label=caseStr)
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel(errTitle)
@@ -528,7 +514,7 @@ if args.pcl:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogy(np.arange(len(errLabels)),np.percentile(rot0_err[nc,errCaseMask,:],Pctl,axis=(1)),line+marker+color,label=caseStr)
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel('Channel Error')
@@ -549,7 +535,7 @@ if args.map:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.plot(np.vstack((allUserData.X0,allLocEstData.loc[nc,indErr].X0)),np.vstack((allUserData.Y0,allLocEstData.loc[nc,indErr].Y0)),line+marker+color,label=caseStr)
         plt.plot(allUserData.X0,allUserData.Y0,'ok',label='locations')
         handles, labels = plt.gca().get_legend_handles_labels()
@@ -572,7 +558,7 @@ if args.vso:
         fig_ctr=fig_ctr+1
         plt.figure(fig_ctr)  
         for nc in range(NlocAlg):
-            caseStr,line,marker,color=lineCfgFromAlg(lLocAlgs[nc])
+            caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.loglog(rot0_err[nc,indErr,:],location_error[nc,indErr,:],marker+color,label=caseStr)
         plt.xlabel('$\hat{aoa}$_o error (rad)')
         plt.ylabel('Location error (m)')
@@ -584,17 +570,23 @@ if args.rtm:
     lRTM =[#TODO multi color bar plot per dictionaries instead
         tuple(case.split('x'))
         for case in args.rtm.split(',')
-    ]
-    for rtm in lRTM:
-        indErr = lErrMod.index(rtm)         
-        fig_ctr=fig_ctr+1
-        plt.figure(fig_ctr)
-        plt.bar(range(NlocAlg),np.mean(runtime[:,indErr,:],axis=1))
-        plt.xlabel('Algoritm')
-        plt.ylabel('Run time per iteration')
-        plt.legend()
-        if args.print:
-            plt.savefig(outfoldername+f'/runtime_{rtm}.svg')
+    ]     
+    Nrtm=len(lRTM)
+    fig_ctr=fig_ctr+1
+    plt.figure(fig_ctr)       
+    barwidth=0.9/Nrtm
+    for n in range(0,Nrtm):
+        rtm = lRTM[n]
+        indErr = lErrMod.index(rtm)  
+        offset=(n-(Nrtm-1)/2)*barwidth 
+        plt.bar(np.arange(NlocAlg)+offset,np.mean(runtime[:,indErr,:],axis=1),width=barwidth,label=f'{rtm}')
+    plt.xticks(np.arange(NlocAlg),[x[4] for x in lLocAlgs])
+    plt.xlabel('Algoritm')
+    plt.ylabel('Run time per iteration (s)')
+    plt.gca().set_yscale('log')
+    plt.legend()
+    if args.print:
+        plt.savefig(outfoldername+f'/runtime_{rtm}.svg')
 
 if args.show:
     plt.show()
