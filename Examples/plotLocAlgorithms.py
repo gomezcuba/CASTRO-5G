@@ -15,12 +15,12 @@ sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
 
 bScenario3D = True
-bMultipathErrors = True
+bMultipathErrors = False
 
 loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm',disableTQDM= True)
 
 Npath=20
-Nsims=20
+Nsims=10
 
 Ndim= 3 if bScenario3D else 2
 #random locations in a 40m square
@@ -28,8 +28,8 @@ Dmax0=np.array([100,100,1.5])
 Dmin0=np.array([-100,-100,0])
 Dmax=np.array([100,100,15])
 Dmin=np.array([-100,-100,-5])
-d0=np.random.rand(Nsims,Ndim)*(Dmax0-Dmin0)+Dmin0
-d=np.random.rand(Nsims,Npath,Ndim)*(Dmax-Dmin)+Dmin
+d0=np.random.rand(Nsims,Ndim)*(Dmax0-Dmin0)[0:Ndim]+Dmin0[0:Ndim]
+d=np.random.rand(Nsims,Npath,Ndim)*(Dmax-Dmin)[0:Ndim]+Dmin[0:Ndim]
 
 #delays based on distance
 c=3e8
@@ -84,7 +84,7 @@ if bScenario3D:
     allPathsData['ZoD'] = ZoD.reshape(-1)
     allPathsData['DZoA'] = DZoA.reshape(-1)
     
-RoT0_coarse=np.round(RoT0*32/np.pi/2)*np.pi*2/32
+RoT0_coarse=np.round(RoT0*64/np.pi/2)*np.pi*2/64
 #TODO until we find faster algorithms for brute force 3D orientation, BF with large size and LM without hint should not be used
 tableMethods=[
     # ("BF 3P","brute",{'groupMethod':'4path' if bScenario3D else '3path','nPoint':(10,10,10) if bScenario3D else 100},'-','x','r'),
@@ -95,6 +95,7 @@ tableMethods=[
     # ("LMh 3P","lm",{'groupMethod':'4path' if bScenario3D else '3path','initRotation':None},'-','+','b'),
     ("LMh D1","lm",{'groupMethod':'drop1','initRotation':None},'-.','d','b'),
     # ("LMh O3","lm",{'groupMethod':'ortho3','initRotation':None},'--','+','b'),
+    ("Margin","margin",{'initRotation':None},'-','s','m'),
     ("lin oracle","linear",RoT0,'-','^','k'),
     ("lin gyro","linear",RoT0_coarse,'-.','v','k')
     ]
@@ -174,3 +175,11 @@ plt.xlabel('$\\textnormal{AoA}_o-\\hat{\\textnormal{AoA}}_o$ (rad)')
 plt.ylabel('Location error (m)')
 plt.legend()
 plt.savefig('../Figures/corrpsi0-Poserr.svg')
+
+plt.figure(5)
+plt.bar(range(Nmeth),np.mean(run_times,axis=1))
+plt.xticks(range(Nmeth),[x[0] for x in tableMethods])
+plt.xlabel('Method')
+plt.ylabel('Run time per iter (s)')
+plt.legend()
+plt.savefig('../Figures/runtime_methods.svg')

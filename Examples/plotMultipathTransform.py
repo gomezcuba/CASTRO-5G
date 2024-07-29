@@ -16,9 +16,9 @@ fig_ctr = 0
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
 sce = "UMa"
-transform = "DERandom" #type None for no transform
+transform = "AOA" #type None for no transform
 delBacklobe = False
-bool3D=False
+bool3D=True
 
 # Posicións transmisor e receptor
 

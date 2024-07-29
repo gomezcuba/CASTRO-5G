@@ -2,21 +2,26 @@
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
+plt.close('all')
+fig_ctr=0
 
 import numpy as np
 import pandas as pd
+import scipy.optimize as opt
 import time
 
 import sys
 sys.path.append('../')
 from CASTRO5G import MultipathLocationEstimator
 
+loc=MultipathLocationEstimator.MultipathLocationEstimator()
 ####################################################
 # Generate true values
 # Npath=1
 # d0=np.array([10,0,1.5])
 # d=np.array([5,5,1.5]).reshape(1,-1)
-Npath=4#minimum 4 paths for linear location with clock error
+# Npath=4#minimum 4 paths for linear location with clock error
+Npath=8#more than 4 paths needed for additional DoF for rotation estimation
 d0=np.concatenate([np.random.rand(2)*40-10,[1.5]])
 d=np.random.rand(Npath,3)*40-20
 dinv = d-d0
@@ -42,9 +47,8 @@ ToA = li/c
 tauE = np.random.uniform(-1,1,1)*40e-9
 TDoA = ToA - ToA0 + tauE
 
-
-
-fig=plt.figure(1)
+fig_ctr+=1
+fig=plt.figure(fig_ctr)
 ax = fig.add_subplot(111, projection='3d')
 ax.plot3D([0,d0[0]],[0,d0[1]],[0,d0[2]],':g')
 ax.plot3D(d[:,0],d[:,1],d[:,2],'or')
@@ -87,23 +91,21 @@ for n in range(Npath):
     print(f'Fast inverse-sum match {np.all(np.isclose( vDagUi, (DoD[n,:]-DoA[n,:])/(1+C12) ))}')
     M[n,0:3] = (DoD[n,:]-DoA[n,:])/(1+C12)
 
-def testSpeedLSTSQ(U):
-    Npath=U.shape[0]
-    M = -np.ones((Npath,3))
-    for n in range(Npath):
-        dagUi = np.linalg.lstsq(Ui[n,:,:], np.eye(3), rcond=None)[0]
-        vDagUi = np.sum(dagUi,axis=0)
-        M[n,:] = vDagUi
-    return(M)
-%timeit testSpeedLSTSQ(Ui)
-def testSpeedExpression(DoD,DoA):
-    C12= np.sum(-DoA*DoD,axis=1,keepdims=True)
-    M=(DoD-DoA)/(1+C12)
-    return(M)
-%timeit testSpeedExpression(DoD,DoA)
+# def testSpeedLSTSQ(U):
+#     Npath=U.shape[0]
+#     M = -np.ones((Npath,3))
+#     for n in range(Npath):
+#         dagUi = np.linalg.lstsq(Ui[n,:,:], np.eye(3), rcond=None)[0]
+#         vDagUi = np.sum(dagUi,axis=0)
+#         M[n,:] = vDagUi
+#     return(M)
+# %timeit testSpeedLSTSQ(Ui)
+# def testSpeedExpression(DoD,DoA):
+#     C12= np.sum(-DoA*DoD,axis=1,keepdims=True)
+#     M=(DoD-DoA)/(1+C12)
+#     return(M)
+# %timeit testSpeedExpression(DoD,DoA)
 
-DoD = uVectorT(AoD,ZoD)
-DoA = uVectorT(AoA,ZoA) 
 C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
 M=np.column_stack([(DoD-DoA)/(1+C12),-np.ones((Npath,1))])
 d0_est = np.linalg.lstsq(M, TDoA*c, rcond=None)[0]
@@ -114,7 +116,6 @@ print(f'Ref dist match {np.all(np.isclose(liD, liD_est))}' )
 d_est=liD_est[:,None]*DoD
 print(f'Reflectors match {np.all(np.isclose(d, d_est))}' )
 
-loc=MultipathLocationEstimator.MultipathLocationEstimator()
 DAoA=AoA-AoA0
 paths=pd.DataFrame({'DAoA':DAoA,'AoD':AoD,'TDoA':TDoA})
 d0_old,ToAE_old,d_old=loc.computeAllPathsV1wrap(paths,rotation=AoA0)
@@ -122,8 +123,8 @@ d0_est,ToAE_est,d_est=loc.computeAllPaths(paths,rotation=AoA0)
 
 print(f'2D Functions match {np.all(np.isclose(d0_old, d0_est))}  {np.all(np.isclose(ToAE_old, ToAE_est))}  {np.all(np.isclose(d_old, d_est))}' )
 
-%timeit loc.computeAllPathsV1(AoD,DAoA,TDoA,AoA0)
-%timeit loc.computeAllPaths(paths,rotation=AoA0)
+# %timeit loc.computeAllPathsV1(AoD,DAoA,TDoA,AoA0)
+# %timeit loc.computeAllPaths(paths,rotation=AoA0)
 
 rotation0_1D=np.concatenate([AoA0,[np.pi/2],[0]])
 R0_1D=loc.rMatrix(*rotation0_1D)
@@ -162,3 +163,27 @@ paths_3D=pd.DataFrame({'DAoA':DAoA_3D,'AoD':AoD,'TDoA':TDoA,'ZoD':ZoD,'DZoA':DZo
 d0_est,ToAE_est,d_est=loc.computeAllPaths(paths_3D,rotation=rotation0_3D)
 print(f'3D Location 3D-rotation match {np.all(np.isclose(d0, d0_est))}  {np.all(np.isclose(tauE, ToAE_est))}  {np.all(np.isclose(d, d_est))}' )
 
+
+#test marginal algoritm for rotation
+Nant=32
+Niter=30
+paths_iter=paths_3D
+rotation_iter=rotation0_3D
+rotation0_coarse=np.round( rotation_iter*Nant/np.pi)*np.pi/Nant
+
+d0_iter=np.zeros((Niter,3))
+tE_iter=np.zeros((Niter))
+r0_iter=np.zeros((Niter+1,3))
+r0_iter[0,:]=rotation0_coarse
+for niter in range(Niter):
+    d0_iter[niter,:],tE_iter[niter],_=loc.computeAllPaths(paths_iter,rotation=r0_iter[niter,:])
+    res=opt.root( loc.locCheckAtRotation , x0=r0_iter[niter,:], args=(paths_iter,d0_iter[niter,:],tE_iter[niter]), method='lm')
+    r0_iter[niter+1,:]=res.x
+
+
+fig_ctr+=1
+fig=plt.figure(fig_ctr)
+plt.plot(range(Niter),np.linalg.norm(d0_iter-d0,axis=1)/np.linalg.norm(d0_iter[0,:]-d0),'b',label='location')
+plt.plot(range(Niter),np.linalg.norm(np.mod(r0_iter[1:,:],2*np.pi)-np.mod(rotation_iter,2*np.pi),axis=1)/np.linalg.norm(rotation0_coarse-rotation_iter),'r',label='rotation')
+
+a,b=loc.numericRot0ByMarginals(paths_3D,rotation0_coarse)

@@ -241,10 +241,10 @@ class MultipathLocationEstimator:
                 return( self.rMatrix3D(A,2)@self.rMatrix3D(E,1) )
             else:
                 return( self.rMatrix3D(A,2)@self.rMatrix3D(E,1)@self.rMatrix3D(S,0) )
-    def computeAllPaths(self, paths , rotation=None):       
-        Npath=paths.shape[0]
-        #TODO choose a library to provide uVector globally to the project
+    
+    def formLinPathProblem(self, paths , rotation=None):
         mode3D = ('ZoD' in paths.columns) and ('DZoA' in paths.columns)
+        #TODO choose a library to provide uVector globally to the project
         if mode3D:
             DoD = self.uVector(paths.AoD,paths.ZoD).T
             if rotation is None:
@@ -257,18 +257,22 @@ class MultipathLocationEstimator:
         else:
             DoD = self.uVector(paths.AoD).T
             DoA = self.uVector(paths.DAoA+ (rotation if rotation is not None else 0) ).T
-        C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
-        # print(C12)
-        M=np.column_stack([(DoD-DoA)/(1+C12),-np.ones((Npath,1))])
-        if np.any(C12[:,0]==-1):#fix the indetermination case DoD=-DoA
-            M[C12[:,0]==-1,0:-1]=DoD[C12[:,0]==-1,:]
+        C12= np.sum(-DoD*DoA,axis=1)
+        return(DoD,DoA,C12)
+        
+    def computeAllPaths(self, paths , rotation=None):       
+        Npath=paths.shape[0]
+        DoD,DoA,C12 = self.formLinPathProblem(paths,rotation)
+        M=np.column_stack([(DoD-DoA)/(1+C12[:,None]),-np.ones((Npath,1))])
+        if np.any(C12==-1):#fix the indetermination case DoD=-DoA
+            M[C12==-1,0:-1]=DoD[C12==-1,:]
         
         result_est=np.linalg.lstsq(M, paths.TDoA*self.c, rcond=None)[0]
         d0_est = result_est[0:-1]
         l0err = result_est[-1]
         l0est = np.linalg.norm(d0_est)
         ToA0_est = (l0est - l0err)/self.c
-        Vi=(DoD+C12*DoA)/(1-C12**2)
+        Vi=(DoD+C12[:,None]*DoA)/(1-C12[:,None]**2)
         liD_est=Vi@d0_est
         d_est=liD_est[:,None]*DoD
         return(d0_est,ToA0_est,d_est)
@@ -476,16 +480,6 @@ class MultipathLocationEstimator:
             for n2 in range(Ng-1):
                 v_big[n2*Ng+n1:n2*Ng+n1+Ndim]=v_all[n1]-v_all[n2+1*(n2>=n1)]
         return( v_big )
-    
-    def locCheckAtRotation(self,rotation,paths,d0,tauE):
-        DoD = self.uVector(paths.AoD,paths.ZoD).T
-        Rm=self.rMatrix(*rotation)
-        DDoA = self.uVector(paths.DAoA,paths.DZoA).T
-        DoA=DDoA@Rm.T        
-        C12= np.sum(-DoD*DoA,axis=1,keepdims=True)
-        li=np.linalg.norm(d0)+tauE+paths.TDoA*self.c
-        return( li*(1+C12)+DDoA@Rm.T@d0-DoD@d0 )       
-        
 
     def bruteAoA0ByPathGroups(self, paths, nPoint=None, groupMethod='drop1'):
         """Estimates the value of the receiver Azimuth AoA0 by brute force by minimizing the
@@ -525,7 +519,7 @@ class MultipathLocationEstimator:
 
         return((intervalAoA0[n1],intervalZoA0[n2],intervalSoA0[n3]))
     
-    def numericRot0ByPathGroups(self, paths, init_AoA0, groupMethod='drop1', orientationMethod='lm'):
+    def numericRot0ByPathGroups(self, paths, init_RoT0, groupMethod='drop1', orientationMethod='lm'):
         """Performs the estimation of the value of AoA0 using the scipy.optimize.root function.        
         The value of the estimated offset angle of the UE orientation is obtained by finding the zeros of the 
         minimum mean square error (MMSE) equation defined by feval_wrapper_AllPathsByGroups. For this purpose, it is used
@@ -533,33 +527,52 @@ class MultipathLocationEstimator:
         In this case, it is used the root method of scipy.optimize.root() to solve a non-linear equation with parameters.                  
         """
         if orientationMethod in self.tableMethodsScipyRoot:
-            # res = opt.root(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
-            res = opt.root(self.locDifByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
+            # res = opt.root(self.locMSEByPathGroups, x0=init_RoT0, args=(paths, groupMethod), method=orientationMethod)
+            res = opt.root(self.locDifByPathGroups, x0=init_RoT0, args=(paths, groupMethod), method=orientationMethod)
         elif orientationMethod in self.tableMethodsScipyMinimize:
              #generally the 'lm' method above is recommended to minimize non-linear least squares, before the methods in the following
-            res = opt.minimize(self.locMSEByPathGroups, x0=init_AoA0, args=(paths, groupMethod), method=orientationMethod)
+            res = opt.minimize(self.locMSEByPathGroups, x0=init_RoT0, args=(paths, groupMethod), method=orientationMethod)
         # if not res.success:
         #     print("Attempting to correct initialization problem")
         #     niter = 0 
         #     while (not res.success) and (niter<100):
-        #         if len(init_AoA0)==3:
+        #         if len(init_RoT0)==3:
         #             random_init=np.random.rand(3)*np.pi*[2,1,2]
         #         else:
-        #             random_init=2*np.pi*np.random.rand(len(init_AoA0))#should only be called with 1 but just in case
+        #             random_init=2*np.pi*np.random.rand(len(init_RoT0))#should only be called with 1 but just in case
         #         res = opt.root(self.locMSEByPathGroups, x0=random_init, args=(paths, groupMethod), method=orientationMethod)
         #         niter += 1
         #print("Final Niter %d"%niter)
         # print(res)
         if res.success:
-            if hasattr(res, 'cov_x'):
-                return (res.x,res.cov_x)
-            else:
-                return (res.x,None)
+            return (res.x,res)
         else:
             print("ERROR: AoA0 root not found")
-            return (init_AoA0,np.inf)
+            return (init_RoT0,None)
                 
-
+        
+    def locCheckAtRotation(self,rotation,paths,d0,tauE):
+        # DoD = self.uVector(paths.AoD,paths.ZoD).T
+        # Rm=self.rMatrix(*rotation)
+        # DDoA = self.uVector(paths.DAoA,paths.DZoA).T
+        # DoA=DDoA@Rm.T        
+        # C12= np.sum(-DoD*DoA,axis=1)
+        DoD,DoA,C12 = self.formLinPathProblem(paths,rotation)
+        li=np.linalg.norm(d0)+(paths.TDoA.to_numpy()-tauE)*self.c
+        return( li*(1+C12)+DoA@d0-DoD@d0 )
+    
+    def numericRot0ByMarginals(self, paths, init_RoT0, nIter = 10):
+        mode3D = ('ZoD' in paths.columns) and ('DZoA' in paths.columns)
+        d0_iter=np.zeros((nIter, 3 if mode3D else 2 ))
+        tE_iter=np.zeros((nIter))
+        r0_iter=np.zeros((nIter+1, 3 if mode3D else 1 ))
+        r0_iter[0,:]=init_RoT0
+        for n in range(nIter):
+            d0_iter[n,:],tE_iter[n],_=self.computeAllPaths(paths,rotation=r0_iter[n,:])
+            res=opt.root( self.locCheckAtRotation , x0=r0_iter[n,:], args=(paths,d0_iter[n,:],tE_iter[n]), method='lm')
+            r0_iter[n+1,:]=res.x
+        return (r0_iter[nIter,:],(d0_iter,tE_iter,r0_iter))
+    
     def computeAllLocationsFromPaths(self, paths, orientationMethod=None, orientationMethodArgs={'groupMethod':'drop1','hintRotation':None}):
         """Performs the estimation of the phi_0 especified by the parameter method, and returns the position 
         of the UE for this angle.
@@ -617,6 +630,22 @@ class MultipathLocationEstimator:
                 rotation_cov = np.pi/nPoint[0]
             else:
                 rotation_cov = np.pi/nPoint
+        elif themethod == 'margin':
+            if "initRotation" in orientationMethodArgs:
+                initRotation = orientationMethodArgs["initRotation"]
+            else:
+                #coarse brute approximation for initialization
+                if mode3D:
+                    #we could use random init because brute force is unbearably slow in 3D and performs poorly anayways
+                    # initRotation = np.random.rand(3)*[2,1,2]*np.pi
+                    # found that 25x is the minimum to avoid local minima often enough
+                    initRotation = self.brute3DRotByPathGroups(paths, (25,25,25), groupMethod)
+                else:
+                    initRotation = self.bruteAoA0ByPathGroups(paths, 100, groupMethod)
+            (rotation_est, rotation_cov) = self.numericRot0ByMarginals(paths, initRotation)
+            if not mode3D:
+                rotation_est=rotation_est[0]
+            
         elif themethod in (self.tableMethodsScipyRoot+self.tableMethodsScipyMinimize):
             if "groupMethod" in orientationMethodArgs:
                 groupMethod = orientationMethodArgs["groupMethod"]        
@@ -639,7 +668,6 @@ class MultipathLocationEstimator:
         else:
             print("unsupported method")
             return(None)
-        
         (d0, tauerr, d) = self.computeAllPaths(paths, rotation=rotation_est)
 
         return(d0, tauerr, d, rotation_est, rotation_cov)

@@ -62,8 +62,11 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #2D simulation with 3gpp channels with first reflection fitted multipath
 # args = parser.parse_args("-N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP2D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
-# args = parser.parse_args("--z3D -N 20 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+#2D simulation with Geometric ray tracing simple channel model
+# args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
+
+args = parser.parse_args("--z3D -N 3 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -123,7 +126,8 @@ else:
        #  (False,64,'3path','lm'),
        #  (False,np.inf,'drop1','brute'),
          # (False,np.inf,'drop1','lm'),
-          (False,64,'drop1','lm'),
+        (False,64,'drop1','lm'),
+        (False,64,'','margin'),
        ]
 NlocAlg =len(lLocAlgs)
 
