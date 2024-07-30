@@ -676,9 +676,9 @@ class MultipathLocationEstimator:
         
     def getTParamToLoc(self,d0,d,dAxes,vAxes):        
         dfun={
-            ('dTDoA','dx0') : lambda d0,d: d0[...,None,0]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1),
-            ('dTDoA','dy0') : lambda d0,d: d0[...,None,1]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1),
-            ('dTDoA','dz0') : lambda d0,d: d0[...,None,2]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1),
+            ('dTDoA','dx0') : lambda d0,d: d0[...,None,0]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1)),
+            ('dTDoA','dy0') : lambda d0,d: d0[...,None,1]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1)),
+            ('dTDoA','dz0') : lambda d0,d: d0[...,None,2]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1)),
             ('dTDoA','dToAE') : lambda d0,d: -np.ones_like(d[:,None,:]),
             #TODO add rotation covariance support in 3D
             # ('dTDoA','dAoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
@@ -695,9 +695,9 @@ class MultipathLocationEstimator:
             # ('dAoD','dAoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
             # ('dAoD','dZoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
             # ('dAoD','dSoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
-            ('dTDoA','dx') : lambda d0,d: (d[...,None,1]==d[...,1])*-d[...,1]/np.linalg.norm(d[...,0:2],axis=-1),
-            ('dTDoA','dy') : lambda d0,d: (d[...,None,0]==d[...,0])*d[...,0]/np.linalg.norm(d[...,0:2],axis=-1),
-            ('dTDoA','dz') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dAoD','dx') : lambda d0,d: (d[...,None,1]==d[...,1])*-d[...,1]/np.linalg.norm(d[...,0:2],axis=-1)**2,
+            ('dAoD','dy') : lambda d0,d: (d[...,None,0]==d[...,0])*d[...,0]/np.linalg.norm(d[...,0:2],axis=-1)**2,
+            ('dAoD','dz') : lambda d0,d: np.zeros_like(d[:,None,:]),
             
             ('dZoD','dx0') : lambda d0,d: np.zeros_like(d[:,None,:]),
             ('dZoD','dy0') : lambda d0,d: np.zeros_like(d[:,None,:]),
@@ -708,17 +708,32 @@ class MultipathLocationEstimator:
             # ('dZoD','dSoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
             ('dZoD','dx') : lambda d0,d: (d[...,None,0]==d[...,0])*d[...,2]*d[...,0]/np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
             ('dZoD','dy') : lambda d0,d: (d[...,None,1]==d[...,1])*d[...,2]*d[...,1]/np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
-            ('dZoD','dz') : lambda d0,d: (d[...,None,2]==d[...,2])*-d[...,2]*np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
-              
-            #   ('dDAoA','dx0') : lambda d0,d: (y[:,None,:]-y0)/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            #   ('dDAoA','dy0') : lambda d0,d: (x0-x[:,None,:])/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            #   ('dDAoA','dToAE') : lambda d0,d: np.zeros_like(x[:,None,:]),
-            #   ('dDAoA','dAoA0') : lambda d0,d: -np.ones_like(x[:,None,:]),
-            #   ('dDAoA','dx') : lambda d0,d: (y0-y[:,None,:])/((x0-x)**2+(y0-y)**2),
-            #   ('dDAoA','dy') : lambda d0,d: (x[:,None,:]-x0)/((x0-x)**2+(y0-y)**2)
+            ('dZoD','dz') : lambda d0,d: (d[...,None,2]==d[...,2])*-np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
+            
+            ('dAoA','dx0') : lambda d0,d: (d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
+            ('dAoA','dy0') : lambda d0,d: -(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
+            ('dAoA','dz0') : lambda d0,d: np.zeros_like(d[:,None,:]),   
+            ('dAoA','dToAE') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dAoA','dAoA0') : lambda d0,d: ?????????????????   np.ones_like(d[:,None,:]),
+            # ('dAoA','dZoA0') : lambda d0,d: ?????????????????  
+            # ('dAoA,'dSoA0') : lambda d0,d: ?????????????????  
+            ('dAoA','dx') : lambda d0,d: - (d[...,None,1]==d[...,1])*(d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
+            ('dAoA','dy') : lambda d0,d: (d[...,None,0]==d[...,0])*(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
+            ('dAoA','dz') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            
+            ('dZoA','dx0') : lambda d0,d: -(d[...,2]-d0[...,None,2])*(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
+            ('dZoA','dy0') : lambda d0,d: -(d[...,2]-d0[...,None,2])*(d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
+            ('dZoA','dz0') : lambda d0,d: np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
+            ('dZoA','dToAE') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dZoA','dAoA0') : lambda d0,d: ????????????????? 
+            # ('dZoA','dZoA0') : lambda d0,d: ?????????????????  
+            # ('dZoA,'dSoA0') : lambda d0,d: ?????????????????  
+            ('dZoA','dx') : lambda d0,d: (d[...,None,0]==d[...,0])*(d[...,2]-d0[...,None,2])*(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
+            ('dZoA','dy') : lambda d0,d: (d[...,None,1]==d[...,1])*(d[...,2]-d0[...,None,2])*(d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
+            ('dZoA','dz') : lambda d0,d: (d[...,None,2]==d[...,2])*-np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
             }                                                     
                                                      
-        T= np.concatenate([np.vstack([dfun[term,var](x0,y0,x,y) for term in dAxes]) for var in vAxes],axis=1)
+        T= np.concatenate([np.vstack([dfun[term,var](d0,d) for term in dAxes]) for var in vAxes],axis=1)
         return(T)
 
 if __name__ == '__main__':
