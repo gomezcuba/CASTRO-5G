@@ -1,13 +1,7 @@
 #!/usr/bin/python
 
-from CASTRO5G import threeGPPMultipathGenerator as pg
-from CASTRO5G import multipathChannel as mc
-
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import animation, rc
-rc('animation', html='html5')
 from matplotlib import cm
 
 import sys
@@ -18,25 +12,26 @@ from CASTRO5G import multipathChannel as mc
 plt.close('all')
 fig_ctr=0
 
-model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
-model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
-plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
-los, PLfree, SF = plinfo
-nClusters = clusters.shape[0]
-nNLOSsp=subpaths.loc[1,:].shape[0]#cluster 0 may include the LOS path, 1 and onwards only nlos
+# model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
+# model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
+# plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
+# los, PLfree, SF = plinfo
+# nClusters = clusters.shape[0]
+# nNLOSsp=subpaths.loc[1,:].shape[0]#cluster 0 may include the LOS path, 1 and onwards only nlos
 
-#TODO - insert adapted AOA and compare response
+# #TODO - insert adapted AOA and compare response
 
-#4D  color intensity plots vs delay, AoA and AoD grid
+# #4D  color intensity plots vs delay, AoA and AoD grid
 
-pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy()
+# pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy()
 
 #4D  color intensity plots vs delay, AoA and AoD grid
 
 #DEC
-Ts=2 #ns
-Ds=np.max(subpaths.TDoA*1e9)
-Ntaps = int(np.ceil(Ds/Ts))
+Ts=2.5 #ns
+Ntaps=20
+Ds=Ntaps*Ts
+subpaths.TDoA=subpaths.TDoA*Ds/np.max(subpaths.TDoA*1e9)
 n=np.linspace(0,Ntaps-1,Ntaps)
 pulses = np.sinc(n[:,None]-subpaths.TDoA.to_numpy()*1e9/Ts)
 
@@ -52,7 +47,7 @@ arrayGainAllPathsTx=(AntennaResponsesTx.transpose([0,2,1]).conj()@BeamformingVec
 
 hnArray = np.sum(pulses[:,None,None,:]*arrayGainAllPathsTx[None,:,None,:]*arrayGainAllPathsRx[None,None,:,:]*pathAmplitudes[None,None,None,:],axis=3)
 
-NtapsPerFigure = 10
+NtapsPerFigure = Ntaps
 
 Nfigs = int(np.ceil(Ntaps/NtapsPerFigure))
 chanGainsdB=10*np.log10(np.abs(hnArray)**2)
@@ -82,5 +77,9 @@ for nfig in range(0,Nfigs):
     cbar = fig.colorbar(plt.cm.ScalarMappable(cmap=cm.jet),shrink=0.8,label = 'Directive Array Channel Gain dB')
     cbar.set_ticks((np.arange(np.ceil(np.min(chanGainsdB)/10)*10,np.max(chanGainsdB),10) -np.min(chanGainsdB) )/(np.max(chanGainsdB)-np.min(chanGainsdB)))
     cbar.set_ticklabels(['%.0f dB'%x for x in np.arange(np.ceil(np.min(chanGainsdB)/10)*10,np.max(chanGainsdB),10)])
+    ax.set_xlabel('AoD')
+    ax.set_ylabel('TDoA')
+    ax.set_zlabel('AoA')
 
-plt.savefig("../Figures/sparseChannel4D.eps")
+plt.savefig("../Figures/sparseChannel4D.svg")
+plt.savefig("../Figures/sparseChannel4D.png")

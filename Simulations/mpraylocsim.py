@@ -65,7 +65,7 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #2D simulation with Geometric ray tracing simple channel model
 # args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
+args = parser.parse_args("--noloc --nompg --z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 
 # args = parser.parse_args("--z3D -N 20 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
 
@@ -120,15 +120,15 @@ if args.algs:
     #TODO define more elegant syntax for cases and better parser that converts bool properly
 else:
     lLocAlgs=[#a opriori aoa0, quantized aoa0, grouping method, optimization method
-        (True,np.inf,'','','LS-pure',':','o','b'),
-        (True,64,'','','LS-Q64',':','*','b'),
+        (True,np.inf,'','','Linear + known rotation',':','o','b'),
+        (True,64,'','','Linear + 64x gyroscope',':','*','b'),
        #  (False,np.inf,'3path','brute','Brute3P',':','s','r'),
        #  (False,np.inf,'3path','lm','Root3P','-.','s','g'),
        #  (False,64,'3path','lm','Root3Ph','-.','x','g'),
        #  (False,np.inf,'drop1','brute','BruteD1','-','s','r'),
          # (False,np.inf,'drop1','lm','RootD1','-','s','g'),
-        (False,64,'drop1','lm','RootD1h','-','x','g'),
-        (False,64,'','margin','Margin','--','d','m'),
+        (False,64,'drop1','lm','Non-linear LS orientation','-','x','g'),
+        (False,64,'','margin','Iterative orientation','--','d','m'),
        ]
 NlocAlg =len(lLocAlgs)
 

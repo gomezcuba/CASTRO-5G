@@ -81,19 +81,6 @@ plt.savefig('../Figures/graphsol%d.svg'%(Npath))
 
 fig_ctr+=1
 fig=plt.figure(fig_ctr)
-
-MSD=np.mean(np.abs(d0_3path-np.mean(d0_3path,axis=1,keepdims=True))**2,axis=(1,2))
-plt.plot(AoA0_search,MSD)
-plt.axis([0,2*np.pi,0,np.percentile(MSD,80)])
-ctm=np.argmin(MSD)
-plt.plot(AoA0_true[0],MSD[ctm],'sg')
-plt.plot(AoA0_search[ctm],MSD[ctm],'xr')
-plt.xlabel("AoA0 search")
-plt.ylabel("MSD 3-path")
-plt.savefig('../Figures/graphcost3P%d.svg'%(Npath))
-
-fig_ctr+=1
-fig=plt.figure(fig_ctr)
 ax = plt.axes(projection='3d')
 for gr in range(Npath-2):
     ax.plot3D(d0_3path[:,gr,0],d0_3path[:,gr,1],ToA0_true*c+c*tauE_3path[:,gr], ':', label='_nolegend_')
@@ -128,15 +115,21 @@ plt.savefig('../Figures/graphsoldrop1%d.svg'%(Npath))
 
 fig_ctr+=1
 fig=plt.figure(fig_ctr)
-
-MSD=np.mean(np.abs(d0_drop1-np.mean(d0_drop1,axis=1,keepdims=True))**2,axis=(1,2))
-plt.plot(AoA0_search,MSD)
-plt.axis([0,2*np.pi,0,np.percentile(MSD,80)])
-plt.plot(AoA0_true[0],MSD[ctm],'sg')
-plt.plot(AoA0_search[ctm],MSD[ctm],'xr')
+v_3path=np.concatenate([d0_3path,c*tauE_3path[:,:,None]],axis=2)
+v_drop1=np.concatenate([d0_drop1,c*tauE_drop1[:,:,None]],axis=2)
+MSD_3path=np.mean(np.abs(v_3path-np.mean(v_3path,axis=1,keepdims=True))**2,axis=(1,2))
+MSD_drop1=np.mean(np.abs(v_drop1-np.mean(v_drop1,axis=1,keepdims=True))**2,axis=(1,2))
+plt.semilogy(AoA0_search,MSD_3path,'-b',label="3-Path groups")
+plt.semilogy(AoA0_search,MSD_drop1,'-g',label="Drop-1 groups")
+ctm_3path=np.argmin(MSD_3path)
+ctm_drop1=np.argmin(MSD_drop1)
+plt.plot(AoA0_true[0]*np.ones(2),[0,np.max(MSD_3path)],':k')
+plt.plot(AoA0_search[ctm_3path],MSD_3path[ctm_3path],'xr')
+plt.plot(AoA0_search[ctm_drop1],MSD_drop1[ctm_drop1],'+r')
 plt.xlabel("AoA0 search")
-plt.ylabel("MSD drop1")
-plt.savefig('../Figures/graphcostD1%d.svg'%(Npath))
+plt.ylabel("MSE cost function")
+plt.legend()
+plt.savefig('../Figures/graphcost%d.svg'%(Npath))
 
 fig_ctr+=1
 fig=plt.figure(fig_ctr)

@@ -99,7 +99,7 @@ class MultipathLocationEstimator:
         x0_est, y0_est : ndarray
             x,y-coordinates of the UE estimated position.
             
-        tauEest : ndarray
+        ToAErr_est : ndarray
             initial receiver clock offset measured as difference between the TDoA 'measurement zero' and the light
             travel time in the LoS direction l0 := √(x0_est² + y0_est²)
             
@@ -271,13 +271,13 @@ class MultipathLocationEstimator:
         d0_est = result_est[0:-1]
         l0err = result_est[-1]
         l0est = np.linalg.norm(d0_est)
-        ToA0_est = (l0est - l0err)/self.c
+        ToAErr_est = (l0est - l0err)/self.c
         Vi=(DoD+C12[:,None]*DoA)/(1-C12[:,None]**2)
         if np.any(C12==-1):#fix the indetermination case DoD=-DoA
             Vi[C12==-1,:]=DoD[C12==-1,:]
         liD_est=Vi@d0_est
         d_est=liD_est[:,None]*DoD
-        return(d0_est,ToA0_est,d_est)
+        return(d0_est,ToAErr_est,d_est)
     
     def computeAllPathsV1wrap(self, paths, rotation=None):
         """Computes computeAllPathsV1 with the input-output convention of the new version
@@ -452,11 +452,11 @@ class MultipathLocationEstimator:
         mode3D = ('ZoD' in paths.columns) and ('DZoA' in paths.columns)    
         Ndim = 3 if mode3D else 2
         d0_all = np.zeros((Ngroup,Ndim))
-        tauEall = np.zeros(Ngroup)
+        ToAErr_all = np.zeros(Ngroup)
         for gr in range(Ngroup):
-            # (d0_all[gr,:], tauEall[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
-            (d0_all[gr,:], tauEall[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
-        v_all=np.concatenate([d0_all,self.c*tauEall[:,None]],axis=1)        
+            # (d0_all[gr,:], ToAErr_all[gr],_) = self.computeAllPathsV1wrap(paths[table_group[gr, :]], rotation=x)
+            (d0_all[gr,:], ToAErr_all[gr],_) = self.computeAllPaths(paths[table_group[gr, :]], rotation=x)
+        v_all=np.concatenate([d0_all,self.c*ToAErr_all[:,None]],axis=1)        
         return(v_all)
     
     def locMSEByPathGroups(self, x, paths, groupMethod='drop1'):
@@ -553,14 +553,14 @@ class MultipathLocationEstimator:
             return (init_RoT0,None)
                 
         
-    def locCheckAtRotation(self,rotation,paths,d0,tauE):
+    def locCheckAtRotation(self,rotation,paths,d0,ToAErr):
         # DoD = self.uVector(paths.AoD,paths.ZoD).T
         # Rm=self.rMatrix(*rotation)
         # DDoA = self.uVector(paths.DAoA,paths.DZoA).T
         # DoA=DDoA@Rm.T        
         # C12= np.sum(-DoD*DoA,axis=1)
         DoD,DoA,C12 = self.formLinPathProblem(paths,rotation)
-        li=np.linalg.norm(d0)+(paths.TDoA.to_numpy()-tauE)*self.c
+        li=np.linalg.norm(d0)+(paths.TDoA.to_numpy()-ToAErr)*self.c
         return( li*(1+C12)+DoA@d0-DoD@d0 )
     
     def numericRot0ByMarginals(self, paths, init_RoT0, nIter = 10):
@@ -670,35 +670,55 @@ class MultipathLocationEstimator:
         else:
             print("unsupported method")
             return(None)
-        (d0, tauerr, d) = self.computeAllPaths(paths, rotation=rotation_est)
+        (d0, ToAErr, d) = self.computeAllPaths(paths, rotation=rotation_est)
 
-        return(d0, tauerr, d, rotation_est, rotation_cov)
+        return(d0, ToAErr, d, rotation_est, rotation_cov)
         
-    def getTParamToLoc(self,x0,y0,tauE,AoA0,x,y,dAxes,vAxes):
+    def getTParamToLoc(self,d0,d,dAxes,vAxes):        
         dfun={
-            ('dTau','dx0') : lambda x0,y0,x,y: x0/3e8/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            ('dTau','dy0') : lambda x0,y0,x,y: y0/3e8/np.sqrt((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            ('dTau','dTauE') : lambda x0,y0,x,y: -np.ones_like(x[:,None,:]),
-            ('dTau','dAoA0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dTau','dx') : lambda x0,y0,x,y: ((x[:,None,:]==x)*x)/3e8*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
-            ('dTau','dy') : lambda x0,y0,x,y: ((y[:,None,:]==y)*y)/3e8*(1/np.sqrt((x0-x)**2+(y0-y)**2)+1/np.sqrt((x)**2+(y)**2)),
+            ('dTDoA','dx0') : lambda d0,d: d0[...,None,0]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1),
+            ('dTDoA','dy0') : lambda d0,d: d0[...,None,1]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1),
+            ('dTDoA','dz0') : lambda d0,d: d0[...,None,2]/(self.c*np.linalg.norm(d-d0[...,None,:],axis=-1),
+            ('dTDoA','dToAE') : lambda d0,d: -np.ones_like(d[:,None,:]),
+            #TODO add rotation covariance support in 3D
+            # ('dTDoA','dAoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dTDoA','dZoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dTDoA','dSoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dTDoA','dx') : lambda d0,d: (d[...,None,0]==d[...,0])*d[...,0]/self.c*(1/np.linalg.norm(d,axis=-1)+1/np.linalg.norm(d-d0[...,None,:],axis=-1)),
+            ('dTDoA','dy') : lambda d0,d: (d[...,None,1]==d[...,1])*d[...,1]/self.c*(1/np.linalg.norm(d,axis=-1)+1/np.linalg.norm(d-d0[...,None,:],axis=-1)),
+            ('dTDoA','dz') : lambda d0,d: (d[...,None,2]==d[...,2])*d[...,2]/self.c*(1/np.linalg.norm(d,axis=-1)+1/np.linalg.norm(d-d0[...,None,:],axis=-1)),
+                                                     
+            ('dAoD','dx0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dAoD','dy0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dAoD','dz0') : lambda d0,d: np.zeros_like(d[:,None,:]), 
+            ('dAoD','dToAE') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dAoD','dAoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dAoD','dZoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dAoD','dSoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dTDoA','dx') : lambda d0,d: (d[...,None,1]==d[...,1])*-d[...,1]/np.linalg.norm(d[...,0:2],axis=-1),
+            ('dTDoA','dy') : lambda d0,d: (d[...,None,0]==d[...,0])*d[...,0]/np.linalg.norm(d[...,0:2],axis=-1),
+            ('dTDoA','dz') : lambda d0,d: np.zeros_like(d[:,None,:]),
             
-            ('dAoD','dx0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dAoD','dy0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dAoD','dTauE') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dAoD','dAoA0') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dAoD','dx') : lambda x0,y0,x,y: (-y*(y[:,None,:]==y))/((x)**2+(y)**2),
-            ('dAoD','dy') : lambda x0,y0,x,y: (x*(x[:,None,:]==x))/((x)**2+(y)**2),
-            
-            ('dDAoA','dx0') : lambda x0,y0,x,y: (y[:,None,:]-y0)/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            ('dDAoA','dy0') : lambda x0,y0,x,y: (x0-x[:,None,:])/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
-            ('dDAoA','dTauE') : lambda x0,y0,x,y: np.zeros_like(x[:,None,:]),
-            ('dDAoA','dAoA0') : lambda x0,y0,x,y: -np.ones_like(x[:,None,:]),
-            ('dDAoA','dx') : lambda x0,y0,x,y: (y0-y[:,None,:])/((x0-x)**2+(y0-y)**2),
-            ('dDAoA','dy') : lambda x0,y0,x,y: (x[:,None,:]-x0)/((x0-x)**2+(y0-y)**2)
-              }
+            ('dZoD','dx0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dZoD','dy0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dZoD','dz0') : lambda d0,d: np.zeros_like(d[:,None,:]),            
+            ('dZoD','dToAE') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dZoD','dAoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dZoD','dZoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            # ('dZoD','dSoA0') : lambda d0,d: np.zeros_like(d[:,None,:]),
+            ('dZoD','dx') : lambda d0,d: (d[...,None,0]==d[...,0])*d[...,2]*d[...,0]/np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
+            ('dZoD','dy') : lambda d0,d: (d[...,None,1]==d[...,1])*d[...,2]*d[...,1]/np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
+            ('dZoD','dz') : lambda d0,d: (d[...,None,2]==d[...,2])*-d[...,2]*np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
+              
+            #   ('dDAoA','dx0') : lambda d0,d: (y[:,None,:]-y0)/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            #   ('dDAoA','dy0') : lambda d0,d: (x0-x[:,None,:])/((x0-x[:,None,:])**2+(y0-y[:,None,:])**2),
+            #   ('dDAoA','dToAE') : lambda d0,d: np.zeros_like(x[:,None,:]),
+            #   ('dDAoA','dAoA0') : lambda d0,d: -np.ones_like(x[:,None,:]),
+            #   ('dDAoA','dx') : lambda d0,d: (y0-y[:,None,:])/((x0-x)**2+(y0-y)**2),
+            #   ('dDAoA','dy') : lambda d0,d: (x[:,None,:]-x0)/((x0-x)**2+(y0-y)**2)
+            }                                                     
+                                                     
         T= np.concatenate([np.vstack([dfun[term,var](x0,y0,x,y) for term in dAxes]) for var in vAxes],axis=1)
-#        T=np.concatenate(listOfPartials,axis=0)
         return(T)
 
 if __name__ == '__main__':
