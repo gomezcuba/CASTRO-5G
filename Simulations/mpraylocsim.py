@@ -409,9 +409,15 @@ if args.cdf:
         # M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
         # errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
         # plt.semilogx(np.percentile(np.sqrt(varaoaDist)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
-        # if lErrMod[indErr][0]=='dic':
-        #     Nrant=float(lErrMod[indErr][2])
-            # plt.semilogx(np.percentile(np.sqrt((np.pi/Nrant)**2/12)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
+        errorCRLBnormalized=np.zeros(Nsims)
+        for n in range(Nsims):
+            d0=allUserData.loc[n][locColNames].to_numpy()
+            d=allPathsData.loc[n,:][mapColNames].to_numpy()
+            Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoD','dAoA'],['dx0','dy0','dz0'])
+            errorCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(3),rcond=None)[0]))        
+        if lErrMod[indErr][0]=='dic':
+            Nrant=float(lErrMod[indErr][2])
+            plt.semilogx(np.percentile(np.sqrt((np.pi/Nrant)**2/12)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
         plt.xlabel('Location error(m)')
         plt.ylabel('C.D.F.')
         plt.legend()
