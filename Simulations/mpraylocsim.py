@@ -377,14 +377,31 @@ location_error=np.linalg.norm( allLocEstData[locColNames]-allUserData[locColName
 mapping_dif=allMapEstData[mapColNames]-allPathsData[mapColNames]
 mapping_meandist=mapping_dif.apply(np.linalg.norm,axis=1).groupby(["alg","errNo","ue"]).mean()
 mapping_error=mapping_meandist.to_numpy().reshape(NlocAlg,NerrMod,Nsims)
-
-# mapping_error[:,:,x==0]=np.inf#fix better
-tauE_err = np.abs( allLocEstData['tauE']-allUserData['tauE'] ).to_numpy().reshape(NlocAlg,NerrMod,Nsims)
-rot0_err=np.mean(np.abs(allLocEstData[rotColNames] - allUserData[rotColNames]),axis=1).to_numpy().reshape(NlocAlg,NerrMod,Nsims)
 d0_dumb=np.random.rand(Nsims,Ndim)*(dmax-dmin)+dmin
 error_dumb=np.linalg.norm(d0_dumb-allUserData[locColNames],axis=-1)
 d_dumb=np.random.rand(*allMapEstData.shape)*(dmax-dmin)+dmin
 map_dumb=(allMapEstData-d_dumb).apply(np.linalg.norm,axis=1).groupby(["alg","errNo","ue"]).mean().to_numpy().reshape(NlocAlg,NerrMod,Nsims)
+
+errorCRLBnormalized=np.zeros(Nsims)
+mappingCRLBnormalized=np.zeros(Nsims)
+for n in range(Nsims):
+    d0=allUserData.loc[n][locColNames].to_numpy()
+    d=allPathsData.loc[n,:][mapColNames].to_numpy()
+    Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoA'],['dx0','dy0','dz0'])
+    scale=np.repeat([Ts,np.pi],d.shape[0])
+    Tm=Tm/scale
+    errorCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(Ndim),rcond=None)[0])) 
+    
+    Npath=d.shape[0]
+    Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoD','dAoA'],['dx','dy','dz'])
+    scale=np.repeat([Ts,np.pi,np.pi],d.shape[0])
+    Tm=Tm/scale
+    #TODO check 1/Npath, result not coherent
+    mappingCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(Ndim*Npath),rcond=None)[0]))/Npath 
+
+# mapping_error[:,:,x==0]=np.inf#fix better
+tauE_err = np.abs( allLocEstData['tauE']-allUserData['tauE'] ).to_numpy().reshape(NlocAlg,NerrMod,Nsims)
+rot0_err=np.mean(np.abs(allLocEstData[rotColNames] - allUserData[rotColNames]),axis=1).to_numpy().reshape(NlocAlg,NerrMod,Nsims)
 runtime = allLocEstData.runtime.to_numpy().reshape(NlocAlg,NerrMod,Nsims)
 
 plt.close('all')
@@ -404,20 +421,9 @@ if args.cdf:
             caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogx(np.percentile(location_error[nc,indErr,~np.isnan(location_error[nc,indErr,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)        
         plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
-        # Ts = loc.getTParamToLoc(d0[:,0],d0[:,1],toa0+tauE,aoa0,allPathsData.Xs.to_numpy(),allPathsData.Ys.to_numpy(),['dDAoA',],['dx0','dy0'])
-        # varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2))) * (Npath*Nsims)/np.sum(nvalid)
-        # M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-        # errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
-        # plt.semilogx(np.percentile(np.sqrt(varaoaDist)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
-        errorCRLBnormalized=np.zeros(Nsims)
-        for n in range(Nsims):
-            d0=allUserData.loc[n][locColNames].to_numpy()
-            d=allPathsData.loc[n,:][mapColNames].to_numpy()
-            Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoD','dAoA'],['dx0','dy0','dz0'])
-            errorCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(3),rcond=None)[0]))        
         if lErrMod[indErr][0]=='dic':
-            Nrant=float(lErrMod[indErr][2])
-            plt.semilogx(np.percentile(np.sqrt((np.pi/Nrant)**2/12)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
+            Ndic=float(lErrMod[indErr][2])
+            plt.semilogx(np.percentile(np.sqrt((1/Ndic)**2/12)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
         plt.xlabel('Location error(m)')
         plt.ylabel('C.D.F.')
         plt.legend()
@@ -431,15 +437,9 @@ if args.cdf:
             mapping_error_data_valid = mapping_error[nc,indErr,(~np.isnan(mapping_error[nc,indErr,:]))&(~np.isinf(mapping_error[nc,indErr,:]))]
             plt.semilogx(np.percentile(mapping_error_data_valid,np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
         plt.semilogx(np.percentile(map_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
-        # if Npath<=50:
-        #     Ts = loc.getTParamToLoc(x0,y0,tauE+toa0,aoa0,x,y,['dDAoA'],['dx','dy'])            
-        #     M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-        #     #(1/Npath)*
-        #     errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2*Npath),rcond=None)[0])) for n in range(M.shape[0])])
-        #     varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[indErr,:,:],np.pi*2))) * (Npath*Nsims)/np.sum(nvalid)
-        #     plt.semilogx(np.percentile(np.sqrt(varaoaDist)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="$\\sim$ CRLB")    
-            # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
-            # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
+        if lErrMod[indErr][0]=='dic':
+            Ndic=float(lErrMod[indErr][2])
+            plt.semilogx(np.percentile(np.sqrt((1/Ndic)**2/12)*mappingCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
         plt.xlabel('Mapping error(m)')
         plt.ylabel('C.D.F.')
         plt.legend()
@@ -471,14 +471,9 @@ if args.pcl:
             plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[nc,errCaseMask,:],Pctl,axis=1),line+marker+color,label=caseStr)
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'r',label=caseStr)
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,~losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'g',label=caseStr)
-        # plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(error_dumb,80),':k',label="random guess")
-        # Ts = loc.getTParamToLoc(x0,y0,tauE+toa0,aoa0,x,y,['dDAoA'],['dx0','dy0'])
-        # M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-        # errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2),rcond=None)[0])) for n in range(M.shape[0])])
-        # varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2)) * (Npath*Nsims)/np.sum(nvalid)
-        # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt(varaoaDist),'--k',label="$\\sim$ CRLB")      
-        # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
-        # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
+        plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(error_dumb,Pctl),':k',label="random guess")
+        lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic']) 
+        plt.semilogy(errTics,np.percentile(errorCRLBnormalized,Pctl)*np.sqrt((1/lNant)**2/12),'--k',label="approx. CRLB")       
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel(errTitle)
         plt.ylabel('%.1f percentile location error(m)'%(Pctl))
