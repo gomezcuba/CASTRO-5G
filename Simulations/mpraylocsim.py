@@ -59,15 +59,15 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #infxinfx16:infxinfx64:infxinfx256:infxinfx1024:infxinfx4096
 
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--noloc --nompg -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO202D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO202D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
 #2D simulation with 3gpp channels with first reflection fitted multipath
-# args = parser.parse_args("--noloc --nompg -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP2D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP2D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-args = parser.parse_args("--noloc --nompg --z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
+# args = parser.parse_args("--noloc --nompg --z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
 
-# args = parser.parse_args("--z3D -N 20 -G 3gpp -E=NO,D:64x64x64:256x256x256:1024x1024x1024 --label test --show --print --cdf=no,dicx256x256x256 --pcl=dic:75 --map=no,dicx256x256x256 --vso=no,dicx256x256x256 --rtm=no,dicx256x256x256".split(' '))
+args = parser.parse_args("--noloc --nompg --z3D -N 10 -G Geo:20 -E=NO,D:64:256:1024 --label test --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -97,10 +97,10 @@ def parseErrStr(s):
     elif 'S' in s:
         _,NS,minStd,maxStd = s.split(':')
         lSTD=np.logspace(float(minStd)/10,float(maxStd)/10,int(NS))
-        return( [('std',x) for x in lSTD] )
+        return( [('S',x) for x in lSTD] )
     elif 'D' in s:
         l=s.split(':')        
-        lDicSizes=[tuple(['dic']+y.split('x')) for y in l[1:] ]
+        lDicSizes=[tuple(['D']+y.split('x')) for y in l[1:] ]
         return( lDicSizes )
     else:
         print(f'unrecognized error type {s}')
@@ -126,7 +126,7 @@ else:
        #  (False,np.inf,'3path','lm','Root3P','-.','s','g'),
        #  (False,64,'3path','lm','Root3Ph','-.','x','g'),
        #  (False,np.inf,'drop1','brute','BruteD1','-','s','r'),
-         # (False,np.inf,'drop1','lm','RootD1','-','s','g'),
+          # (False,np.inf,'drop1','lm','RootD1','-','s','g'),
         (False,64,'drop1','lm','Non-linear LS orientation','-','x','g'),
         (False,64,'','margin','Iterative orientation','--','d','m'),
        ]
@@ -291,22 +291,34 @@ for nv in tqdm(range(NerrMod),desc='applying error models to paths'):
     errType=lErrMod[nv][0]
     if errType=='no':
         errPathDF = allPathsData.copy()
-    elif errType=='std': 
+    elif errType=='S': 
         errPathDF = allPathsData.copy()
         Ntot = errPathDF.shape[0]
         errStd=lErrMod[nv][1]        
         errPathDF.AoD  = np.mod(errPathDF.AoD +errStd*2*np.pi*np.random.randn(Ntot),2*np.pi)
         errPathDF.DAoA = np.mod(errPathDF.DAoA+errStd*2*np.pi*np.random.randn(Ntot),2*np.pi)
         errPathDF.TDoA += errStd*Ds*np.random.randn(Ntot)
-    elif errType=='dic':
+    elif errType=='D':
         errPathDF = allPathsData.copy()
-        c1,c2,c3=lErrMod[nv][1:]
+        if len(lErrMod[nv])==2:
+            c1,c2,c3=3*[lErrMod[nv][1]]
+        else:
+            c1,c2,c3=lErrMod[nv][1:4]
         if not c1=='inf':
             errPathDF.AoD  = np.mod(np.round( errPathDF.AoD  *int(c1)/2/np.pi)*2*np.pi/int(c1),2*np.pi)
         if not c2=='inf':
             errPathDF.DAoA = np.mod(np.round( errPathDF.DAoA *int(c2)/2/np.pi)*2*np.pi/int(c2),2*np.pi)
         if not c3=='inf':
-            errPathDF.TDoA  =np.round(errPathDF.TDoA *int(c3)/Ds )*Ds/int(c3)
+            errPathDF.TDoA  =np.round(errPathDF.TDoA *int(c3)/Ds )*Ds/int(c3)        
+        if bMode3D:
+            if len(lErrMod[nv])==2:            
+                c4,c5=2*[lErrMod[nv][1]]
+            else:                
+                c4,c5=lErrMod[nv][4:6]        
+            if not c4=='inf':
+                errPathDF.ZoD  = np.mod(np.round( errPathDF.ZoD  *int(c4)/2/np.pi)*2*np.pi/int(c4),2*np.pi)
+            if not c5=='inf':
+                errPathDF.DZoA = np.mod(np.round( errPathDF.DZoA *int(c5)/2/np.pi)*2*np.pi/int(c5),2*np.pi)
     #TODO Compressed Sensing
     else:
         print("Multipath estimation error model %s to be written"%errType)
@@ -421,8 +433,8 @@ if args.cdf:
             caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogx(np.percentile(location_error[nc,indErr,~np.isnan(location_error[nc,indErr,:])],np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)        
         plt.semilogx(np.percentile(error_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
-        if lErrMod[indErr][0]=='dic':
-            Ndic=float(lErrMod[indErr][2])
+        if lErrMod[indErr][0]=='D':
+            Ndic=float(lErrMod[indErr][1])
             plt.semilogx(np.percentile(np.sqrt((1/Ndic)**2/12)*errorCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
         plt.xlabel('Location error(m)')
         plt.ylabel('C.D.F.')
@@ -437,8 +449,8 @@ if args.cdf:
             mapping_error_data_valid = mapping_error[nc,indErr,(~np.isnan(mapping_error[nc,indErr,:]))&(~np.isinf(mapping_error[nc,indErr,:]))]
             plt.semilogx(np.percentile(mapping_error_data_valid,np.linspace(0,100,21)),np.linspace(0,1,21),line+marker+color,label=caseStr)
         plt.semilogx(np.percentile(map_dumb,np.linspace(0,100,21)),np.linspace(0,1,21),':k',label="random guess")
-        if lErrMod[indErr][0]=='dic':
-            Ndic=float(lErrMod[indErr][2])
+        if lErrMod[indErr][0]=='D':
+            Ndic=float(lErrMod[indErr][1])
             plt.semilogx(np.percentile(np.sqrt((1/Ndic)**2/12)*mappingCRLBnormalized,np.linspace(0,100,21)),np.linspace(0,1,21),'--k',label="approx. CRLB")    
         plt.xlabel('Mapping error(m)')
         plt.ylabel('C.D.F.')
@@ -457,11 +469,11 @@ if args.pcl:
         Pctl = float(pcl[1])
         errType = pcl[0]
         errCaseMask=[x[0]==errType for x in lErrMod]
-        # if (errType == 'dic') and not (np.any([[y=='inf' for y in x[1:]] for x in lErrMod if x[0]==errType ])):
+        # if (errType == 'D') and not (np.any([[y=='inf' for y in x[1:]] for x in lErrMod if x[0]==errType ])):
         #     errLabels=["$10^{%.0f}$"%(np.log10(np.prod(np.array(x[1:],dtype=int)))) for x in lErrMod if x[0]==errType]
         #     errTitle = "Dictionary memory size (number of columns)"
         # else:
-        errLabels=[ "%s:%s:%s"%(x[1:]) for x in lErrMod if x[0]==errType]
+        errLabels=np.array([ float(x[1]) for x in lErrMod if x[0]==errType])
         errTitle = "Dictionary Size"
         errTics=np.arange(len(errLabels))
         fig_ctr=fig_ctr+1
@@ -472,7 +484,7 @@ if args.pcl:
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'r',label=caseStr)
             # plt.semilogy(np.arange(len(errLabels)),np.percentile(location_error[:,:,~losAll][nc,errCaseMask,:],Pctl,axis=1),line+marker+'g',label=caseStr)
         plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(error_dumb,Pctl),':k',label="random guess")
-        lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic']) 
+        lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='D']) 
         plt.semilogy(errTics,np.percentile(errorCRLBnormalized,Pctl)*np.sqrt((1/lNant)**2/12),'--k',label="approx. CRLB")       
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel(errTitle)
@@ -493,7 +505,7 @@ if args.pcl:
         #     errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2*Npath),rcond=None)[0])) for n in range(M.shape[0])])
         #     varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2)) * (Npath*Nsims)/np.sum(nvalid)
         #     plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt(varaoaDist),'--k',label="$\\sim$ CRLB")      
-        #     # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='dic' and x[1]=='inf' and x[3]=='inf']) 
+        #     # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='D' and x[1]=='inf' and x[3]=='inf']) 
         #     # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel(errTitle)

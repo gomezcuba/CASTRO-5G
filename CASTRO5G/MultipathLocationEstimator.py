@@ -695,8 +695,8 @@ class MultipathLocationEstimator:
             # ('dAoD','dAoA0') : lambda d0,d: np.zeros(d.shape[:-1]),
             # ('dAoD','dZoA0') : lambda d0,d: np.zeros(d.shape[:-1]),
             # ('dAoD','dSoA0') : lambda d0,d: np.zeros(d.shape[:-1]),
-            ('dAoD','dx') : lambda d0,d: -np.eye(d.shape[-2])*d[...,1]/np.linalg.norm(d[...,0:2],axis=-1)**2,
-            ('dAoD','dy') : lambda d0,d: np.eye(d.shape[-2])*d[...,0]/np.linalg.norm(d[...,0:2],axis=-1)**2,
+            ('dAoD','dx') : lambda d0,d: -np.eye(d.shape[-2])*d[...,1]/(np.linalg.norm(d[...,0:2],axis=-1)**2),
+            ('dAoD','dy') : lambda d0,d: np.eye(d.shape[-2])*d[...,0]/(np.linalg.norm(d[...,0:2],axis=-1)**2),
             ('dAoD','dz') : lambda d0,d: np.eye(d.shape[-2])*np.zeros(d.shape[:-1]),
             
             ('dZoD','dx0') : lambda d0,d: np.zeros(d.shape[:-1]),
@@ -706,31 +706,31 @@ class MultipathLocationEstimator:
             # ('dZoD','dAoA0') : lambda d0,d: np.zeros(d.shape[:-1]),
             # ('dZoD','dZoA0') : lambda d0,d: np.zeros(d.shape[:-1]),
             # ('dZoD','dSoA0') : lambda d0,d: np.zeros(d.shape[:-1]),
-            ('dZoD','dx') : lambda d0,d: np.eye(d.shape[-2])*d[...,2]*d[...,0]/np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
-            ('dZoD','dy') : lambda d0,d: np.eye(d.shape[-2])*d[...,2]*d[...,1]/np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
-            ('dZoD','dz') : lambda d0,d: -np.eye(d.shape[-2])*np.linalg.norm(d[...,0:2],axis=-1)/np.linalg.norm(d,axis=-1)**2,
+            ('dZoD','dx') : lambda d0,d: np.eye(d.shape[-2])*d[...,2]*d[...,0]/(np.linalg.norm(d[...,0:2],axis=-1)*np.linalg.norm(d,axis=-1)**2),
+            ('dZoD','dy') : lambda d0,d: np.eye(d.shape[-2])*d[...,2]*d[...,1]/(np.linalg.norm(d[...,0:2],axis=-1)*np.linalg.norm(d,axis=-1)**2),
+            ('dZoD','dz') : lambda d0,d: -np.eye(d.shape[-2])*np.linalg.norm(d[...,0:2],axis=-1)/(np.linalg.norm(d,axis=-1)**2),
             
-            ('dAoA','dx0') : lambda d0,d: (d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
-            ('dAoA','dy0') : lambda d0,d: -(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
+            ('dAoA','dx0') : lambda d0,d: (d[...,1]-d0[...,None,1])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2),
+            ('dAoA','dy0') : lambda d0,d: -(d[...,0]-d0[...,None,0])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2),
             ('dAoA','dz0') : lambda d0,d: np.zeros(d.shape[:-1]),   
-            ('dAoA','dToAE') : lambda d0,d: np.eye(d.shape[-2])*np.zeros(d.shape[:-1]),
+            ('dAoA','dToAE') : lambda d0,d: np.zeros(d.shape[:-1]),
             # ('dAoA','dAoA0') : lambda d0,d: ?????????????????   np.ones(d.shape[:-1]),
             # ('dAoA','dZoA0') : lambda d0,d: ?????????????????  
             # ('dAoA,'dSoA0') : lambda d0,d: ?????????????????  
-            ('dAoA','dx') : lambda d0,d: - np.eye(d.shape[-2])*(d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
-            ('dAoA','dy') : lambda d0,d: np.eye(d.shape[-2])*(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2,
+            ('dAoA','dx') : lambda d0,d: - np.eye(d.shape[-2])*(d[...,1]-d0[...,None,1])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2),
+            ('dAoA','dy') : lambda d0,d: np.eye(d.shape[-2])*(d[...,0]-d0[...,None,0])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)**2),
             ('dAoA','dz') : lambda d0,d:  np.eye(d.shape[-2])*np.zeros(d.shape[:-1]),
             
-            ('dZoA','dx0') : lambda d0,d: -(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
-            ('dZoA','dy0') : lambda d0,d: -(d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
+            ('dZoA','dx0') : lambda d0,d: (d[...,0]-d0[...,None,0])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)*np.linalg.norm(d-d0[...,None,:],axis=-1)**2),
+            ('dZoA','dy0') : lambda d0,d: -(d[...,1]-d0[...,None,1])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)*np.linalg.norm(d-d0[...,None,:],axis=-1)**2),
             ('dZoA','dz0') : lambda d0,d: np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
             ('dZoA','dToAE') : lambda d0,d: np.zeros(d.shape[:-1]),
             # ('dZoA','dAoA0') : lambda d0,d: ????????????????? 
             # ('dZoA','dZoA0') : lambda d0,d: ?????????????????  
             # ('dZoA,'dSoA0') : lambda d0,d: ?????????????????  
-            ('dZoA','dx') : lambda d0,d: np.eye(d.shape[-2])*(d[...,2]-d0[...,None,2])*(d[...,0]-d0[...,None,0])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
-            ('dZoA','dy') : lambda d0,d: np.eye(d.shape[-2])*(d[...,2]-d0[...,None,2])*(d[...,1]-d0[...,None,1])/np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
-            ('dZoA','dz') : lambda d0,d: -np.eye(d.shape[-2])*np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/np.linalg.norm(d-d0[...,None,:],axis=-1)**2,
+            ('dZoA','dx') : lambda d0,d: np.eye(d.shape[-2])*(d[...,2]-d0[...,None,2])*(d[...,0]-d0[...,None,0])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)*np.linalg.norm(d-d0[...,None,:],axis=-1)**2),
+            ('dZoA','dy') : lambda d0,d: np.eye(d.shape[-2])*(d[...,2]-d0[...,None,2])*(d[...,1]-d0[...,None,1])/(np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)*np.linalg.norm(d-d0[...,None,:],axis=-1)**2),
+            ('dZoA','dz') : lambda d0,d: -np.eye(d.shape[-2])*np.linalg.norm(d[...,0:2]-d0[...,None,0:2],axis=-1)/(np.linalg.norm(d-d0[...,None,:],axis=-1)**2),
             }                                                     
                                                      
         T= np.concatenate([np.vstack([dfun[term,var](d0,d) for var in vAxes]) for term in dAxes],axis=-1)
