@@ -59,15 +59,15 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #infxinfx16:infxinfx64:infxinfx256:infxinfx1024:infxinfx4096
 
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--noloc --nompg -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO202D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 -G Geo:20 -E=NO,D:32:64:128:256:512:1024 --label GEO202D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 #2D simulation with 3gpp channels with first reflection fitted multipath
-# args = parser.parse_args("--noloc --nompg -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP2D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
+# args = parser.parse_args("--noloc --nompg -N 100 -G 3gpp -E=NO,D:32:64:128:256:512:1024 --label 3GPP2D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label GEO203D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
+# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32:64:128:256:512:1024 --label GEO203D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--noloc --nompg --z3D -N 100 -G 3gpp -E=NO,D:32x32x32:64x64x64:128x128x128:256x256x256:512x512x512:1024x1024x1024 --label 3GPP3D --show --print --cdf=no,Dx256x256x256 --pcl=dic:75 --map=no,Dx256x256x256 --vso=no,Dx256x256x256 --rtm=no,Dx256x256x256".split(' '))
+args = parser.parse_args("--noloc --nompg --z3D -N 100 -G 3gpp -E=NO,D:32:64:128:256:512:1024 --label 3GPP3D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 
-args = parser.parse_args("--noloc --nompg --z3D -N 10 -G Geo:20 -E=NO,D:64:256:1024 --label test --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
+# args = parser.parse_args("--noloc --nompg --z3D -N 10 -G Geo:20 -E=NO,D:64:256:1024 --label test --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -399,17 +399,17 @@ mappingCRLBnormalized=np.zeros(Nsims)
 for n in range(Nsims):
     d0=allUserData.loc[n][locColNames].to_numpy()
     d=allPathsData.loc[n,:][mapColNames].to_numpy()
+    Npath=d.shape[0]
     Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoA'],['dx0','dy0','dz0'])
-    scale=np.repeat([Ts,np.pi],d.shape[0])
+    scale=np.repeat([Ts,np.pi],Npath)
     Tm=Tm/scale
     errorCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(Ndim),rcond=None)[0])) 
     
-    Npath=d.shape[0]
     Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoD','dAoA'],['dx','dy','dz'])
-    scale=np.repeat([Ts,np.pi,np.pi],d.shape[0])
-    Tm=Tm/scale
+    # scale=np.repeat([Ts,np.pi,np.pi],d.shape[0])
+    # Tm=Tm/scale
     #TODO check 1/Npath, result not coherent
-    mappingCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(Ndim*Npath),rcond=None)[0]))/Npath 
+    mappingCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(Ndim*Npath),rcond=None)[0]))/Npath
 
 # mapping_error[:,:,x==0]=np.inf#fix better
 tauE_err = np.abs( allLocEstData['tauE']-allUserData['tauE'] ).to_numpy().reshape(NlocAlg,NerrMod,Nsims)
@@ -498,15 +498,8 @@ if args.pcl:
             caseStr,line,marker,color=lLocAlgs[nc][4:]
             plt.semilogy(np.arange(len(errLabels)),np.percentile(mapping_error[nc,errCaseMask,:],Pctl,axis=1),line+marker+color,label=caseStr)
         plt.semilogy(errTics,np.ones_like(errTics)*np.percentile(map_dumb,80),':k',label="random guess")
-        # if Npath<=50:
-        #     Ts = loc.getTParamToLoc(x0,y0,tauE+toa0,aoa0,x,y,['dDAoA'],['dx','dy'])            
-        #     M=np.matmul(Ts.transpose([2,1,0]),Ts.transpose([2,0,1]))
-        #     #(1/Npath)*
-        #     errorCRLBnormalized = np.array([np.sqrt(np.trace(np.linalg.lstsq(M[n,:,:],np.eye(2*Npath),rcond=None)[0])) for n in range(M.shape[0])])
-        #     varaoaDist=np.var(np.minimum(np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2),2*np.pi-np.mod(aoa-aoa0-daoa_est[errCaseMask,:,:],np.pi*2)),axis=(1,2)) * (Npath*Nsims)/np.sum(nvalid)
-        #     plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt(varaoaDist),'--k',label="$\\sim$ CRLB")      
-        #     # lNant=np.array([float(x[2]) for x in lErrMod if x[0]=='D' and x[1]=='inf' and x[3]=='inf']) 
-        #     # plt.semilogy(errTics,np.percentile(errorCRLBnormalized,80)*np.sqrt((np.pi/lNant)**2/12),'--k',label="approx. CRLB")       
+        lNant=np.array([float(x[1]) for x in lErrMod if x[0]=='D']) 
+        plt.semilogy(errTics,np.percentile(mappingCRLBnormalized,Pctl)*np.sqrt((1/lNant)**2/12),'--k',label="approx. CRLB")       
         plt.xticks(ticks=errTics,labels=errLabels)
         plt.xlabel(errTitle)
         plt.ylabel('%.1f percentile mapping error(m)'%(Pctl))
