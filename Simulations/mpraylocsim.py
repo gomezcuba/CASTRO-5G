@@ -29,7 +29,7 @@ parser.add_argument('-E', type=str,help='comma-separated list of angle error mod
 parser.add_argument('-G', type=str,help='Type of generator. "3gpp" or "Geo:N" for N scatterers contained in Map')
 
 #parameters that affect location algorithms
-parser.add_argument('--algs', type=str,help='comma-separated list of algorithms')
+parser.add_argument('-A', type=str,help='comma-separated list of algorithms')
 
 #parameters that affect plots
 parser.add_argument('--cdf', type=str,help='plot CDF for a given comma-separated list of errors')
@@ -63,11 +63,11 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #2D simulation with 3gpp channels with first reflection fitted multipath
 # args = parser.parse_args("--noloc --nompg -N 100 -G 3gpp -E=NO,D:32:64:128:256:512:1024 --label 3GPP2D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-# args = parser.parse_args("--z3D -N 100 -G Geo:20 -E=NO,D:32:64:128:256:512:1024 --label GEO203D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
+# args = parser.parse_args("--noloc --nompg --z3D -N 100 -G Geo:20 -E=NO,D:32:64:128:256:512:1024 --label GEO203D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 #2D simulation with Geometric ray tracing simple channel model
-args = parser.parse_args("--noloc --nompg --z3D -N 100 -G 3gpp -E=NO,D:32:64:128:256:512:1024 --label 3GPP3D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
+# args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:32:64:128:256:512:1024 --label 3GPP3D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 
-# args = parser.parse_args("--noloc --nompg --z3D -N 10 -G Geo:20 -E=NO,D:64:256:1024 --label test --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
+args = parser.parse_args("--z3D -N 100 -G 3gpp -E=NO,D:64:256:1024 --label test --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100
@@ -111,11 +111,21 @@ else:
     lErrMod = []
 NerrMod=len(lErrMod)
 
-#location algorythms - evolución de location estimator
-if args.algs:
+# location algorythms - evolución de location estimator
+# TODO: rethink the format of this table and cmd argument
+def parseAlgStr(s):
+    l=s.split(':')
+    l[0]=bool(l[0])
+    if l[1]=='inf':
+        l[1]=np.inf
+    else:
+        l[1]=int(l[1])        
+    return(tuple(l))
+
+if args.A:
     lLocAlgs=[
-            tuple(case.split(':'))
-            for case in args.algs.split(',')
+            parseAlgStr(s)
+            for s in args.A.split(',')
             ]
     #TODO define more elegant syntax for cases and better parser that converts bool properly
 else:
@@ -127,8 +137,8 @@ else:
        #  (False,64,'3path','lm','Root3Ph','-.','x','g'),
        #  (False,np.inf,'drop1','brute','BruteD1','-','s','r'),
           # (False,np.inf,'drop1','lm','RootD1','-','s','g'),
-        (False,64,'drop1','lm','Non-linear LS orientation','-','x','g'),
-        (False,64,'','margin','Iterative orientation','--','d','m'),
+        # (False,64,'drop1','lm','Non-linear LS orientation','-','x','g'),
+        # (False,64,'','margin','Iterative orientation','--','d','m'),
        ]
 NlocAlg =len(lLocAlgs)
 
@@ -400,14 +410,22 @@ for n in range(Nsims):
     d0=allUserData.loc[n][locColNames].to_numpy()
     d=allPathsData.loc[n,:][mapColNames].to_numpy()
     Npath=d.shape[0]
-    Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoA'],['dx0','dy0','dz0'])
-    scale=np.repeat([Ts,np.pi],Npath)
+    if bMode3D:
+        Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoA','dZoA'],['dx0','dy0','dz0'])
+        scale=np.repeat([Ts,2*np.pi,2*np.pi],Npath)
+    else:
+        Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoA'],['dx0','dy0'])
+        scale=np.repeat([Ts,2*np.pi],Npath)
     Tm=Tm/scale
     errorCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(Ndim),rcond=None)[0])) 
     
-    Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoD','dAoA'],['dx','dy','dz'])
-    # scale=np.repeat([Ts,np.pi,np.pi],d.shape[0])
-    # Tm=Tm/scale
+    if bMode3D:
+        Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoD','dZoD','dAoA','dZoA'],['dx','dy','dz'])
+        scale=np.repeat([Ts,2*np.pi,np.pi,2*np.pi,np.pi],Npath)
+    else:
+        Tm=loc.getTParamToLoc(d0,d,['dTDoA','dAoD','dAoA'],['dx','dy'])
+        scale=np.repeat([Ts,2*np.pi,2*np.pi],Npath)
+    Tm=Tm/scale
     #TODO check 1/Npath, result not coherent
     mappingCRLBnormalized[n]=np.sqrt(np.trace(np.linalg.lstsq(Tm@Tm.T,np.eye(Ndim*Npath),rcond=None)[0]))/Npath
 
