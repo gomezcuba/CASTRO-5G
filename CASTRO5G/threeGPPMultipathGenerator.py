@@ -1298,6 +1298,7 @@ class ThreeGPPMultipathChannelModel:
             drx = np.array(rxPos)
         return(dtx,drx)
     
+    #TODO move unitary vector functions and such to a standalone path geometry module
     def getUnitaryVectors(self,azimut,zenit=None):
         if zenit is None:
             uv = np.column_stack([np.cos(azimut),np.sin(azimut)])

@@ -1,4 +1,9 @@
 import numpy as np
+import pandas as pd
+
+import sys
+sys.path.append('../')
+from CASTRO5G import MultipathLocationEstimator
 
 def AWGN(shape,sigma2=1):
     return ( np.random.normal(size=shape) + 1j*np.random.normal(size=shape) ) * np.sqrt( sigma2 / 2.0 )
@@ -36,19 +41,89 @@ class DiscreteMultipathChannelModel:
             h=np.fft.fft(h,axis=a,norm="ortho")    
         return h
 
+class UniformMultipathChannelModel:
+    def __init__(self,Npath=20,Ds=1,mode3D=True):
+        self.Npath=Npath
+        self.Ds=Ds
+        self.mode3D=mode3D
+    #TODO cache
+    def create_channel(self,Nue=1):
+        P = np.random.exponential(1,(Nue,self.Npath))
+        P = P/np.sum(P,axis=-1)
+        phase = np.random.uniform(0,2*np.pi,(Nue,self.Npath))
+        TDoA = np.random.uniform(0,self.Ds,(Nue,self.Npath))
+        AoD = np.random.uniform(0,2*np.pi,(Nue,self.Npath))
+        AoA = np.random.uniform(0,2*np.pi,(Nue,self.Npath))
+        pathsData = pd.DataFrame(index=pd.MultiIndex.from_product([np.arange(Nue),np.arange(self.Npath)],names=["ue","n"]),
+                                data={
+                                    "P" : P.reshape(-1),
+                                    "phase00" : phase.reshape(-1),
+                                    "AoD" : AoD.reshape(-1),
+                                    "AoA" : AoA.reshape(-1),
+                                    "TDoA" : TDoA.reshape(-1)
+                                    })
+        if self.mode3D:
+            ZoD = np.random.uniform(0,2*np.pi,(Nue,self.Npath))
+            ZoA = np.random.uniform(0,2*np.pi,(Nue,self.Npath))
+            pathsData['ZoD'] = ZoD.reshape(-1)
+            pathsData['ZoA'] = ZoA.reshape(-1)
+        return(pathsData)
+        
+    
 class ReflectedMultipathChannelModel:
     def __init__(self,Npath=20,bounds=np.array(((0,1),(0,1),(0,1))),mode3D=True):
-        self.Npath=20
+        self.Npath=Npath
         self.bounds=bounds
-        self.mode3D=mode3D        
+        self.mode3D=mode3D
+        self.c=3e8
+    #TODO cache
     def create_channel(self, txPos, rxPos):
         d0=np.array(rxPos)-np.array(txPos)
+        Nue=np.prod(d0.shape[0:-1]) if len(d0.shape)>1 else 1
+        ToA0=np.linalg.norm(d0,axis=-1)/self.c       
         Ndim= 3 if self.mode3D else 2
-        d=np.zeros((Ndim,self.Npath))
-        for m in range(Ndim):
-            d[m,:]=np.random.uniform(self.bounds[m,0],self.bounds[m,1],self.Npath)
-        # df = pd.DataFrame(data=d,columns=['posX','posY','posZ'])
-        return (d)
+        #random locations in a 40m square
+        Dmax=self.bounds[:,1]
+        Dmin=self.bounds[:,0]
+        d=np.random.rand(Nue,self.Npath,Ndim)*(Dmax-Dmin)[0:Ndim]+Dmin[0:Ndim]
+
+        #delac
+        ToA=(np.linalg.norm(d,axis=2)+np.linalg.norm(d-d0[:,None,:],axis=2))/self.c
+        TDoA = ToA-ToA0[:,None]
+
+        #angles from locations
+        DoD=d/np.linalg.norm(d,axis=2,keepdims=True)
+        DoA=(d-d0[:,None,:])/np.linalg.norm( d-d0[:,None,:] ,axis=2,keepdims=True)
+        #TODO move angVector functions and such to a standalone path geometry module
+        loc=MultipathLocationEstimator.MultipathLocationEstimator(nPoint=100,orientationMethod='lm',disableTQDM= True)
+        if self.mode3D:
+            AoD0,ZoD0=loc.angVector(d0)
+            AoD,ZoD=loc.angVector(DoD)
+            RoT0=np.random.rand(3)*np.array([2,1,2])*np.pi #receiver angular measurement offset
+            R0=np.array([ loc.rMatrix(*x) for x in RoT0])
+            DDoA=DoA@R0 #transpose of R0.T @ DoA.transpose([0,2,1])
+            AoA,ZoA=loc.angVector(DDoA)
+        else:    
+            # AoD0=loc.angVector(d0)
+            AoD=loc.angVector(DoD)
+            # AoA=loc.angVector(DoA)
+            RoT0=np.random.rand()*2*np.pi #receiver angular measurement offset
+            R0=np.array([ loc.rMatrix(x) for x in RoT0])
+            DDoA=DoA@R0 #transpose of R0.T @ DoA.transpose([0,2,1])
+            AoA=loc.angVector(DDoA)
+        allPathsData = pd.DataFrame(index=pd.MultiIndex.from_product([np.arange(Nue),np.arange(self.Npath)],names=["ue","n"]),
+                                    data={
+                                        "AoD" : AoD.reshape(-1),
+                                        "AoA" : AoA.reshape(-1),
+                                        "TDoA" : TDoA.reshape(-1),
+                                        "Xs": d[...,0].reshape(-1),
+                                        "Ys": d[...,1].reshape(-1),
+                                        })
+        if self.mode3D:
+            allPathsData['Zs'] = d[...,2].reshape(-1)
+            allPathsData['ZoD'] = ZoD.reshape(-1)
+            allPathsData['ZoA'] = ZoA.reshape(-1)
+        return (allPathsData)
         
 
 class MIMOPilotChannel:
@@ -113,65 +188,39 @@ class MIMOPilotChannel:
         yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=3,keepdims=True) + ( 0 if zp is None else zp))        
         return(yp)
 
-#TODO: this class only purpose is to hold all data pertaining to a single path reflectoin, it should be replaced with a Pandas data frame
-class ParametricPath:
-    def __init__(self, g = 0, d = 0, aod = 0, aoa = 0, zod = 0, zoa = 0, nu = 0):
-        self.complexAmplitude = g
-        self.excessDelay = d
-        self.azimutOfDeparture = aod
-        self.azimutOfArrival = aoa
-        self.zenithOfDeparture = zod
-        self.zenithOfArrival = zoa
-        self.environmentDoppler = nu
-    def __str__(self):
-        return "(%s,%f,%f,%f,%f,%f,%f)"%(self.complexAmplitude,self.excessDelay,self.azimutOfDeparture,self.azimutOfArrival,self.zenithOfDeparture,self.zenithOfArrival,self.environmentDoppler)
-
 class MultipathChannel:
-    def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), lPaths = [] ):
+    def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), dfPaths = None ):
         self.txLocation = tPos
         self.rxLocation = rPos
-        self.channelPaths = lPaths
-                
-    def __str__(self):
-        return """
-MultiPathChannel %s ---> %s
-    %s
-                """%(
-                    self.txLocation,
-                    self.rxLocation,
-                    ''.join( [ '%s'%x for x in self.channelPaths] )
-                    )
-    
-#    def insertPathFromParameters (self, gain, delay, aod, aoa, zod, zoa, dopp ):
-#        self.channelPaths.append( ParametricPath(gain, delay, aod, aoa, zod, zoa, dopp ) )
+        self.channelPaths = dfPaths
+
         
-    def insertPathsFromListParameters (self, lG, lD, lAoD, lAoA, lZoD, lZoA, lDopp ):
-        Npaths = min ( len(lG), len(lD), len(lAoD), len(lAoA), len(lZoD), len(lZoA), len(lDopp) )
-        for pit in range(Npaths):
-            self.channelPaths.append( ParametricPath(lG[pit],
-                                                     lD[pit],
-                                                     lAoD[pit],
-                                                     lAoA[pit],
-                                                     lZoD[pit],
-                                                     lZoA[pit],
-                                                     lDopp[pit]  ) )
+    def insertPathsFromDF(self,dfPaths):
+        self.channelPaths = dfPaths
+        
+    def insertPathsFromListParameters (self, lcoef, lTDoA, lAoD, lAoA, lZoD, lZoA, lDopp ):
+        Npaths = min ( len(lcoef), len(lTDoA), len(lAoD), len(lAoA), len(lZoD), len(lZoA), len(lDopp) )        
+        self.channelPaths = pd.DataFrame(index=np.arange(Npaths),
+                                    data={
+                                        "P" : np.abs(lcoef)**2,
+                                        "phase00" : np.angle(lcoef),
+                                        "TDoA" : lTDoA,
+                                        "AoD" : lAoD,
+                                        "AoA" : lAoA,
+                                        "ZoD": lZoD,
+                                        "ZoA": lZoA,
+                                        "Dopp":lDopp
+                                        })
     
     def getDEC(self,Na=1,Nd=1,Nt=1,Ts=1):
-        h=np.zeros((Na,Nd,Nt))
-        for pind in range(0,len( self.channelPaths )):
-            delay=self.channelPaths[pind].excessDelay
-            gain=self.channelPaths[pind].complexAmplitude
-            AoD=self.channelPaths[pind].azimutOfDeparture
-            AoA=self.channelPaths[pind].azimutOfArrival
-            #TODO make the pulse and array vectors configurable using functional programming
-            timePulse=np.sinc( (np.arange(0.0,Ts*Nt,Ts)-delay ) /Ts )
-            departurePulse=np.exp( -1j* np.pi *np.arange(0.0,Nd,1.0)* np.sin(AoD) ) /np.sqrt(1.0*Nd)
-            arrivalPulse=np.exp( -1j* np.pi *np.arange(0.0,Na,1.0)* np.sin(AoA) ) /np.sqrt(1.0*Na)
-            timeTensor=np.reshape(timePulse,(1,1,Nt))
-            departureTensor=np.reshape(departurePulse,(1,Nd,1))
-            arrivalTensor=np.reshape(arrivalPulse,(Na,1,1))
-            comp=gain*timeTensor*departureTensor*arrivalTensor
-            h=h+comp
+        coefTensor=( np.sqrt(self.channelPaths.P)*np.exp(1j*self.channelPaths.phase00) ).to_numpy().reshape(-1,1,1,1)
+        tauTensor=self.channelPaths.TDoA.to_numpy().reshape(-1,1,1,1)
+        aodTensor=self.channelPaths.AoD.to_numpy().reshape(-1,1,1,1)
+        aoaTensor=self.channelPaths.AoA.to_numpy().reshape(-1,1,1,1)
+        timeResponse=np.sinc(np.arange(Nt).reshape(1,Nt,1,1)-tauTensor/Ts)
+        arrivalResponse=np.exp( -1j* np.pi *np.arange(Na).reshape(1,1,Na,1)* np.sin(aoaTensor) ) /np.sqrt(Na)
+        departureResponse=np.exp( -1j* np.pi *np.arange(Nd).reshape(1,1,1,Nd)* np.sin(aodTensor) ) /np.sqrt(Nd)
+        h=np.sum(coefTensor*timeResponse*arrivalResponse*departureResponse,axis=0)
         return(h)
         
     def dirichlet(self,t,P):
