@@ -267,8 +267,8 @@ if EST_PLOT:
 if MATCH_CHANS:
     
     def radUPA( Nangpoint, incidAngle , Nant = 16, dInterElement = .5):
-        vUPA=mc.fULA(incidAngle,Nant,dInterElement)
-        vAngle=mc.fULA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)
+        vUPA=mc.fULA(incidAngle,Nant,dInterElement)[...,None]#column vector
+        vAngle=mc.fULA(np.arange(0,2*np.pi,2*np.pi/Nangpoint),Nant,dInterElement)[...,None]#column vector
         return (np.swapaxes(vUPA,vUPA.ndim-2,vUPA.ndim-1)[...,None,:,:]@vAngle.conj())[...,0,0]
     pdist=np.zeros((Nsims,Nmaxpaths,Nmaxpaths))
     for nsim in range(Nsims):

@@ -8,14 +8,19 @@ from CASTRO5G import MultipathLocationEstimator
 def AWGN(shape,sigma2=1):
     return ( np.random.normal(size=shape) + 1j*np.random.normal(size=shape) ) * np.sqrt( sigma2 / 2.0 )
 
+#TODO get rid of column vector default
+
 def fULA(incidAngle , Nant = 4, dInterElement = .5):
-    # returns an anttenna array response column vector corresponding to a Uniform Linear Array for each item in incidAngle (two extra dimensions are added at the end)
+    # returns an anttenna array response vector corresponding to a Uniform Linear Array for each item in incidAngle (one extra dimensions is added at the end)
     # inputs  incidAngle : numpy array containing one or more incidence angles
     # input         Nant : number of MIMO antennnas of the array
     # input InterElement : separation between antenna elements, default lambda/2
     # output arrayVector : numpy array containing one or more response vectors, with simensions (incidAngle.shape ,Nant ,1 )
+    
+    if isinstance(incidAngle,np.ndarray):
+        incidAngle=incidAngle[...,None]
                         
-    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant).reshape(Nant,1) * np.sin(incidAngle[...,None,None]) ) /np.sqrt(1.0*Nant)
+    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant) * np.sin(incidAngle) ) /np.sqrt(1.0*Nant)
 
 
 def fUCA(incidAngle , Nant = 5, dInterElement = .5):
@@ -23,6 +28,22 @@ def fUCA(incidAngle , Nant = 5, dInterElement = .5):
     phiAnt=2*np.pi*np.arange(0,1,1/Nant)
     a=np.exp(-2j*np.pi*R*np.cos(incidAngle[...,None,None]-phiAnt[:,None])) /np.sqrt(1.0*Nant)
     return(a)
+
+def pSync(tau,Nmax,Nmin=0,oversampling=1):    
+    if isinstance(tau,np.ndarray):
+        tau=tau[...,None]
+    return np.sinc(np.arange(Nmin,Nmax,1/oversampling)-tau)#should work for any shape of tau, adding one dimension at the end  
+
+def pDirichlet(tau,P,Nmax,Nmin=0,oversampling=1):
+    if isinstance(tau,np.ndarray):
+        tau=tau[...,None]
+    t=np.arange(Nmin,Nmax,1/oversampling)-tau
+    if isinstance(P,np.ndarray):
+        P=P[...,None]
+    #divide by zero 
+    return( np.where(t!=0,
+               np.exp(1j*np.pi*(P-1)*t/P)*np.sin(np.pi*t)/np.sin(np.pi*t/P)/P,
+               0j) )
     
 class DiscreteMultipathChannelModel:
     def __init__(self,dims=(128,4,4),fftaxes=(1,2)):
@@ -49,7 +70,7 @@ class UniformMultipathChannelModel:
     #TODO cache
     def create_channel(self,Nue=1):
         P = np.random.exponential(1,(Nue,self.Npath))
-        P = P/np.sum(P,axis=-1)
+        P = P/np.sum(P,axis=-1,keepdims=True)
         phase = np.random.uniform(0,2*np.pi,(Nue,self.Npath))
         TDoA = np.random.uniform(0,self.Ds,(Nue,self.Npath))
         AoD = np.random.uniform(0,2*np.pi,(Nue,self.Npath))
@@ -182,7 +203,7 @@ class MIMOPilotChannel:
                 mask2 = mask2 | (angles_design >= np.pi/2-.5*np.pi/Ncol)
             desired_G[mask1 & mask2,sec] = 1    
         A_array_design = fULA(angles_design, Nant, .5)
-        W_ls,_,_,_=np.linalg.lstsq(A_array_design[:,:,0].conj(),desired_G,rcond=None)
+        W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
         return(W_ls)
     def applyPilotChannel(self,hk,wp,vp,zp=None):          
         yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=3,keepdims=True) + ( 0 if zp is None else zp))        
@@ -217,7 +238,9 @@ class MultipathChannel:
         tauTensor=self.channelPaths.TDoA.to_numpy().reshape(-1,1,1,1)
         aodTensor=self.channelPaths.AoD.to_numpy().reshape(-1,1,1,1)
         aoaTensor=self.channelPaths.AoA.to_numpy().reshape(-1,1,1,1)
-        timeResponse=np.sinc(np.arange(Nt).reshape(1,Nt,1,1)-tauTensor/Ts)
+        timeResponse=np.sinc(np.arange(Nt).reshape(1,Nt,1,1)-tauTensor/Ts)        
+        #TODO make these functions parametric
+        # timeResponse=np.fft.ifft(np.exp( -2j* np.pi *np.arange(Na).reshape(1,1,Na,1)* tauTensor/Ts ))
         arrivalResponse=np.exp( -1j* np.pi *np.arange(Na).reshape(1,1,Na,1)* np.sin(aoaTensor) ) /np.sqrt(Na)
         departureResponse=np.exp( -1j* np.pi *np.arange(Nd).reshape(1,1,1,Nd)* np.sin(aodTensor) ) /np.sqrt(Nd)
         h=np.sum(coefTensor*timeResponse*arrivalResponse*departureResponse,axis=0)

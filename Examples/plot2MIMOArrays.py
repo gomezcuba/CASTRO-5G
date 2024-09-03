@@ -34,8 +34,8 @@ Npointsplot=101
 angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
 
-arrayGainAllPathsRx=(AntennaResponsesRx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
-arrayGainAllPathsTx=(AntennaResponsesTx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
+arrayGainAllPathsRx=BeamformingVectors.conj()@AntennaResponsesRx.T
+arrayGainAllPathsTx=BeamformingVectors.conj()@AntennaResponsesTx.T
 
 channelResponseCombined =  np.sum( arrayGainAllPathsTx[None,:,:]*arrayGainAllPathsRx[:,None,:]*pathAmplitudes , axis=2) 
 

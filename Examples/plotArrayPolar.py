@@ -48,7 +48,7 @@ for p in range(Ntop):
     
     AntennaResponse1Path =mc.fULA(subpaths.loc[n,m].AoA *np.pi/180 ,Nant)
     
-    arrayGain1Path=(BeamformingVectors.transpose([0,2,1]).conj()@ AntennaResponse1Path ).reshape(-1)
+    arrayGain1Path=(BeamformingVectors.conj()@ AntennaResponse1Path )
     arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayGain1Path)**2),-25)
 
     plt.polar(angles_plot,arrayGain1PathdBtrunc25,':',label="ULA G_{%d,%d}"%(n,m),color=cm.jet(p/(Ntop-1)))
@@ -64,8 +64,8 @@ plt.title("%d ULA angular response and channel gain for %d strongest subpaths"%(
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 # plt.subplot(2,1,2, projection='polar')
-AntennaResponseNPaths = mc.fULA(subpaths.loc[topNpaths].AoA *np.pi/180 ,Nant)
-arrayGainNPaths=(AntennaResponseNPaths.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,Ntop))
+AntennaResponseNPaths = mc.fULA(subpaths.loc[topNpaths].AoA.to_numpy() *np.pi/180 ,Nant)
+arrayGainNPaths=BeamformingVectors.conj() @ AntennaResponseNPaths.T
 chanCoefNPaths=np.sqrt( subpaths.loc[topNpaths].P ) * np.exp( 1j* subpaths.loc[topNpaths].phase00 )
 arrayResponseCombined = np.sum( arrayGainNPaths*chanCoefNPaths.to_numpy() , axis=1)
 arrayResCondBtrunc25 = np.maximum(10*np.log10(Nant*np.abs(arrayResponseCombined)**2),-25)
@@ -78,8 +78,8 @@ plt.title("%d ULA angular response times channel gain summed over %d strongest s
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 for n in range(nClusters):       
-    AntennaResponseCluster =mc.fULA(subpaths.loc[n,:].AoA *np.pi/180 ,Nant)
-    arrayGainCluster=(AntennaResponseCluster.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
+    AntennaResponseCluster =mc.fULA(subpaths.loc[n,:].AoA.to_numpy() *np.pi/180 ,Nant)
+    arrayGainCluster=BeamformingVectors.conj() @ AntennaResponseCluster.T
     chanGainClusterdBtrunc25 = np.maximum(10*np.log10(subpaths.loc[n,:].P.to_numpy()*Nant*np.abs(arrayGainCluster)**2),-25)
     plt.polar(angles_plot,chanGainClusterdBtrunc25,color=cm.jet(n/(nClusters-1)),label='Cluster %d'%(n))
 plt.yticks(ticks=[-20,-10,0,10],labels=['-20dB','-10dB','0dB','10dB'])
@@ -90,8 +90,8 @@ plt.title("%d ULA angular response times channel gain for all subpaths"%(Nant))
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
-AntennaResponseAll =mc.fULA( subpaths.AoA *np.pi/180 ,Nant)
-arrayGainAllPaths=(AntennaResponseAll.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
+AntennaResponseAll =mc.fULA( subpaths.AoA.to_numpy() *np.pi/180 ,Nant)
+arrayGainAllPaths= BeamformingVectors.conj() @ AntennaResponseAll.T
 chanCoefAllPaths=np.sqrt( subpaths.P )*np.exp(-1j* subpaths.phase00)
 arrayResponseCombined = np.sum( arrayGainAllPaths*chanCoefAllPaths.to_numpy() , axis=1)
 

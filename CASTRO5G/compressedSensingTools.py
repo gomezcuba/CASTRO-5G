@@ -2,6 +2,8 @@ import numpy as np
 import collections as col
 import pandas as pd
 
+import time
+
 #SIMPLIFIED algorithms assume that observation matrix is the identity, v is directly the sparse vector and dictionary columns are orthonormal
 def simplifiedOMP(v,xi):
     #assumes v is explicitly sparse and returns its N largest coefficients where rho(N)<xi
@@ -166,7 +168,10 @@ class CSCachedDictionary:
         if (dimH,dimPhi) in self.cacheHDic:
             if pilotsID in self.cacheHDic[(dimH,dimPhi)].cacheYdic:
                 self.cacheHDic[(dimH,dimPhi)].cacheYdic.pop(pilotsID)
-    
+    def freeCacheOfHDic(self,dimH,dimPhi):
+        if (dimH,dimPhi) in self.cacheHDic:
+            self.cacheHDic.pop((dimH,dimPhi))
+            
     ###########################################################################
     # Functions that create MATRIX dictionaries explicitly, DEC simensions x DIC dimensions
     # generally children will not use these functions and do not need to redefine
@@ -273,7 +278,7 @@ class CSBasicFFTDictionary(CSCachedDictionary):
         Ncomb=K//Ncp
         Ccorr=self.currYDic.mPhiY.conj()*vSamples
         Ccomb=np.sum(Ccorr.reshape(Nsym,Ncp,Ncomb,Nrfr,Ld*La),axis=(0,3))
-        Cfft=np.fft.ifft(Ccomb,Lt,axis=0)*Lt#fft conj
+        Cfft=np.fft.ifft(Ccomb,Lt,axis=0,norm="forward")#fft conj
         Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1))
         c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
         return( c )
@@ -288,6 +293,7 @@ class CSMultiDictionary(CSCachedDictionary):
         AoAdic=np.arcsin(np.arange(-1.0,1.0,2.0/La))   
         AoDdic=np.arcsin(np.arange(-1.0,1.0,2.0/Ld))     
         mPhiH_tdoa=self.funTDoAh(TDoAdic,Ncp,K)
+        mPhiH_tdoa=mPhiH_tdoa/np.linalg.norm(mPhiH_tdoa,axis=0,keepdims=True)
         mPhiH_aoa=self.funAoAh(AoAdic,Na)
         mPhiH_aod=self.funAoDh(AoDdic,Nd)
         mPhiH=(mPhiH_tdoa,mPhiH_aoa,mPhiH_aod)
@@ -395,18 +401,19 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         Nsym,K,Nrfr=self.currYDic.dimY
         wp,vp = self.currYDic.pilotPattern
         vSamples = vSamples.reshape((Nsym,K,Nrfr,1))        
-        v2 = np.fft.ifft(np.matmul(wp.transpose(0,1,3,2).conj(),vSamples),La,axis=2,norm='ortho')*np.sqrt(La/Na)
-        v3 = np.fft.ifft(np.matmul(v2,vp.transpose(0,1,3,2).conj()),Ld,axis=3,norm='ortho')*np.sqrt(Ld/Nd)
         Ncomb=K//Ncp
-        Ccorr=v3.reshape(Nsym,Ncp,Ncomb,La,Ld)#sum of Nrfr done by matmul
-        Ccomb=np.sum(Ccorr,axis=0)
-        Cfft=np.fft.ifft(Ccomb,Lt,axis=0)*Lt/np.sqrt(K)#fft conj
+        
+        v2a=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
+        v3a=np.matmul(v2a,vp.transpose(0,1,3,2).conj())
+        v4a=np.sum(v3a,axis=0)
+        v5a=np.fft.ifft(v4a,La,axis=1,norm="forward")#/np.sqrt(Na)  #fftconj
+        v6a=np.fft.ifft(v5a,Ld,axis=2,norm="forward")#/np.sqrt(Nd) #fftconj
+        Ccomba=v6a.reshape(Ncp,Ncomb,La,Ld)
+        
+        Cfft=np.fft.ifft(Ccomba,Lt,axis=0,norm="forward")#/np.sqrt(K) #fftconj
         Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
         c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
-        # Cfft2=Ccomb*np.exp(2j*np.pi*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
-        # Cfft2=np.fft.ifft(Cfft2,Lt,axis=0)*Lt/np.sqrt(K)#fft conj
-        # Cbutterfly2=Cfft2*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1))
-        # print(f'Same result {np.max(np.abs(Cbutterfly2-Cbutterfly))}')
+        c=c/np.sqrt(K*Na*Nd)#move the scaling here to reduce multiplications by a large factor xKxNaxNd
         return( c )
 
 OMPInfoSet = col.namedtuple( "OMPInfoSet",[

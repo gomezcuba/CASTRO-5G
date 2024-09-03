@@ -42,8 +42,8 @@ ABeamformingVectors =mc.fULA(azimut_plot,Nant)
 zenit_plot = np.linspace(0,np.pi,Npointsplot)
 ZBeamformingVectors =mc.fULA(np.pi/2-zenit_plot,Nant)
 
-AarrayGainAllPathsRx=(AAntennaResponses.transpose([0,2,1]).conj()@ABeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
-ZarrayGainAllPathsRx=(ZAntennaResponses.transpose([0,2,1]).conj()@ZBeamformingVectors[:,None,:,:]).reshape((Npointsplot,-1))
+AarrayGainAllPathsRx=ABeamformingVectors.conj()@AAntennaResponses.T
+ZarrayGainAllPathsRx=ZBeamformingVectors.conj()@ZAntennaResponses.T
 
 # plot of one single path without power effects
 

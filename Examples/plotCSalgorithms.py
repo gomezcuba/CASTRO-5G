@@ -17,13 +17,13 @@ from CASTRO5G import multipathChannel as mc
 plt.close('all')
 
 Nchan=10
-Nd=8
-Na=8
-Ncp=64
-Nsym=3
+Nd=4
+Na=4
+Ncp=16
+Nsym=5
 Nrft=1
 Nrfr=2
-K=128
+K=64
 Ts=2.5
 Ds=Ts*Ncp
 SNRs=10**(np.arange(-1,2.01,1.0))
@@ -61,18 +61,21 @@ confAlgs = [
         # ("sFISTA",'callF',lambda v,xi: cs.simplifiedFISTA(v,.5*np.sqrt(xi),15),'-','o','b'),
         # ("sAMP",'callF',lambda v,xi: cs.simplifiedAMP(v,.5*np.sqrt(xi),15),'-','o','b'),
         ("OMPx1",'runGreedy',1.0,1.0,1.0,1.0,dicBase,':','o','b'),
-        # ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBase,':','o','b'),
+        ("OMPx2",'runGreedy',2.0,2.0,2.0,1.0,dicBase,':','s','c'),
         # ("OMPx4",'runGreedy',4.0,4.0,4.0,1.0,dicBase,':','*','r'),
-        ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBase,':','^','g'),
+        # ("OMPBR",'runGreedy',1.0,1.0,1.0,10.0,dicBase,':','^','g'),
         ("OMPx1a",'runGreedy',1.0,1.0,1.0,1.0,dicFFT,'-.','o','b'),
+        ("OMPx2a",'runGreedy',2.0,2.0,2.0,1.0,dicFFT,'-.','s','c'),
         # ("OMPx4a",'runGreedy',4.0,4.0,4.0,1.0,dicFFT,'-.','*','r'),
-        ("OMPBRa",'runGreedy',1.0,1.0,1.0,10.0,dicFFT,'-.','^','g'),
+        # ("OMPBRa",'runGreedy',1.0,1.0,1.0,10.0,dicFFT,'-.','^','g'),
         ("OMPx1m",'runGreedy',1.0,1.0,1.0,1.0,dicMult,'--','o','b'),
-        ("OMPx4m",'runGreedy',4.0,4.0,4.0,1.0,dicMult,'--','*','r'),
-        ("OMPBRm",'runGreedy',1.0,1.0,1.0,10.0,dicMult,'--','^','g'),
+        ("OMPx2m",'runGreedy',2.0,2.0,2.0,1.0,dicMult,'--','s','c'),
+        # ("OMPx4m",'runGreedy',4.0,4.0,4.0,1.0,dicMult,'--','*','r'),
+        # ("OMPBRm",'runGreedy',1.0,1.0,1.0,10.0,dicMult,'--','^','g'),
         ("OMPx1f",'runGreedy',1.0,1.0,1.0,1.0,dicFast,'-','o','b'),
-        ("OMPx4f",'runGreedy',4.0,4.0,4.0,1.0,dicFast,'-','*','r'),
-        ("OMPBRf",'runGreedy',1.0,1.0,1.0,10.0,dicFast,'-','^','g'),
+        ("OMPx2f",'runGreedy',2.0,2.0,2.0,1.0,dicFast,'-','s','c'),
+        # ("OMPx4f",'runGreedy',4.0,4.0,4.0,1.0,dicFast,'-','*','r'),
+        # ("OMPBRf",'runGreedy',1.0,1.0,1.0,10.0,dicFast,'-','^','g'),
         # ("ISTAx1",'runShrink',1.0,1.0,1.0,'ISTA',dicBase,':','o','r'),
         # ("ISTAx2",'runShrink',2.0,2.0,2.0,'ISTA',dicBase,':','o','r'),
         # ("FISTAx1",'runShrink',1.0,1.0,1.0,'FISTA',dicBase,':','o','r'),

@@ -86,7 +86,7 @@ for n,m in subpaths.index:#plot3D needs to be called 1 line at a time
     clr = cm.jet(n/(nClusters-1))
     
     AntennaResponse1Path =mc.fULA(subpaths.loc[n,m].AoA *np.pi/180 ,Nant)    
-    arrayGain1Path=(BeamformingVectors.transpose([0,2,1]).conj()@ AntennaResponse1Path ).reshape(-1)
+    arrayGain1Path=(BeamformingVectors.conj()@ AntennaResponse1Path )
     arrayGain1PathdBtrunc25 = np.maximum(10*np.log10(subpaths.loc[n,m].P*Nant*np.abs(arrayGain1Path)**2),-40)
 
     coefdB=10*np.log10( subpaths.loc[n,m].P )
@@ -116,7 +116,7 @@ pulses = np.sinc(n[:,None]-subpaths.TDoA.to_numpy()*1e9/Ts)
 
 AntennaResponsesRx =mc.fULA(subpaths.AoA.to_numpy()*np.pi/180,Nant)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
-arrayGainAllPathsRx=(AntennaResponsesRx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:])[:,:,0,0]
+arrayGainAllPathsRx=BeamformingVectors.conj()@AntennaResponsesRx.T
 hnArray = np.sum(pulses[:,None,:]*arrayGainAllPathsRx[None,:,:]*pathAmplitudes[None,None,:],axis=2)
 chanGainsdB=10*np.log10(np.abs(hnArray)**2)
 

@@ -24,29 +24,29 @@ pilgen = mc.MIMOPilotChannel()
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 V_eye = pilgen.getCodebookEye(Nant,Nant)
-g_eye= h_array.transpose([0,2,1]).conj() @ V_eye
-plt.polar(angles,np.maximum(10*np.log10(np.abs(g_eye[:,0,0])**2),mindBpolar),label='1-hot (omni)')
+g_eye= h_array.conj() @ V_eye
+plt.polar(angles,np.maximum(10*np.log10(np.abs(g_eye[:,0])**2),mindBpolar),label='1-hot (omni)')
 
 V_fft = pilgen.getCodebookFFT(Nant,Nant)
-G_fft= h_array.transpose([0,2,1]).conj() @ V_fft
+G_fft= h_array.conj() @ V_fft
 # G_fft = np.fft.fft(h_array.transpose([0,2,1]).conj(),axis=2)/np.sqrt(Nant)#direct equivalent
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,0,0])**2),mindBpolar),label=f'DFT-{Nant} $k=0$')
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,0,2])**2),mindBpolar),label=f'DFT-{Nant} $k=2$')
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,0])**2),mindBpolar),label=f'DFT-{Nant} $k=0$')
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,2])**2),mindBpolar),label=f'DFT-{Nant} $k=2$')
 
 Nsectors = 8
 # Nsectors = Nant
 V_ls = pilgen.getCodebookRectangular(Nant,Nsectors)
-G_ls= h_array.transpose([0,2,1]).conj() @ V_ls
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,0,0])**2),mindBpolar),label=f'LS-{Nsectors}-{Nant} $k=0$')
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,0,2])**2),mindBpolar),label=f'LS-{Nsectors}-{Nant} $k=2$')
+G_ls= h_array.conj() @ V_ls
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,0])**2),mindBpolar),label=f'LS-{Nsectors}-{Nant} $k=0$')
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,2])**2),mindBpolar),label=f'LS-{Nsectors}-{Nant} $k=2$')
 
 N=Nant
 #the quasi-omnidirectional beam equation in LENA-5G
 V_quasi = np.zeros(N,dtype=np.complex128)
 V_quasi[0::2] = np.exp(1j*np.pi*np.arange(0,N,2)**2/N)
 V_quasi[1::2] = np.exp(1j*np.pi*(np.arange(1,N,2)**2+np.arange(1,N,2))/N)
-G_quasi = h_array.transpose([0,2,1]).conj() @ V_quasi.reshape((-1,1)) /np.sqrt(N)
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_quasi[:,0,0])**2),mindBpolar),label='Quasi')
+G_quasi = h_array.conj() @ V_quasi.reshape((-1,1)) /np.sqrt(N)
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_quasi[:,0])**2),mindBpolar),label='Quasi')
 
 #PMI 5GNR test
 i11=0
@@ -167,14 +167,14 @@ plt.savefig('beamDiagCompare-%d-%d-%d.eps'%(Nant,Nrf,Nsectors))
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,0,:])**2),mindBpolar))
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,:])**2),mindBpolar))
 plt.legend([f'DFT-{Nant} $k=%d$'%k for k in range(Nant)])
 plt.savefig('beamDiagDFTall-%d.eps'%(Nant))
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
 
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,0,:])**2),mindBpolar))
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,:])**2),mindBpolar))
 plt.legend([f'LS-{Nsectors}-{Nant} $k=%d$'%k for k in range(Nant)])
 plt.savefig('beamDiagSectorall-%d-%d.eps'%(Nant,Nsectors))
 

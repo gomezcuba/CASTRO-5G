@@ -23,7 +23,7 @@ fig_ctr=0
 
 # #4D  color intensity plots vs delay, AoA and AoD grid
 
-# pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy()
+pathAmplitudes = ( np.sqrt( subpaths.P )*np.exp(1j* subpaths.phase00) ).to_numpy()
 
 #4D  color intensity plots vs delay, AoA and AoD grid
 
@@ -42,8 +42,8 @@ AntennaResponsesTx =mc.fULA(subpaths.AoD.to_numpy()*np.pi/180,Nant)
 Npointsplot=2*Nant #in this case we use only a few beamforming vectors
 angles_plot = np.linspace(0,2*np.pi,Npointsplot)
 BeamformingVectors =mc.fULA(angles_plot,Nant)
-arrayGainAllPathsRx=(AntennaResponsesRx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:])[:,:,0,0]
-arrayGainAllPathsTx=(AntennaResponsesTx.transpose([0,2,1]).conj()@BeamformingVectors[:,None,:,:])[:,:,0,0]
+arrayGainAllPathsRx=BeamformingVectors.conj() @AntennaResponsesRx.T
+arrayGainAllPathsTx=BeamformingVectors.conj() @AntennaResponsesTx.T
 
 hnArray = np.sum(pulses[:,None,None,:]*arrayGainAllPathsTx[None,:,None,:]*arrayGainAllPathsRx[None,None,:,:]*pathAmplitudes[None,None,None,:],axis=3)
 
