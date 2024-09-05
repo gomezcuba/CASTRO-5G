@@ -47,14 +47,15 @@ parser.add_argument('--noest',help='Do not perform channel estimation, load exis
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
+# args = parser.parse_args("-N 5 -G Uni:3 -F=3:64:16:2:4:4:1 --label test --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
-# there are TOO MANH PATHS in 3gpp channel. this config does not have enough observations for good CS
+# there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
 # args = parser.parse_args("-N 10 -G 3gpp -F=3:64:32:2:8:8:1 --label test3GPPsmall --show --print".split(' '))
 # this config is a bit slow but is the minimal working one
-args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:1:8:8:1,2:512:32:1:8:8:1,3:256:16:1:8:8:1 --label test3GPPframe --show --print".split(' '))
-# args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPP16 --show --print".split(' '))
-# args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPalg --show --print".split(' '))
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:1:8:8:1,2:512:32:1:8:8:1,3:256:16:1:8:8:1 --label test3GPPframe --show --print".split(' '))
+# args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPP16 --show --print".split(' '))
+args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPalg --show --print".split(' '))
 
 plt.close('all')
 
@@ -107,7 +108,7 @@ confAlgs=[#Xt Xd Xa Xmu accel legend string name
     # (4.0,4.0,4.0,1.0,"dicMult",'OMPx4m','-.','x','r'),
     # (8.0,8.0,8.0,1.0,"dicMult",'OMPx8m','--','x','k'),
     # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm','--','x','g'),
-    # (1.0,1.0,1.0,1.0,"dicFast",'OMPx1f','-','^','b'),
+    (1.0,1.0,1.0,1.0,"dicFast",'OMPx1f','-','^','b'),
     # (2.0,2.0,2.0,1.0,"dicFast",'OMPx2f',':','^','c'),
     # (4.0,4.0,4.0,1.0,"dicFast",'OMPx4f','-.','^','r'),
     # (8.0,8.0,8.0,1.0,"dicFast",'OMPx8f','--','^','k'),
@@ -124,7 +125,12 @@ csDictionaries={
     "dicFast" :cs.CSMultiFFTDictionary()
     }
 pilgen = mc.MIMOPilotChannel("IDUV")
-
+channelResponseFunctions = {
+    "TDoA" : mc.pSinc,
+    "AoA" : mc.fULA,
+    "AoD" : mc.fULA,
+    }
+mpch = mc.MultipathDEC((0,0,10),(40,0,1.5),customResponse=channelResponseFunctions)
 #-------------------------------------------------------------------------------
 
 if args.nompg:    
@@ -195,7 +201,7 @@ else:
         zp_bb_all = np.zeros((Nchan,Nframe,K,Nrfr,1),dtype=complex)
         yp_noiseless_all = np.zeros((Nchan,Nframe,K,Nrfr,1),dtype=complex)
         for ichan in  tqdm(range(Nchan),desc=f"DEC with shape {frameDims[ifdim]}: "):
-            mpch = mc.MultipathChannel((0,0,10),(40,0,1.5),allPathsData.loc[ichan,:])
+            mpch.insertPathsFromDF(allPathsData.loc[ichan,:])
             ht=mpch.getDEC(Na,Nd,Ncp,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
             hk_all[ichan,:,:,:]=np.fft.fft(ht,K,axis=0)
             wp,vp=pilgen.generatePilots(Nframe*K*Nrft,Na,Nd,Npr=Nframe*K*Nrfr,rShape=(Nframe,K,Nrfr,Na),tShape=(Nframe,K,Nd,Nrft))
@@ -209,11 +215,14 @@ else:
         for ialg in range(Nalg):           
         
     #-------------------------------------------------------------------------------
-            print(f"Pregenerate dictionary CS {confAlgs[ialg][5]} with shape shape {frameDims[ifdim]} =>")
             t0 = time.time()
             Xt,Xa,Xd,Xmu,dicName,label,_,_,_ = confAlgs[ialg]
             dicObj=csDictionaries[dicName]
             Lt,La,Ld=(int(Ncp*Xt),int(Na*Xa),int(Nd*Xd))
+            
+            Nobserv=(Nrfr*K*Nframe)
+            Nsearch=Lt*La*Ld
+            print(f"Pregen CS dict alg={confAlgs[ialg][5]} shape={frameDims[ifdim]} th. max paths {int(np.floor(Nobserv/np.log2(Nsearch)))}")
             dicObj.setHDic((K,Ncp,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
             if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
                 sizeHDic[ifdim,ialg] = dicObj.currHDic.mPhiH.size
@@ -222,7 +231,7 @@ else:
             else:
                 sizeHDic[ifdim,ialg] = 0
             prepHTime[ifdim,ialg] = time.time()-t0         
-            print(f"Finished in {prepHTime[ifdim,ialg]} seconds")
+            print(f"Finished in {prepHTime[ifdim,ialg]:3f} seconds")
             
             for ichan in  tqdm(range(Nchan),desc=f"CS Sim {confAlgs[ialg][5]} - {frameDims[ifdim]} =>", position=0):
                 #load the DEC values once for all SNRS

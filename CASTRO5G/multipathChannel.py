@@ -20,21 +20,29 @@ def fULA(incidAngle , Nant = 4, dInterElement = .5):
     if isinstance(incidAngle,np.ndarray):
         incidAngle=incidAngle[...,None]
                         
-    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant) * np.sin(incidAngle) ) /np.sqrt(1.0*Nant)
-
+    return np.exp( -2j * np.pi *  dInterElement * np.arange(Nant) * np.sin(incidAngle) ) /np.sqrt(Nant)
 
 def fUCA(incidAngle , Nant = 5, dInterElement = .5):
+    if isinstance(incidAngle,np.ndarray):
+        incidAngle=incidAngle[...,None]
     R=Nant*dInterElement/(2*np.pi)
     phiAnt=2*np.pi*np.arange(0,1,1/Nant)
-    a=np.exp(-2j*np.pi*R*np.cos(incidAngle[...,None,None]-phiAnt[:,None])) /np.sqrt(1.0*Nant)
+    a=np.exp(-2j*np.pi*R*np.cos(incidAngle-phiAnt)) /np.sqrt(Nant)
     return(a)
 
-def pSync(tau,Nmax,Nmin=0,oversampling=1):    
+def pSinc(tau,N,Nmin=0,oversampling=1):    
     if isinstance(tau,np.ndarray):
         tau=tau[...,None]
-    return np.sinc(np.arange(Nmin,Nmax,1/oversampling)-tau)#should work for any shape of tau, adding one dimension at the end  
+    return np.sinc(np.arange(Nmin,N,1/oversampling)-tau)#should work for any shape of tau, adding one dimension at the end  
 
-def pDirichlet(tau,P,Nmax,Nmin=0,oversampling=1):
+def pCExp(tau,K,Kmin=0,oversampling=1):
+    if isinstance(tau,np.ndarray):
+        tau=tau[...,None]
+    return np.exp(-2j*np.pi*np.arange(Kmin,K,1/oversampling)*tau/K)#should work for any shape of tau, adding one dimension at the end  
+
+def pDirichlet(tau,P,Nmax=None,Nmin=0,oversampling=1):
+    if Nmax is None:
+        Nmax=P
     if isinstance(tau,np.ndarray):
         tau=tau[...,None]
     t=np.arange(Nmin,Nmax,1/oversampling)-tau
@@ -43,7 +51,7 @@ def pDirichlet(tau,P,Nmax,Nmin=0,oversampling=1):
     #divide by zero 
     return( np.where(t!=0,
                np.exp(1j*np.pi*(P-1)*t/P)*np.sin(np.pi*t)/np.sin(np.pi*t/P)/P,
-               0j) )
+               1+0j) )
     
 class DiscreteMultipathChannelModel:
     def __init__(self,dims=(128,4,4),fftaxes=(1,2)):
@@ -209,11 +217,19 @@ class MIMOPilotChannel:
         yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=3,keepdims=True) + ( 0 if zp is None else zp))        
         return(yp)
 
-class MultipathChannel:
-    def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), dfPaths = None ):
+class MultipathDEC:
+    def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), dfPaths = None, customResponse=None ):
         self.txLocation = tPos
         self.rxLocation = rPos
         self.channelPaths = dfPaths
+        if customResponse is None:
+            self.fResponse = {
+                "TDoA" : pSinc,
+                "AoA" : fULA,
+                "AoD" : fULA
+                }
+        else:
+            self.fResponse = customResponse
 
         
     def insertPathsFromDF(self,dfPaths):
@@ -232,18 +248,14 @@ class MultipathChannel:
                                         "ZoA": lZoA,
                                         "Dopp":lDopp
                                         })
-    
+    #TODO make Ts be stored into fResponse["TDoA"] and make Na,Nd,Nt be provided as a dims tuples
+    #TODO make this into a loop of arbitrary dimensions with a list of names
     def getDEC(self,Na=1,Nd=1,Nt=1,Ts=1):
-        coefTensor=( np.sqrt(self.channelPaths.P)*np.exp(1j*self.channelPaths.phase00) ).to_numpy().reshape(-1,1,1,1)
-        tauTensor=self.channelPaths.TDoA.to_numpy().reshape(-1,1,1,1)
-        aodTensor=self.channelPaths.AoD.to_numpy().reshape(-1,1,1,1)
-        aoaTensor=self.channelPaths.AoA.to_numpy().reshape(-1,1,1,1)
-        timeResponse=np.sinc(np.arange(Nt).reshape(1,Nt,1,1)-tauTensor/Ts)        
-        #TODO make these functions parametric
-        # timeResponse=np.fft.ifft(np.exp( -2j* np.pi *np.arange(Na).reshape(1,1,Na,1)* tauTensor/Ts ))
-        arrivalResponse=np.exp( -1j* np.pi *np.arange(Na).reshape(1,1,Na,1)* np.sin(aoaTensor) ) /np.sqrt(Na)
-        departureResponse=np.exp( -1j* np.pi *np.arange(Nd).reshape(1,1,1,Nd)* np.sin(aodTensor) ) /np.sqrt(Nd)
-        h=np.sum(coefTensor*timeResponse*arrivalResponse*departureResponse,axis=0)
+        coef=( np.sqrt(self.channelPaths.P)*np.exp(1j*self.channelPaths.phase00) ).to_numpy()
+        timeResponse=self.fResponse["TDoA"](self.channelPaths["TDoA"].to_numpy()/Ts,Nt)
+        arrivalResponse=self.fResponse["AoA"](self.channelPaths["AoA"].to_numpy(),Na)
+        departureResponse=self.fResponse["AoD"](self.channelPaths["AoD"].to_numpy(),Nd)
+        h=np.sum(coef[:,None,None,None]*timeResponse[:,:,None,None]*arrivalResponse[:,None,:,None]*departureResponse[:,None,None,:],axis=0)
         return(h)
         
     def dirichlet(self,t,P):

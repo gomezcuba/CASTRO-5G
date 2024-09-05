@@ -166,7 +166,7 @@ if EST_CHANS:
     IsuppAll=[]
     MSEOMP=np.zeros(Nsims)
     for nsim in tqdm(range(Nsims),desc="Estimating channels"):    
-        mpch = mc.MultipathChannel((0,0,10),(x0[nsim],y0[nsim], 1.5),[])
+        mpch = mc.MultipathDEC((0,0,10),(x0[nsim],y0[nsim], 1.5),[])
         mpch.insertPathsFromListParameters(coefs[nsim,0:Npath[nsim]],TDoA[nsim,0:Npath[nsim]],DAoA[nsim,0:Npath[nsim]],AoD[nsim,0:Npath[nsim]],np.zeros(Npath[nsim]),np.zeros(Npath[nsim]),np.zeros(Npath[nsim]))
         ht=mpch.getDEC(Na,Nd,Ncp,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
         hk=np.fft.fft(ht.transpose([2,0,1]),K,axis=0)

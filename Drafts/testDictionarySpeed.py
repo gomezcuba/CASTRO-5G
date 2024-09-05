@@ -14,7 +14,7 @@ from CASTRO5G import multipathChannel as mc
 from CASTRO5G import compressedSensingTools as cs
 
 #values for 8GB memory usage in the biggest dictionary
-K=512
+K=256
 Ncp=32
 Na=8
 Nd=8
@@ -75,7 +75,7 @@ chgen=mc.UniformMultipathChannelModel(Npath=1,Ds=.9*Tcp,mode3D=False)
 allPathsData=chgen.create_channel()
 print(allPathsData)
 
-mpch = mc.MultipathChannel((0,0,10),(40,0,1.5),allPathsData.loc[0,:])
+mpch = mc.MultipathDEC((0,0,10),(40,0,1.5),allPathsData.loc[0,:])
 ht=mpch.getDEC(Na,Nd,Ncp,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
 hk=np.fft.fft(ht,K,axis=0)
 zp=mc.AWGN((Nframe,K,Na,1))
