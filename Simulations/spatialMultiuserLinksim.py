@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-from progress.bar import Bar
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
@@ -8,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 # import time
 import os
+from tqdm import tqdm
 import argparse
 plt.close('all')
 import sys
@@ -194,8 +194,7 @@ else:
     coefs=np.zeros((Ns,Npath),dtype=complex)
     nvalid=Npath*np.ones(Ns,dtype=int)
     clock_offset=np.zeros(Ns)
-    bar = Bar('Generating channels', max=Ns)
-    for isim in range(Ns):           
+    for isim in tqdm(range(Ns),desc='Generating channels'): 
         if mpgenInfo[0]=='Unif':
             p_loss[isim,:]=1e-12
             coefs1,delay1,aod1,aoa1=chgen.generateDEC(Npath)
@@ -240,8 +239,7 @@ else:
                 subpathsPrev=subpathsNext
         clock_offset[isim]=np.min(tdoa[isim,:,:])
         tdoa[isim,:,:] = tdoa[isim,:,:] - clock_offset[isim]
-        bar.next()
-    bar.finish()
+        
     if not args.nosave: 
         np.savez(outfoldername+'/chanGenData.npz',
                  x=x,
@@ -317,12 +315,9 @@ else:
     marg_lin = np.empty((NcsitCases, Ns , Nu),dtype = np.float32) 
     NMSE=np.zeros((NcsitCases, Ns , Nu),dtype = np.float32)
     hall = np.zeros((Ns , Nu, Ncp, Nr, Nt),dtype=complex) 
-    bar = Bar('Pregenerating perfect channels', max=Ns*Nu)
-    for isim in range(Ns):
+    for isim in tqdm(range(Ns),desc='Pregenerating perfect channels'):
         for nu in range(Nu):
             hall[isim,nu,:,:,:]=chgen.computeDEC(tdoa[isim,nu,0:nvalid[isim]]/Ts,aod[isim,nu,0:nvalid[isim]],aoa[isim,nu,0:nvalid[isim]],coefs[isim,0:nvalid[isim]])
-            bar.next()
-    bar.finish()
     
     for nCSIT in range(NcsitCases):
         method,methodConfig = csitConfig[nCSIT]
@@ -338,8 +333,7 @@ else:
             methodLegend=method
         testLegends.append(methodLegend) 
     
-        bar = Bar('Simulating LA with CSIT type %s'%(methodLegend), max=Ns*Nu)
-        for isim in range(Ns):
+        for isim in tqdm(range(Ns),desc='Simulating LA with CSIT type %s'%(methodLegend)):
             hkall=np.fft.fft(hall[isim,:,:,:,:],Nk,axis=1) 
             if method =='perfectCSIT':
                 hkall_est=hkall
@@ -396,8 +390,6 @@ else:
                     nextU=0
                 marg_epsilon[nCSIT, nextS, nextU] = marg_epsilon[nCSIT, isim, nu] - mu * (E_dB[nCSIT, isim, nu] - epsy)
                 marg_lin[nCSIT, nextS, nextU] = 10 ** ( marg_epsilon[nCSIT, nextS, nextU] /10 )
-                bar.next()
-        bar.finish()
     
         if not args.nosave: 
             np.savez(outfoldername+'/LinkAdaptResults.npz',

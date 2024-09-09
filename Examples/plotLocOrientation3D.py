@@ -174,7 +174,7 @@ plt.colorbar(label="log MSD (log-m)")
 plt.savefig('../Figures/graphcost3DS2%d.svg'%(Npath))
 
 
-searchDim=(25,25,25)
+searchDim=(20,20,20)
 AoA0_search=np.linspace(0,2*np.pi,searchDim[0])
 ZoA0_search=np.linspace(0,np.pi,searchDim[1])
 SoA0_search=np.linspace(0,2*np.pi,searchDim[2])

@@ -278,7 +278,7 @@ if delBacklobe:
     plt.fill_between(np.linspace(np.pi/2,3*np.pi/2,100)+rxArrayAngle*np.pi/180,-45,-10,alpha=0.2, color='k')
 plt.subplot(2,1,2)
 plt.ylabel("power [dB]")
-plt.xlabel("%d/%d subpaths adapted (%.2f\%%)"%(nASP,nSP,100*nASP/nSP))
+plt.xlabel("%d/%d subpaths adapted (%.2f\\%%)"%(nASP,nSP,100*nASP/nSP))
 for ctr in range(0,clustersAD.shape[0]):
     n=clustersAD.index[ctr]
     markerline, stemlines, baseline = plt.stem( subpathsAD.loc[n,:].TDoA.to_numpy() ,10*np.log10( subpathsAD.loc[n,:].P.to_numpy() ),bottom=np.min(10*np.log10(subpathsAD.P.to_numpy())))

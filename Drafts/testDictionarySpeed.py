@@ -108,4 +108,8 @@ plt.legend()
 tau,aoa,aod=dicBase.ind2Param(np.argmax(cBase))
 tau=tau*Ts
 #NOTE the aoa and aod estimates are from -pi/2 to pi/2. The array suffers simetry sin(phi)=sin(pi-phi) and the "backlobe" angles are mirrored
-print(f'estimated multipath delay {tau} (º) aoa {aoa:.2f} (rad) aod {aod:.2f}  (rad)')
+print(f"""Estimated multipath values:
+      TDoA: true {allPathsData.TDoA.to_numpy()[0]*1e9:.2f} ns, estimated {tau*1e9:.2f} ns, error {(allPathsData.TDoA.to_numpy()[0]-tau)*1e9:.2f} ns
+      AoD: true {np.mod(allPathsData.AoD.to_numpy()[0]*180/np.pi,360):.2f} º, estimated  {np.mod(aod*180/np.pi,360):.2f} º, error {np.mod(allPathsData.AoD.to_numpy()[0]*180/np.pi,360)-np.mod(aod*180/np.pi,360):.2f} º
+      AoA: true {np.mod(allPathsData.AoA.to_numpy()[0]*180/np.pi,360):.2f} º, estimated  {np.mod(aoa*180/np.pi,360):.2f} º, error {np.mod(allPathsData.AoA.to_numpy()[0]*180/np.pi,360)-np.mod(aoa*180/np.pi,360):.2f} º
+      """)
