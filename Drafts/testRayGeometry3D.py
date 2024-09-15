@@ -123,8 +123,8 @@ d0_est,ToAE_est,d_est=loc.computeAllPaths(paths,rotation=AoA0)
 
 print(f'2D Functions match {np.all(np.isclose(d0_old, d0_est))}  {np.all(np.isclose(ToAE_old, ToAE_est))}  {np.all(np.isclose(d_old, d_est))}' )
 
-# %timeit loc.computeAllPathsV1(AoD,DAoA,TDoA,AoA0)
-# %timeit loc.computeAllPaths(paths,rotation=AoA0)
+%timeit loc.computeAllPathsV1(AoD,DAoA,TDoA,AoA0)
+%timeit loc.computeAllPaths(paths,rotation=AoA0)
 
 rotation0_1D=np.concatenate([AoA0,[np.pi/2],[0]])
 R0_1D=loc.rMatrix(*rotation0_1D)

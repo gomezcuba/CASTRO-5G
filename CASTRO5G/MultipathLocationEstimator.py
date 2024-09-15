@@ -7,6 +7,8 @@ import pandas as pd
 from collections.abc import Iterable
 from tqdm import tqdm
 
+from numba import jit
+
 class MultipathLocationEstimator:
     """Class used to calculate 5G UE (User Equipment) location in 2D and 3D. 
     
@@ -431,6 +433,7 @@ class MultipathLocationEstimator:
         the average        
                         sum_i sum_d ( d[i,d]-mean_j(d[j,d]) )²
         """
+        #TODO make table_group stored in the object state and calculated only once before the eval function is called multiple times in a loop
         Npath = paths.index.size
         if isinstance(groupMethod,str):
             if 'path' in groupMethod:
