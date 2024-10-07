@@ -7,7 +7,7 @@ import pandas as pd
 from collections.abc import Iterable
 from tqdm import tqdm
 
-from numba import jit
+# from numba import jit
 
 class MultipathLocationEstimator:
     """Class used to calculate 5G UE (User Equipment) location in 2D and 3D. 

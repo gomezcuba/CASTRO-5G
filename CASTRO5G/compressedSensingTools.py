@@ -2,7 +2,9 @@ import numpy as np
 import collections as col
 import pandas as pd
 
-import time
+# import time
+
+# from numba import jit
 
 #SIMPLIFIED algorithms assume that observation matrix is the identity, v is directly the sparse vector and dictionary columns are orthonormal
 def simplifiedOMP(v,xi):
@@ -416,11 +418,12 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         c=c/np.sqrt(K*Na*Nd)#move the scaling here to reduce multiplications by a large factor xKxNaxNd
         return( c )
 
-OMPInfoSet = col.namedtuple( "OMPInfoSet",[
-        "multipaths",
-        "Ycols",
-        "Hcols",
-    ])
+# TODO deprecated code on 2024-09-16, delete in future releases if no problems detected 
+# OMPInfoSet = col.namedtuple( "OMPInfoSet",[
+#         "multipaths",
+#         "Ycols",
+#         "Hcols",
+#     ])
 
 class CSDictionaryRunner:
     def __init__(self, dictionary=None):
