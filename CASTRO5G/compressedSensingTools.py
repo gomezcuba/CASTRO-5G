@@ -339,8 +339,10 @@ class CSMultiDictionary(CSCachedDictionary):
         vSamples = vSamples.reshape((Nsym,K,Nrfr,1))
         v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
         v3 = np.matmul(v2,mPhiY_aod.conj())
-        v4 = np.matmul(mPhiY_tdoa.T.conj(), v3.reshape(Nsym,K,La*Ld) )
-        c  = np.sum(v4,axis=0).reshape((Lt*La*Ld,1))
+        # v4 = np.matmul(mPhiY_tdoa.T.conj(), v3.reshape(Nsym,K,La*Ld) )
+        # c  = np.sum(v4,axis=0).reshape((Lt*La*Ld,1))
+        v4b=np.sum(v3,axis=0)
+        c=np.matmul(mPhiY_tdoa.T.conj(), v4b.reshape(K,La*Ld) ).reshape((Lt*La*Ld,1))
         return(c)
 
 
@@ -377,6 +379,11 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         wp,vp=pilotPattern
         Nsym,K,Nrfr=wp.shape[0:3]
         dimY=(Nsym,K,Nrfr)
+        Lt,La,Ld = self.dimPhi
+        K,Ncp,Na,Nd = self.dimH
+        # mPhiY_aoa=np.fft.fft(wp,La,axis=3,norm="backward")
+        # mPhiY_aod=np.fft.fft(vp,Ld,axis=2,norm="backward").transpose((0,1,3,2))
+        # mPhiY=(mPhiY_aoa,mPhiY_aod)
         mPhiY = None
         return( self.typeYCacheItem( dimY, pilotPattern, mPhiY ) )  
     def getYCols(self,inds=None):
@@ -405,14 +412,29 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         vSamples = vSamples.reshape((Nsym,K,Nrfr,1))        
         Ncomb=K//Ncp
         
+        ####Nrfr*Na+Na*Nd+LaLd(logLaLd)
+        # v2=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
+        # v3=np.matmul(v2,vp.transpose(0,1,3,2).conj())
+        # v4=np.sum(v3,axis=0)
+        # v5=np.fft.ifft(v4,La,axis=1,norm="forward")#/np.sqrt(Na)  #fftconj
+        # v6=np.fft.ifft(v5,Ld,axis=2,norm="forward")#/np.sqrt(Nd) #fftconj
+        # Ccomb=v6.reshape(Ncp,Ncomb,La,Ld)
+        ####Nrfr*Na+NrfrLalogLa+La*Nd+LaLdlogLd
         v2a=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
-        v3a=np.matmul(v2a,vp.transpose(0,1,3,2).conj())
-        v4a=np.sum(v3a,axis=0)
-        v5a=np.fft.ifft(v4a,La,axis=1,norm="forward")#/np.sqrt(Na)  #fftconj
+        v3a=np.fft.ifft(v2a,La,axis=2,norm="forward")#/np.sqrt(Na)  #fftconj
+        v4a=np.matmul(v3a,vp.transpose(0,1,3,2).conj())
+        v5a=np.sum(v4a,axis=0)
         v6a=np.fft.ifft(v5a,Ld,axis=2,norm="forward")#/np.sqrt(Nd) #fftconj
-        Ccomba=v6a.reshape(Ncp,Ncomb,La,Ld)
-        
-        Cfft=np.fft.ifft(Ccomba,Lt,axis=0,norm="forward")#/np.sqrt(K) #fftconj
+        Ccomb=v6a.reshape(Ncp,Ncomb,La,Ld)      
+        ####Nrfr*La+La*Ld
+        #### uncomment the multi dictionary values to use this version
+        # mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY        
+        # v2b = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
+        # v3b = np.matmul(v2b,mPhiY_aod.conj())
+        # v4b  = np.sum(v3b,axis=0)
+        # Ccomb=v4b.reshape(Ncp,Ncomb,La,Ld)
+                
+        Cfft=np.fft.ifft(Ccomb,Lt,axis=0,norm="forward")#/np.sqrt(K) #fftconj
         Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
         c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
         c=c/np.sqrt(K*Na*Nd)#move the scaling here to reduce multiplications by a large factor xKxNaxNd

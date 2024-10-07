@@ -53,7 +53,7 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 # there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
 # args = parser.parse_args("-N 10 -G 3gpp -F=3:64:32:2:8:8:1 --label test3GPPsmall --show --print".split(' '))
 # this config is a bit slow but is the minimal working one
-args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=1:1024:64:1:8:8:1,2:512:32:1:8:8:1,3:256:16:1:8:8:1 --label test3GPPframe --show --print".split(' '))
+args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:1:8:8:1,2:512:32:1:8:8:1,3:256:16:1:8:8:1 --label test3GPPframe --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPP16 --show --print".split(' '))
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPalg --show --print".split(' '))
 
@@ -103,12 +103,12 @@ confAlgs=[#Xt Xd Xa Xmu accel legend string name
     # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a',':','s','c'),
     # (4.0,4.0,4.0,1.0,"dicFFT",'OMPx4a','-.','s','r'),
     # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','--','s','g'),
-    (1.0,1.0,1.0,1.0,"dicMult",'OMPx1m','-','x','b'),
+    # (1.0,1.0,1.0,1.0,"dicMult",'OMPx1m','-','x','b'),
     (2.0,2.0,2.0,1.0,"dicMult",'OMPx2m',':','x','c'),
-    # (4.0,4.0,4.0,1.0,"dicMult",'OMPx4m','-.','x','r'),
+    (4.0,4.0,4.0,1.0,"dicMult",'OMPx4m','-.','x','r'),
     # (8.0,8.0,8.0,1.0,"dicMult",'OMPx8m','--','x','k'),
     # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm','--','x','g'),
-    (1.0,1.0,1.0,1.0,"dicFast",'OMPx1f','-','^','b'),
+    # (1.0,1.0,1.0,1.0,"dicFast",'OMPx1f','-','^','b'),
     # (2.0,2.0,2.0,1.0,"dicFast",'OMPx2f',':','^','c'),
     # (4.0,4.0,4.0,1.0,"dicFast",'OMPx4f','-.','^','r'),
     # (8.0,8.0,8.0,1.0,"dicFast",'OMPx8f','--','^','k'),
