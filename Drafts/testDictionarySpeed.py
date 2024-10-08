@@ -14,10 +14,10 @@ from CASTRO5G import multipathChannel as mc
 from CASTRO5G import compressedSensingTools as cs
 
 #values for 8GB memory usage in the biggest dictionary
-K=64
+K=128
 Ncp=32
-Na=8
-Nd=8
+Na=4
+Nd=4
 Nframe=3
 Nrfr=1
 Nrft=1
@@ -28,8 +28,8 @@ dimH=(K,Ncp,Na,Nd)
 dimPhi=(4*Ncp,4*Na,4*Nd)
 dimY=(Nframe,K,Nrfr)
 
-bTestBase = True #disable for large sizes
-bTestFFT = True
+bTestBase = False #disable for large sizes
+bTestFFT = False
 bTestMult = True
 bTestFast = True
 

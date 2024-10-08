@@ -279,10 +279,15 @@ class CSBasicFFTDictionary(CSCachedDictionary):
         Nsym,K,Nrfr=self.currYDic.dimY
         Ncomb=K//Ncp
         Ccorr=self.currYDic.mPhiY.conj()*vSamples
-        Ccomb=np.sum(Ccorr.reshape(Nsym,Ncp,Ncomb,Nrfr,Ld*La),axis=(0,3))
-        Cfft=np.fft.ifft(Ccomb,Lt,axis=0,norm="forward")#fft conj
-        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1))
-        c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
+        # Ccomb=np.sum(Ccorr.reshape(Nsym,Ncp,Ncomb,Nrfr,Ld*La),axis=(0,3))
+        # Cfft=np.fft.ifft(Ccomb,Lt,axis=0,norm="forward")#fft conj
+        # Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1))
+        # c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
+        
+        Csum=np.sum(Ccorr.reshape(Nsym,K,Nrfr,Ld*La),axis=(0,2))        
+        Kexpand=int(K*Lt/Ncp)
+        Cfft=np.fft.ifft(Csum,Kexpand,axis=0,norm="forward")[0:Lt,:]#fft conj
+        c=Cfft.reshape(-1,1)
         return( c )
 
 #------------------------------------------------------------------------------
@@ -418,26 +423,28 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         # v4=np.sum(v3,axis=0)
         # v5=np.fft.ifft(v4,La,axis=1,norm="forward")#/np.sqrt(Na)  #fftconj
         # v6=np.fft.ifft(v5,Ld,axis=2,norm="forward")#/np.sqrt(Nd) #fftconj
-        # Ccomb=v6.reshape(Ncp,Ncomb,La,Ld)
         ####Nrfr*Na+NrfrLalogLa+La*Nd+LaLdlogLd
         v2a=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
         v3a=np.fft.ifft(v2a,La,axis=2,norm="forward")#/np.sqrt(Na)  #fftconj
         v4a=np.matmul(v3a,vp.transpose(0,1,3,2).conj())
         v5a=np.sum(v4a,axis=0)
         v6a=np.fft.ifft(v5a,Ld,axis=2,norm="forward")#/np.sqrt(Nd) #fftconj
-        Ccomb=v6a.reshape(Ncp,Ncomb,La,Ld)      
         ####Nrfr*La+La*Ld
         #### uncomment the multi dictionary values to use this version
         # mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY        
         # v2b = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
         # v3b = np.matmul(v2b,mPhiY_aod.conj())
         # v4b  = np.sum(v3b,axis=0)
-        # Ccomb=v4b.reshape(Ncp,Ncomb,La,Ld)
-                
-        Cfft=np.fft.ifft(Ccomb,Lt,axis=0,norm="forward")#/np.sqrt(K) #fftconj
-        Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
-        c=np.sum(Cbutterfly,axis=1).reshape(-1,1)
-        c=c/np.sqrt(K*Na*Nd)#move the scaling here to reduce multiplications by a large factor xKxNaxNd
+        
+        # Ccomb=v6a.reshape(Ncp,Ncomb,La,Ld)      
+        # Cfft=np.fft.ifft(Ccomb,Lt,axis=0,norm="forward")#/np.sqrt(K) #fftconj
+        # Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
+        # c=np.sum(Cbutterfly,axis=1).reshape(-1,1) 
+        # c=c/np.sqrt(K*Na*Nd)#move the scaling here to reduce multiplications by a large factor xKxNaxNd
+        
+        Kexpand=int(K*Lt/Ncp)
+        cb=np.fft.ifft(v6a,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
+        c=cb.reshape(-1,1)/np.sqrt(K*Na*Nd)
         return( c )
 
 # TODO deprecated code on 2024-09-16, delete in future releases if no problems detected 
