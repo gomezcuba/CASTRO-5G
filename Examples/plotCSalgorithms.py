@@ -13,7 +13,6 @@ sys.path.append('../')
 from CASTRO5G import compressedSensingTools as cs
 from CASTRO5G import multipathChannel as mc
 
-
 plt.close('all')
 
 Nchan=10

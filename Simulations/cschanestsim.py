@@ -4,7 +4,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.lines as lin
-
+plt.rcParams.update({
+    "text.usetex": True,
+    # "font.family": "Helvetica"
+})
 import time
 import os
 from tqdm import tqdm
@@ -47,14 +50,14 @@ parser.add_argument('--noest',help='Do not perform channel estimation, load exis
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
-# args = parser.parse_args("-N 5 -G Uni:3 -F=3:64:16:2:4:4:1 --label test --show --print".split(' '))
+args = parser.parse_args("--nompg --noest -N 10 -G Uni:5 -F=3:64:32:1:8:8:1 --label SmallDicSize --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
 # there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
 # args = parser.parse_args("-N 10 -G 3gpp -F=3:64:32:2:8:8:1 --label test3GPPsmall --show --print".split(' '))
 # this config is a bit slow but is the minimal working one
 # args = parser.parse_args("-N 10 -G 3gpp -F=3:256:16:1:8:8:1 --label test3GPPsmall --show --print".split(' '))
-args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:1:8:8:1,2:512:32:1:8:8:1,3:256:16:1:8:8:1 --label test3GPPframe --show --print".split(' '))
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:1:8:8:1,2:512:32:1:8:8:1,3:256:16:1:8:8:1 --label test3GPPframe --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPP16 --show --print".split(' '))
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPalg --show --print".split(' '))
 
@@ -96,23 +99,23 @@ if not os.path.isdir(outfoldername) and not args.nosave:
 
 
 confAlgs=[#Xt Xd Xa Xmu accel legend string name
-    # (1.0,1.0,1.0,1.0,"dicBase",'OMPx1','-','o','b'),
-    # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2',':','o','c'),
-    # (4.0,4.0,4.0,1.0,"dicBase",'OMPx2','-.','o','r'),
-    # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','--','o','g'),
-    # (1.0,1.0,1.0,1.0,"dicFFT",'OMPx1a','-','s','b'),
-    # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a',':','s','c'),
-    # (4.0,4.0,4.0,1.0,"dicFFT",'OMPx4a','-.','s','r'),
-    # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','--','s','g'),
-    # (1.0,1.0,1.0,1.0,"dicMult",'OMPx1m','-','x','b'),
-    (2.0,2.0,2.0,1.0,"dicMult",'OMPx2m',':','x','c'),
-    (4.0,4.0,4.0,1.0,"dicMult",'OMPx4m','-.','x','r'),
-    # (8.0,8.0,8.0,1.0,"dicMult",'OMPx8m','--','x','k'),
-    # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm','--','x','g'),
-    # (1.0,1.0,1.0,1.0,"dicFast",'OMPx1f','-','^','b'),
-    (2.0,2.0,2.0,1.0,"dicFast",'OMPx2f',':','^','c'),
-    (4.0,4.0,4.0,1.0,"dicFast",'OMPx4f','-.','^','r'),
-    # (8.0,8.0,8.0,1.0,"dicFast",'OMPx8f','--','^','k'),
+    (1.0,1.0,1.0,1.0,"dicBase",'OMPx1','-','o','r'),
+    # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2','-','s','r'),
+    (4.0,4.0,4.0,1.0,"dicBase",'OMPx4','-','D','r'),
+    # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','-','v','r'),
+    (1.0,1.0,1.0,1.0,"dicFFT",'OMPx1a','-.','*','k'),
+    # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a','-.','x','k'),
+    (4.0,4.0,4.0,1.0,"dicFFT",'OMPx4a','-.','+','k'),
+    # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','-.','1','k'),
+    (1.0,1.0,1.0,1.0,"dicMult",'OMPx1m',':','o','b'),
+    # (2.0,2.0,2.0,1.0,"dicMult",'OMPx2m',':','s','b'),
+    (4.0,4.0,4.0,1.0,"dicMult",'OMPx4m',':','D','b'),
+    (8.0,8.0,8.0,1.0,"dicMult",'OMPx8m','-.','v','b'),
+    # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
+    (1.0,1.0,1.0,1.0,"dicFast",'OMPx1f','--','*','g'),
+    # (2.0,2.0,2.0,1.0,"dicFast",'OMPx2f','--','x','g'),
+    (4.0,4.0,4.0,1.0,"dicFast",'OMPx4f','--','+','g'),
+    (8.0,8.0,8.0,1.0,"dicFast",'OMPx8f','--','1','g'),
     ]
 
 legStrAlgs=[x[-1] for x in confAlgs]
@@ -127,7 +130,8 @@ csDictionaries={
     }
 pilgen = mc.MIMOPilotChannel("IDUV")
 channelResponseFunctions = {
-    "TDoA" : mc.pSinc,
+    # "TDoA" : mc.pSinc,
+    "TDoA" : lambda t,M: np.fft.ifft(mc.pCExp(t,M)),  
     "AoA" : mc.fULA,
     "AoD" : mc.fULA,
     }
@@ -282,7 +286,10 @@ else:
             
 
 bytesPerFloat = np.array([0],dtype=np.complex128).itemsize
-algLegendList = [x[5]+'-'+y for y in frameDims for x in confAlgs ]
+if NframeDims>1:
+    algLegendList = [x[5]+'-'+y for y in frameDims for x in confAlgs ]
+else:
+    algLegendList = [x[5] for x in confAlgs]
 listOfMarkers = list(lin.Line2D.markers.keys())
 listOfLTypes = ['-',':','-.','--']
 fig_ctr=0
@@ -293,10 +300,11 @@ plt.yscale("log")
 barwidth= 0.9/(2*NframeDims)
 for ifdim in range(NframeDims):
     offset=(-1/2)*barwidth+ifdim*.9/2
-    plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeHDic[ifdim,:]*(2.0**-20),width=barwidth,label='H dict'+frameDims[ifdim])
+    lbmod = frameDims[ifdim] if NframeDims>1 else ''
+    plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeHDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Phi$ dict'+lbmod)
     offset=(+1/2)*barwidth+ifdim*.9/2
-    plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeYDic[ifdim,:]*(2.0**-20),width=barwidth,label='Y dict'+frameDims[ifdim])
-plt.xticks(ticks=np.arange(0,Nalg,1/NframeDims),labels=algLegendList)
+    plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeYDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
+plt.xticks(ticks=np.arange(0,Nalg),labels=[x[5] for x in confAlgs])
 plt.xlabel('Algoritm')
 plt.ylabel('Dictionary size MByte')
 plt.legend()
@@ -308,10 +316,11 @@ plt.yscale("log")
 barwidth= 0.9/(2*NframeDims)
 for ifdim in range(NframeDims):
     offset=(-1/2)*barwidth+ifdim*.9/2
-    plt.bar(np.arange(Nalg)+offset,prepHTime[ifdim,:],width=barwidth,label='H dict'+frameDims[ifdim])
+    lbmod = frameDims[ifdim] if NframeDims>1 else ''
+    plt.bar(np.arange(Nalg)+offset,prepHTime[ifdim,:],width=barwidth,label='$\\Phi$ dict'+lbmod)
     offset=(+1/2)*barwidth+ifdim*.9/2
-    plt.bar(np.arange(Nalg)+offset,np.mean(prepYTime[ifdim,:,:],axis=1),width=barwidth,label='Y dict'+frameDims[ifdim])
-plt.xticks(ticks=np.arange(0,Nalg,1/NframeDims),labels=algLegendList)
+    plt.bar(np.arange(Nalg)+offset,np.mean(prepYTime[ifdim,:,:],axis=1),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
+plt.xticks(ticks=np.arange(0,Nalg,1/NframeDims),labels=[x[5] for x in confAlgs])
 plt.xlabel('Algoritm')
 plt.ylabel('precomputation time')
 plt.legend()
@@ -329,7 +338,10 @@ for ifdim in range(NframeDims):
         if NframeDims>1:
         #     mrk=listOfMarkers[2+ifdim*Nmrkorig+np.where(mrk==lMrkOrig)[0][0]]
             lin=listOfLTypes[ifdim]
-        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=label+frameDims[ifdim])
+            lbmod=frameDims[ifdim]
+        else:
+            lbmod=''
+        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=label+lbmod)
 plt.legend()
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')

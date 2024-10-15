@@ -88,7 +88,8 @@ class CSCachedDictionary:
         ])
     def __init__(self,dimH=None,dimPhi=None):
         #TODO add K here
-        self.funTDoAh= lambda TDoA,Ncp,K: np.fft.fft(np.sinc( np.arange(0.0,Ncp,1.0)[:,None] - TDoA ),K,axis=0,norm="ortho")
+        # self.funTDoAh= lambda TDoA,Ncp,K: np.fft.fft(np.sinc( np.arange(0.0,Ncp,1.0)[:,None] - TDoA ),K,axis=0,norm="ortho")
+        self.funTDoAh= lambda TDoA,Ncp,K: np.exp(-2j*np.pi*TDoA*np.arange(0.0,1.0,1.0/K)[:,None] )/np.sqrt(K)
         self.funAoAh= lambda aoas,Na: np.exp( -1j*np.pi * np.arange(0.0,Na,1.0)[:,None] * np.sin(aoas) ) /np.sqrt(1.0*Na)
         self.funAoDh= lambda aods,Nd: np.exp( -1j*np.pi * np.arange(0.0,Nd,1.0)[:,None] * np.sin(aods) ) /np.sqrt(1.0*Nd)        
         self.dimH = dimH if dimH else None
@@ -400,8 +401,8 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         K,Ncp,Na,Nd = self.dimH
         ind_tdoa,ind_aoa,ind_aod=np.unravel_index(inds, (Lt,La,Ld))
         TDoA_vals=self.currHDic.TDoAdic[ind_tdoa]
-        col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1,1)*TDoA_vals)/np.sqrt(K)
-        # col_tdoa = self.funTDoAh(TDoA_vals,Ncp,K)[None,:,None,None,:]
+        # col_tdoa=np.exp(-2j*np.pi*np.arange(0,1,1/K).reshape(1,K,1,1,1)*TDoA_vals)/np.sqrt(K)
+        col_tdoa = self.funTDoAh(TDoA_vals,Ncp,K)[None,:,None,None,:]
         AoA_vals=self.currHDic.AoAdic[ind_aoa]
         col_aoa = np.matmul( wp, self.funAoAh(AoA_vals,Na))[:,:,:,None,:]
         AoD_vals=self.currHDic.AoDdic[ind_aod]
