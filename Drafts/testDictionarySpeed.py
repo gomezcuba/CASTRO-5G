@@ -14,10 +14,10 @@ from CASTRO5G import multipathChannel as mc
 from CASTRO5G import compressedSensingTools as cs
 
 #values for 8GB memory usage in the biggest dictionary
-K=256
-Ncp=32
-Na=4
-Nd=4
+K=1024
+Ncp=128
+Na=8
+Nd=8
 Nframe=3
 Nrfr=1
 Nrft=1
@@ -28,10 +28,11 @@ dimH=(K,Ncp,Na,Nd)
 dimPhi=(4*Ncp,4*Na,4*Nd)
 dimY=(Nframe,K,Nrfr)
 
-bTestBase = True #disable for large sizes
-bTestFFT = True
-bTestMult = True
+bTestBase = False #disable for large sizes
+bTestFFT = False
+bTestMult = False
 bTestFast = True
+bTestSphr = True
 
 if bTestBase:
     dicBase=cs.CSCachedDictionary()
@@ -41,6 +42,8 @@ if bTestMult:
     dicMult=cs.CSMultiDictionary()
 if bTestFast:
     dicFast=cs.CSMultiFFTDictionary()
+if bTestSphr:
+    dicSphr=cs.CSSphereFFTDictionary()
 
 bytesPerFloat = np.array([0],dtype=np.complex128).itemsize
 if bTestBase:
@@ -63,6 +66,11 @@ if bTestFast:
     tini=time.time()
     dicFast.setHDic(dimH,dimPhi)
     print(f'Create HDic fast: {time.time()-tini:.2f} seconds {0} MB memory')
+if bTestSphr:
+    # %timeit dicFast.setHDic(dimH,dimPhi)
+    tini=time.time()
+    dicSphr.setHDic(dimH,dimPhi)
+    print(f'Create HDic sphr: {time.time()-tini:.2f} seconds {0} MB memory')
 
 pilgen = mc.MIMOPilotChannel("IDUV")
 wp,vp=pilgen.generatePilots(Nframe*K*Nrft,Na,Nd,Npr=Nframe*K*Nrfr,rShape=(Nframe,K,Nrfr,Na),tShape=(Nframe,K,Nd,Nrft))
@@ -87,6 +95,11 @@ if bTestFast:
     # %timeit dicFast.setYDic("someID",(wp,vp))
     dicFast.setYDic("someID",(wp,vp))
     print(f'Create YDic fast: {time.time()-tini:.2f} seconds {0} MB memory')
+if bTestSphr:
+    tini=time.time()
+    # %timeit dicFast.setYDic("someID",(wp,vp))
+    dicSphr.setYDic("someID",(wp,vp))
+    print(f'Create YDic sphr: {time.time()-tini:.2f} seconds {0} MB memory')
 
 chgen=mc.UniformMultipathChannelModel(Npath=1,Ds=.9*Tcp,mode3D=False)
 allPathsData=chgen.create_channel()
@@ -109,6 +122,8 @@ if bTestMult:
     %timeit dicMult.projY(yp.reshape(-1,1))
 if bTestFast:
     %timeit dicFast.projY(yp.reshape(-1,1))
+if bTestSphr:
+    %timeit dicSphr.projY(yp.reshape(-1,1))
 
 if bTestBase:
     cBase= dicBase.projY(yp.reshape(-1,1))
@@ -118,6 +133,8 @@ if bTestMult:
     cMult= dicMult.projY(yp.reshape(-1,1))
 if bTestFast:
     cFast= dicFast.projY(yp.reshape(-1,1))
+if bTestSphr:
+    cFast= dicSphr.projY(yp.reshape(-1,1))
 
 if bTestBase and bTestMult:
     print(f'Mult dictioary is equal to base: {np.all(np.isclose(cBase,cMult))}')

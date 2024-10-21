@@ -410,50 +410,85 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         col_tot= (col_tdoa*col_aoa*col_aod).reshape(Nsym*K*Nrfr,Ncol) #values are already repeated as necessary by unravel-index
         return(col_tot)   
     def projY(self,vSamples):
-        # Delay domain projection complexity K*Xt*(1+log(Ncp*Xt))
         K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         Nsym,K,Nrfr=self.currYDic.dimY
         wp,vp = self.currYDic.pilotPattern
         vSamples = (vSamples.reshape((Nsym,K,Nrfr,1)))
         
-        ####Nrfr*Na+Na*Nd+LaLd(logLaLd)
-        # v2=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
-        # v3=np.matmul(v2,vp.transpose(0,1,3,2).conj())
-        # v4=np.sum(v3,axis=0)
-        # v5=np.fft.ifft(v4,La,axis=1,norm="forward")#/np.sqrt(Na)  #fftconj
-        # Cfa=np.fft.ifft(v5,Ld,axis=2,norm="forward")#/np.sqrt(Nd) #fftconj
-        ####Nrfr*Na+NrfrLalogLa+La*Nd+LaLdlogLd
-        # v2a=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
-        # v3a=np.fft.ifft(v2a,La,axis=2,norm="forward")#/np.sqrt(Na)  #fftconj
-        # v4a=np.matmul(v3a,vp.transpose(0,1,3,2).conj())
-        # v5a=np.sum(v4a,axis=0)
-        # Cfa=np.fft.ifft(v5a,Ld,axis=2,norm="forward")#/np.sqrt(Nd) #fftconj
-        ####Nrfr*La+La*Ld
-        #### uncomment the multi dictionary values to use this version
-        mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY        
-        v2b = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
-        v3b = np.matmul(v2b,mPhiY_aod.conj())
-        Cfa  = np.sum(v3b,axis=0)
-        
-        # Ncomb=K//Ncp
-        # Ccomb=Cfa.reshape(Ncp,Ncomb,La,Ld)      
-        # Cfft=np.fft.ifft(Ccomb,Lt,axis=0,norm="forward")#/np.sqrt(K) #fftconj
-        # Cbutterfly=Cfft*np.exp(2j*np.pi*np.arange(0,Ncp,Ncp/Lt).reshape(Lt,1,1,1)*np.arange(0,Ncomb/K,1/K).reshape(1,Ncomb,1,1))
-        # c=np.sum(Cbutterfly,axis=1).reshape(-1,1) 
-        # c=c/np.sqrt(K*Na*Nd)#move the scaling here to reduce multiplications by a large factor xKxNaxNd
-        
-        Kexpand=int(K*Lt/Ncp)
-        cb=np.fft.ifft(Cfa,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
-        c=cb.reshape(-1,1)/np.sqrt(K*Na*Nd)
+        if (Lt>K) or ((La==Nd) and (Ld==Nd)):
+            mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY        
+            v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
+            v3 = np.matmul(v2,mPhiY_aod.conj())
+            v4  = np.sum(v3,axis=0)
+            Kexpand=int(K*Lt/Ncp)
+            v5=np.fft.ifft(v4,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
+            c=v5.reshape(-1,1)/np.sqrt(K*Na*Nd)
+        else:
+            v2=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
+            v3=np.matmul(v2,vp.transpose(0,1,3,2).conj())
+            v4=np.sum(v3,axis=0)
+            Kexpand=int(K*Lt/Ncp)
+            v5=np.fft.ifft(v4,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
+            v6=np.fft.ifft(v5,La,axis=1,norm="forward")#/np.sqrt(Nd) #fftconj
+            v7=np.fft.ifft(v6,Ld,axis=2,norm="forward")#/np.sqrt(Na)  #fftconj
+            c = v7.reshape(-1,1)/np.sqrt(K*Na*Nd)
         return( c )
 
-# TODO deprecated code on 2024-09-16, delete in future releases if no problems detected 
-# OMPInfoSet = col.namedtuple( "OMPInfoSet",[
-#         "multipaths",
-#         "Ycols",
-#         "Hcols",
-#     ])
+class CSSphereFFTDictionary(CSMultiFFTDictionary):
+    def projY(self,vSamples):
+        K,Ncp,Na,Nd = self.dimH
+        Lt,La,Ld = self.dimPhi
+        dimPhi = self.dimPhi
+        Nsym,K,Nrfr=self.currYDic.dimY
+        wp,vp = self.currYDic.pilotPattern
+        vSamples = (vSamples.reshape((Nsym,K,Nrfr,1)))
+        v2=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
+        v3=np.matmul(v2,vp.transpose(0,1,3,2).conj())
+        qp=np.sum(v3,axis=0)
+        
+        mp = {(-1,-1,-1):(0,np.sum(np.abs(qp)**2),qp)}
+        # print(mp)
+        stop=False
+        while not stop:
+            it=max(mp,key=lambda x: mp.get(x)[1])
+            d,Uprev,Qprev = mp[it]
+             #TODO make this arbitrary dimensions
+            if d==3:
+                stop=True
+                break;
+            elif d==0:
+                Kexpand=int(K*Lt/Ncp)
+                val = np.fft.ifft(Qprev,Kexpand,axis=0,norm="forward")[0:Lt,:,:]/np.sqrt(K)
+                # Unext = np.sum(np.abs(val)**2,axis=(1,2))
+                Unext = np.linalg.norm(val,axis=(1,2))
+            elif d==1:
+                val = np.fft.ifft(Qprev,La,axis=0,norm="forward")/np.sqrt(Na)
+                # Unext = np.sum(np.abs(val)**2,axis=1)
+                Unext = np.linalg.norm(val,axis=1)
+            elif d==2:
+                val = np.fft.ifft(Qprev,Ld,axis=0,norm="forward")/np.sqrt(Nd)
+                # Unext = np.abs(val)**2
+                Unext = np.abs(val)
+            
+            for n in range(dimPhi[d]):
+                it_next=list(it)
+                it_next[d]=n
+                mp[tuple(it_next)]=(d+1,Unext[n],val[n,...])
+            mp.pop(it)
+        # print(f"""ITER
+              
+        # #       {mp}""")
+        C=np.zeros(dimPhi,dtype=np.complex128)
+        for a in mp.keys():
+            d,U,c=mp[a]      
+            ind_list=int(np.ravel_multi_index(a[0:d],dimPhi[0:d])*np.prod(C.shape[d:]))
+            if d<len(dimPhi):
+                ind_list=ind_list+np.arange(np.prod(C.shape[d:]),dtype=int)  
+                C[np.unravel_index(ind_list,dimPhi)]=U
+            else:
+                C[np.unravel_index(ind_list,dimPhi)]=c
+        return(c.reshape(-1,1))
 
 class CSDictionaryRunner:
     def __init__(self, dictionary=None):

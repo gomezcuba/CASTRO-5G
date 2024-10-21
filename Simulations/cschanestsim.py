@@ -51,11 +51,13 @@ parser.add_argument('--noest',help='Do not perform channel estimation, load exis
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
-# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSize --show --print".split(' '))
+args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSize --show --print".split(' '))
 # args = parser.parse_args("-N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
 
+# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSize --show --print".split(' '))
+
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSize --show --print".split(' '))
-args = parser.parse_args("-N 4 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSizeX4 --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSizeX4 --show --print".split(' '))
 # args = parser.parse_args("-N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
 ####
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
@@ -106,24 +108,24 @@ if not os.path.isdir(outfoldername) and not args.nosave:
 
 
 confAlgs=[#Xt Xd Xa Xmu accel legend string name
-    # (1.0,1.0,1.0,1.0,"dicBase",'Full Dic. X=1','-','o','r'),
+    (1.0,1.0,1.0,1.0,"dicBase",'Full Dic. X=1','-','o','r'),
     # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2','-','s','r'),
-    # (4.0,4.0,4.0,1.0,"dicBase",'Full Dic. X=4','-','D','r'),
+    (4.0,4.0,4.0,1.0,"dicBase",'Full Dic. X=4','-','D','r'),
     # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','-','v','r'),
-    # (1.0,1.0,1.0,1.0,"dicFFT",'NB+FFT X=1','-.','*','k'),
+    (1.0,1.0,1.0,1.0,"dicFFT",'NB+FFT X=1','-.','*','k'),
     # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a','-.','x','k'),
-    # (4.0,4.0,4.0,1.0,"dicFFT",'NB+FFT X=4','-.','+','k'),
+    (4.0,4.0,4.0,1.0,"dicFFT",'NB+FFT X=4','-.','+','k'),
     # (8.0,8.0,8.0,1.0,"dicFFT",'NB+FFT X=8','-.','1','k'),
     # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','-.','1','k'),
-    # (1.0,1.0,1.0,1.0,"dicMult",'MultiDic. X=1',':','o','b'),
+    (1.0,1.0,1.0,1.0,"dicMult",'MultiDic. X=1',':','o','b'),
     # (2.0,2.0,2.0,1.0,"dicMult",'MultiDic. X=2',':','s','b'),
-    # (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
+    (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
     (8.0,8.0,8.0,1.0,"dicMult",'MultiDic. X=8','-.','v','b'),
     # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
-    # (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
+    (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
     # (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
-    # (4.0,4.0,4.0,1.0,"dicFast",'3D-FFT X=4','--','+','g'),
-    # (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
+    (4.0,4.0,4.0,1.0,"dicFast",'3D-FFT X=4','--','+','g'),
+    (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
     ]
 legStrAlgs=[x[-1] for x in confAlgs]
 Nalg=len(confAlgs)
