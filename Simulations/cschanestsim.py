@@ -3,7 +3,8 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.lines as lin
+import matplotlib.lines as mplin
+import matplotlib.cm as cm
 plt.rcParams.update({
     "text.usetex": True,
     # "font.family": "Helvetica"
@@ -50,7 +51,13 @@ parser.add_argument('--noest',help='Do not perform channel estimation, load exis
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
-args = parser.parse_args("--nompg --noest -N 10 -G Uni:5 -F=3:64:32:1:8:8:1 --label SmallDicSize --show --print".split(' '))
+# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSize --show --print".split(' '))
+# args = parser.parse_args("-N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
+
+# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSize --show --print".split(' '))
+args = parser.parse_args("-N 4 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSizeX4 --show --print".split(' '))
+# args = parser.parse_args("-N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
+####
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
 # there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
@@ -72,8 +79,8 @@ if args.F:
     frameDims = args.F.split(',')
 else:
     frameDims = [3,32,16,2,4,4,1]
-NframeDims = len(frameDims)    
-    
+NframeDims = len(frameDims)
+
 # Ds=390e-9 #Ts=2.5ns with Rs=400MHz in NYUwim
 Tcp=570e-9 #mu=2
 if args.S:
@@ -99,25 +106,25 @@ if not os.path.isdir(outfoldername) and not args.nosave:
 
 
 confAlgs=[#Xt Xd Xa Xmu accel legend string name
-    (1.0,1.0,1.0,1.0,"dicBase",'OMPx1','-','o','r'),
+    # (1.0,1.0,1.0,1.0,"dicBase",'Full Dic. X=1','-','o','r'),
     # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2','-','s','r'),
-    (4.0,4.0,4.0,1.0,"dicBase",'OMPx4','-','D','r'),
+    # (4.0,4.0,4.0,1.0,"dicBase",'Full Dic. X=4','-','D','r'),
     # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','-','v','r'),
-    (1.0,1.0,1.0,1.0,"dicFFT",'OMPx1a','-.','*','k'),
+    # (1.0,1.0,1.0,1.0,"dicFFT",'NB+FFT X=1','-.','*','k'),
     # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a','-.','x','k'),
-    (4.0,4.0,4.0,1.0,"dicFFT",'OMPx4a','-.','+','k'),
+    # (4.0,4.0,4.0,1.0,"dicFFT",'NB+FFT X=4','-.','+','k'),
+    # (8.0,8.0,8.0,1.0,"dicFFT",'NB+FFT X=8','-.','1','k'),
     # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','-.','1','k'),
-    (1.0,1.0,1.0,1.0,"dicMult",'OMPx1m',':','o','b'),
-    # (2.0,2.0,2.0,1.0,"dicMult",'OMPx2m',':','s','b'),
-    (4.0,4.0,4.0,1.0,"dicMult",'OMPx4m',':','D','b'),
-    (8.0,8.0,8.0,1.0,"dicMult",'OMPx8m','-.','v','b'),
+    # (1.0,1.0,1.0,1.0,"dicMult",'MultiDic. X=1',':','o','b'),
+    # (2.0,2.0,2.0,1.0,"dicMult",'MultiDic. X=2',':','s','b'),
+    # (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
+    (8.0,8.0,8.0,1.0,"dicMult",'MultiDic. X=8','-.','v','b'),
     # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
-    (1.0,1.0,1.0,1.0,"dicFast",'OMPx1f','--','*','g'),
-    # (2.0,2.0,2.0,1.0,"dicFast",'OMPx2f','--','x','g'),
-    (4.0,4.0,4.0,1.0,"dicFast",'OMPx4f','--','+','g'),
-    (8.0,8.0,8.0,1.0,"dicFast",'OMPx8f','--','1','g'),
+    # (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
+    # (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
+    # (4.0,4.0,4.0,1.0,"dicFast",'3D-FFT X=4','--','+','g'),
+    # (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
     ]
-
 legStrAlgs=[x[-1] for x in confAlgs]
 Nalg=len(confAlgs)
 
@@ -264,15 +271,18 @@ else:
                     yp=yp_noiseless+zp_bb*np.sqrt(sigma2)
                     t0 = time.time()
                     omprunner.setDictionary(dicObj)
-                    hest,paths,_,_=omprunner.OMP(yp,sigma2*K*Nframe*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Ncp)
+                    hest,paths,_,_=omprunner.OMP(yp,2*sigma2*K*Nframe*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Ncp)
                     MSE[ifdim,ialg,isnr,ichan] = np.mean(np.abs(hk-hest)**2)/np.mean(np.abs(hk)**2)
                     runTimes[ifdim,ialg,isnr,ichan] = time.time()-t0
                     Npaths[ifdim,ialg,isnr,ichan] = len(paths.TDoA)
                     
                 #for large Nsims the pilot cache grows too much so we free the memory when not needed
-                dicObj.freeCacheOfPilot(ichan,(Ncp,Na,Nd),(Lt,La,Ld))
-            #    
-            dicObj.freeCacheOfHDic((Ncp,Na,Nd),(Lt,La,Ld))
+                dicObj.freeCacheOfPilot(ichan,(K,Ncp,Na,Nd),(Lt,La,Ld))
+            #
+            dicObj.freeCacheOfHDic((K,Ncp,Na,Nd),(Lt,La,Ld))
+            #remove the current pointers too, as memory tends to stay reserved for them
+            dicObj.currYDic=None
+            dicObj.currHDic=None
     if not args.nosave:
         np.savez_compressed(outfoldername+'/chanEstResults.npz',
                     MSE=MSE,
@@ -285,12 +295,13 @@ else:
                     confAlgs=confAlgs)
             
 
+confAlgs=np.array(confAlgs) #for easier search
 bytesPerFloat = np.array([0],dtype=np.complex128).itemsize
 if NframeDims>1:
     algLegendList = [x[5]+'-'+y for y in frameDims for x in confAlgs ]
 else:
-    algLegendList = [x[5] for x in confAlgs]
-listOfMarkers = list(lin.Line2D.markers.keys())
+    algLegendList = confAlgs[:,5]
+listOfMarkers = list(mplin.Line2D.markers.keys())
 listOfLTypes = ['-',':','-.','--']
 fig_ctr=0
 
@@ -304,8 +315,8 @@ for ifdim in range(NframeDims):
     plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeHDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Phi$ dict'+lbmod)
     offset=(+1/2)*barwidth+ifdim*.9/2
     plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeYDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
-plt.xticks(ticks=np.arange(0,Nalg),labels=[x[5] for x in confAlgs])
-plt.xlabel('Algoritm')
+plt.xticks(ticks=np.arange(0,Nalg),labels=confAlgs[:,5],rotation=-15)
+# plt.xlabel('Algoritm')
 plt.ylabel('Dictionary size MByte')
 plt.legend()
 plt.savefig(outfoldername+'/DicMBvsAlg.svg')
@@ -320,8 +331,8 @@ for ifdim in range(NframeDims):
     plt.bar(np.arange(Nalg)+offset,prepHTime[ifdim,:],width=barwidth,label='$\\Phi$ dict'+lbmod)
     offset=(+1/2)*barwidth+ifdim*.9/2
     plt.bar(np.arange(Nalg)+offset,np.mean(prepYTime[ifdim,:,:],axis=1),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
-plt.xticks(ticks=np.arange(0,Nalg,1/NframeDims),labels=[x[5] for x in confAlgs])
-plt.xlabel('Algoritm')
+plt.xticks(ticks=np.arange(0,Nalg,1),labels=confAlgs[:,5],rotation=-15)
+# plt.xlabel('Algoritm')
 plt.ylabel('precomputation time')
 plt.legend()
 plt.savefig(outfoldername+'/DicCompvsAlg.svg')
@@ -329,19 +340,19 @@ plt.savefig(outfoldername+'/DicCompvsAlg.svg')
 fig_ctr+=1
 plt.figure(fig_ctr)
 
-# if NframeDims>1:
-#     lMrkOrig = np.unique(np.array(confAlgs)[:,7])
-#     Nmrkorig=len(lMrkOrig)
 for ifdim in range(NframeDims):
     for ialg in range(Nalg):
         Xt,Xd,Xa,Xmu,dicName,label,lin,mrk,clr = confAlgs[ialg][:]
-        if NframeDims>1:
-        #     mrk=listOfMarkers[2+ifdim*Nmrkorig+np.where(mrk==lMrkOrig)[0][0]]
-            lin=listOfLTypes[ifdim]
-            lbmod=frameDims[ifdim]
+        if Nalg>1:
+            lb=label
         else:
-            lbmod=''
-        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=label+lbmod)
+            lb=''
+        if NframeDims>1:
+            mrk=listOfMarkers[2+ifdim]
+            lin=listOfLTypes[ialg % len(listOfLTypes)]
+            lb=lb+frameDims[ifdim]
+            clr=cm.turbo((ifdim*Nalg+ialg)/(NframeDims*Nalg-1))
+        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=lb)
 plt.legend()
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
@@ -385,4 +396,4 @@ for ifdim in range(NframeDims):
 plt.xlabel('SNR(dB)')
 plt.ylabel('per iteration runtime')
 plt.legend(algLegendList)
-plt.savefig(outfoldername+'/CSCompvsSNR.svg')
+plt.savefig(outfoldername+'/CSItervsSNR.svg')

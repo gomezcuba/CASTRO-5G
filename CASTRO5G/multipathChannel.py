@@ -214,7 +214,7 @@ class MIMOPilotChannel:
         W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
         return(W_ls)
     def applyPilotChannel(self,hk,wp,vp,zp=None):          
-        yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=3,keepdims=True) + ( 0 if zp is None else zp))        
+        yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=-1,keepdims=True) + ( 0 if zp is None else zp))        
         return(yp)
 
 class MultipathDEC:
