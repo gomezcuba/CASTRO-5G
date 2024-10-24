@@ -11,7 +11,7 @@ from CASTRO5G import multipathChannel as mc
 
 fig_ctr=0
 
-Nant = 16
+Nant = 8
 Nrf = 1
 mindBpolar = -30
 Nplotpoint =1000
@@ -33,12 +33,19 @@ G_fft= h_array.conj() @ V_fft
 plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,0])**2),mindBpolar),label=f'DFT-{Nant} $k=0$')
 plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,2])**2),mindBpolar),label=f'DFT-{Nant} $k=2$')
 
-Nsectors = 8
-# Nsectors = Nant
+# Nsectors = 8
+Nsectors = Nant
 V_ls = pilgen.getCodebookRectangular(Nant,Nsectors)
 G_ls= h_array.conj() @ V_ls
 plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,0])**2),mindBpolar),label=f'LS-{Nsectors}-{Nant} $k=0$')
 plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,2])**2),mindBpolar),label=f'LS-{Nsectors}-{Nant} $k=2$')
+
+Nrft=2
+Vrf,Vbb=pilgen.approxCBHBF(V_ls.T,Nrft)
+V_hbf=(Vrf@Vbb[:,:,None])[...,0].T
+G_hbf= h_array.conj() @ V_hbf
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_hbf[:,0])**2),mindBpolar),label=f'LSHBF-{Nsectors}-{Nant} $k=0$')
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_hbf[:,2])**2),mindBpolar),label=f'LSHBF-{Nsectors}-{Nant} $k=2$')
 
 N=Nant
 #the quasi-omnidirectional beam equation in LENA-5G
@@ -47,6 +54,36 @@ V_quasi[0::2] = np.exp(1j*np.pi*np.arange(0,N,2)**2/N)
 V_quasi[1::2] = np.exp(1j*np.pi*(np.arange(1,N,2)**2+np.arange(1,N,2))/N)
 G_quasi = h_array.conj() @ V_quasi.reshape((-1,1)) /np.sqrt(N)
 plt.polar(angles,np.maximum(10*np.log10(np.abs(G_quasi[:,0])**2),mindBpolar),label='Quasi')
+
+plt.legend()
+plt.savefig('beamDiagCompare-%d-%d-%d.eps'%(Nant,Nrf,Nsectors))
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,:])**2),mindBpolar))
+plt.legend([f'{Nant}-DFT CB $d=%d$'%k for k in range(Nant)])
+plt.savefig('beamDiagDFTall-%d.svg'%(Nant))
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,:])**2),mindBpolar))
+plt.legend([f'LS-{Nsectors}-{Nant} $d=%d$'%k for k in range(Nant)])
+plt.savefig('beamDiagSectorall-%d-%d.svg'%(Nant,Nsectors))
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_hbf[:,:])**2),mindBpolar))
+plt.legend([f'{Nant}x2 HBF rect. CB $d=%d$'%k for k in range(Nant)])
+plt.savefig('beamDiagHBFSectorall-%d-%d.svg'%(Nant,Nsectors))
+
+# fig_ctr+=1
+# fig = plt.figure(fig_ctr)
+# plt.figure(4)
+# plt.imshow(desired_G)
+
+
 
 #PMI 5GNR test
 i11=0
@@ -160,25 +197,3 @@ def cb3GPPtypeImode1(PMI,N1,N2,NL,mode=1):
         vn=[i2  ,i2+2,i2   ,i2+2 ,0      ,2      ,0      ,2      ]
         
     return( Wlms(vl,vm,vn,N1,N2)/np.sqrt(NL*NAP) )
-
-plt.legend()
-plt.savefig('beamDiagCompare-%d-%d-%d.eps'%(Nant,Nrf,Nsectors))
-
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,:])**2),mindBpolar))
-plt.legend([f'DFT-{Nant} $k=%d$'%k for k in range(Nant)])
-plt.savefig('beamDiagDFTall-%d.eps'%(Nant))
-
-fig_ctr+=1
-fig = plt.figure(fig_ctr)
-
-plt.polar(angles,np.maximum(10*np.log10(np.abs(G_ls[:,:])**2),mindBpolar))
-plt.legend([f'LS-{Nsectors}-{Nant} $k=%d$'%k for k in range(Nant)])
-plt.savefig('beamDiagSectorall-%d-%d.eps'%(Nant,Nsectors))
-
-# fig_ctr+=1
-# fig = plt.figure(fig_ctr)
-# plt.figure(4)
-# plt.imshow(desired_G)

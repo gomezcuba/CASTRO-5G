@@ -2,6 +2,8 @@ import numpy as np
 import collections as col
 import pandas as pd
 
+import bisect
+
 # import time
 
 # from numba import jit
@@ -345,10 +347,10 @@ class CSMultiDictionary(CSCachedDictionary):
         vSamples = vSamples.reshape((Nsym,K,Nrfr,1))
         v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
         v3 = np.matmul(v2,mPhiY_aod.conj())
-        v4 = np.matmul(mPhiY_tdoa.T.conj(), v3.reshape(Nsym,K,La*Ld) )
-        c  = np.sum(v4,axis=0).reshape((Lt*La*Ld,1))
-        # v4b=np.sum(v3,axis=0)
-        # c=np.matmul(mPhiY_tdoa.T.conj(), v4b.reshape(K,La*Ld) ).reshape((Lt*La*Ld,1))
+        # v4 = np.matmul(mPhiY_tdoa.T.conj(), v3.reshape(Nsym,K,La*Ld) )
+        # c  = np.sum(v4,axis=0).reshape((Lt*La*Ld,1))
+        v4b=np.sum(v3,axis=0)
+        c=np.matmul(mPhiY_tdoa.T.conj(), v4b.reshape(K,La*Ld) ).reshape((Lt*La*Ld,1))
         return(c)
 
 
@@ -416,80 +418,91 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         wp,vp = self.currYDic.pilotPattern
         vSamples = (vSamples.reshape((Nsym,K,Nrfr,1)))
         
-        if (Lt>K) or ((La==Nd) and (Ld==Nd)):
-            mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY        
-            v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
-            v3 = np.matmul(v2,mPhiY_aod.conj())
-            v4  = np.sum(v3,axis=0)
-            Kexpand=int(K*Lt/Ncp)
-            v5=np.fft.ifft(v4,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
-            c=v5.reshape(-1,1)/np.sqrt(K*Na*Nd)
-        else:
-            v2=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
-            v3=np.matmul(v2,vp.transpose(0,1,3,2).conj())
-            v4=np.sum(v3,axis=0)
-            Kexpand=int(K*Lt/Ncp)
-            v5=np.fft.ifft(v4,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
-            v6=np.fft.ifft(v5,La,axis=1,norm="forward")#/np.sqrt(Nd) #fftconj
-            v7=np.fft.ifft(v6,Ld,axis=2,norm="forward")#/np.sqrt(Na)  #fftconj
-            c = v7.reshape(-1,1)/np.sqrt(K*Na*Nd)
+        # if (Lt>K) or ((La==Nd) and (Ld==Nd)):
+        #     mPhiY_aoa,mPhiY_aod = self.currYDic.mPhiY        
+        #     v2 = np.matmul(mPhiY_aoa.transpose((0,1,3,2)).conj(),vSamples)
+        #     v3 = np.matmul(v2,mPhiY_aod.conj())
+        #     import bisect
+        #     v4  = np.sum(v3,axis=0)
+        #     Kexpand=int(K*Lt/Ncp)
+        #     v5=np.fft.ifft(v4,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
+        #     c=v5.reshape(-1,1)/np.sqrt(K*Na*Nd)
+        # else:
+        v2=np.matmul(vSamples,vp.transpose(0,1,3,2).conj())
+        v3=np.matmul(wp.transpose(0,1,3,2).conj(),v2)
+        v4=np.sum(v3,axis=0)
+        Kexpand=int(K*Lt/Ncp)
+        v5=np.fft.ifft(v4,Kexpand,axis=0,norm="forward")[0:Lt,:,:]#/np.sqrt(K) #fftconj
+        v6=np.fft.ifft(v5,La,axis=1,norm="forward")#/np.sqrt(Nd) #fftconj
+        v7=np.fft.ifft(v6,Ld,axis=2,norm="forward")#/np.sqrt(Na)  #fftconj
+        c = v7.reshape(-1,1)/np.sqrt(K*Na*Nd)
         return( c )
 
 class CSSphereFFTDictionary(CSMultiFFTDictionary):
     def projY(self,vSamples):
+        #---------------------------------
+        # Nsym,K,Nrfr=self.currYDic.dimY
+        # _,_,c,_ = projYSphere(vSamples.reshape((Nsym,K,Nrfr,1)), self.currYDic.pilotPattern, self.dimH, self.dimPhi)
+        # return(c[:,None])
+        #---------------------------------
         K,Ncp,Na,Nd = self.dimH
         Lt,La,Ld = self.dimPhi
         dimPhi = self.dimPhi
         Nsym,K,Nrfr=self.currYDic.dimY
         wp,vp = self.currYDic.pilotPattern
         vSamples = (vSamples.reshape((Nsym,K,Nrfr,1)))
-        v2=np.matmul(wp.transpose(0,1,3,2).conj(),vSamples)
-        v3=np.matmul(v2,vp.transpose(0,1,3,2).conj())
+        v2=np.matmul(vSamples,vp.transpose(0,1,3,2).conj())
+        v3=np.matmul(wp.transpose(0,1,3,2).conj(),v2)
         qp=np.sum(v3,axis=0)
-        
-        mp = {(-1,-1,-1):(0,np.sum(np.abs(qp)**2),qp)}
-        # print(mp)
+        Uini = np.sum(np.abs(qp)**2)
+        mp = {(-1,-1,-1):(0,Uini,qp)}
+        mpr = { -Uini:(-1,-1,-1)}
+        lU = [-Uini]       
         stop=False
         while not stop:
-            it=max(mp,key=lambda x: mp.get(x)[1])
+            # it=max(mp,key=lambda x: mp.get(x)[1])
+            it=mpr[lU[0]]
             d,Uprev,Qprev = mp[it]
-             #TODO make this arbitrary dimensions
-            if d==3:
+            if d==len(dimPhi):
                 stop=True
-                break;
+                break;            
+            #TODO make this arbitrary dimensions    
+            # else:
+            #    Kexpand=int(dimH[d]*dimPhi[d]/...)
             elif d==0:
                 Kexpand=int(K*Lt/Ncp)
                 val = np.fft.ifft(Qprev,Kexpand,axis=0,norm="forward")[0:Lt,:,:]/np.sqrt(K)
-                # Unext = np.sum(np.abs(val)**2,axis=(1,2))
-                Unext = np.linalg.norm(val,axis=(1,2))
+                Unext = np.sum(np.abs(val)**2,axis=(1,2))
             elif d==1:
                 val = np.fft.ifft(Qprev,La,axis=0,norm="forward")/np.sqrt(Na)
-                # Unext = np.sum(np.abs(val)**2,axis=1)
-                Unext = np.linalg.norm(val,axis=1)
+                Unext = np.sum(np.abs(val)**2,axis=1)
             elif d==2:
                 val = np.fft.ifft(Qprev,Ld,axis=0,norm="forward")/np.sqrt(Nd)
-                # Unext = np.abs(val)**2
-                Unext = np.abs(val)
+                Unext = np.abs(val)**2
             
+            mp.pop(it)
+            mpr.pop(-Uprev)
+            lU=lU[1:]
             for n in range(dimPhi[d]):
                 it_next=list(it)
                 it_next[d]=n
                 mp[tuple(it_next)]=(d+1,Unext[n],val[n,...])
-            mp.pop(it)
+                mpr[-Unext[n]]=tuple(it_next)
+                bisect.insort(lU,-Unext[n])        
         # print(f"""ITER
               
         # #       {mp}""")
-        C=np.zeros(dimPhi,dtype=np.complex128)
+        c=np.zeros(dimPhi,dtype=np.complex128)
         for a in mp.keys():
-            d,U,c=mp[a]      
-            ind_list=int(np.ravel_multi_index(a[0:d],dimPhi[0:d])*np.prod(C.shape[d:]))
+            d,U,val=mp[a]      
+            ind_list=int(np.ravel_multi_index(a[0:d],dimPhi[0:d])*np.prod(dimPhi[d:]))
             if d<len(dimPhi):
-                ind_list=ind_list+np.arange(np.prod(C.shape[d:]),dtype=int)  
-                C[np.unravel_index(ind_list,dimPhi)]=U
+                ind_list=ind_list+np.arange(np.prod(dimPhi[d:]),dtype=int)  
+                c[np.unravel_index(ind_list,dimPhi)]=np.sqrt(U)
             else:
-                C[np.unravel_index(ind_list,dimPhi)]=c
+                c[np.unravel_index(ind_list,dimPhi)]=val
         return(c.reshape(-1,1))
-
+    
 class CSDictionaryRunner:
     def __init__(self, dictionary=None):
         self.cachedDics={}
@@ -570,7 +583,7 @@ class CSDictionaryRunner:
             r=vflat-et
             # print('OMPBR %s ctr %d, |r|²= %f'%(self.dictionaryEngine.__class__.__name__,ctr,np.sum(np.abs(r)**2)))
             ctr=ctr+1
-#        print('OMPBR ctr %d'%ctr)        
+        # print('OMPBR ctr %d'%ctr)        
         Hsupp = self.dictionaryEngine.createHCols(delay_supp[0:ctr] , aoa_supp[0:ctr], aod_supp[0:ctr])
         multipath = pd.DataFrame({
             "coefs" : vflat_proj[:,0],

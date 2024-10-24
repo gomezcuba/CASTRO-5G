@@ -51,14 +51,17 @@ parser.add_argument('--noest',help='Do not perform channel estimation, load exis
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
-args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSize --show --print".split(' '))
-# args = parser.parse_args("-N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
-
 # args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSize --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizePFP --show --print".split(' '))
+args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
 
-# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSize --show --print".split(' '))
+# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label test --show --print".split(' '))
+
+# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:16:16:1 --label BigDicSize --show --print".split(' '))
+
 # args = parser.parse_args("-N 4 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSizeX4 --show --print".split(' '))
 # args = parser.parse_args("-N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=31:1024:64:1:16:16:1 --label BigDicSizePFP --show --print".split(' '))
 ####
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
@@ -106,26 +109,32 @@ else:
 if not os.path.isdir(outfoldername) and not args.nosave:
     os.mkdir(outfoldername)
 
+def stopModifierPfpOMP(Pfp,N):
+    
+    return(-np.log(1-(1-Pfp)**(1/N)))
+
+PFP = .25
 
 confAlgs=[#Xt Xd Xa Xmu accel legend string name
-    (1.0,1.0,1.0,1.0,"dicBase",'Full Dic. X=1','-','o','r'),
-    # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2','-','s','r'),
-    (4.0,4.0,4.0,1.0,"dicBase",'Full Dic. X=4','-','D','r'),
-    # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','-','v','r'),
-    (1.0,1.0,1.0,1.0,"dicFFT",'NB+FFT X=1','-.','*','k'),
-    # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a','-.','x','k'),
-    (4.0,4.0,4.0,1.0,"dicFFT",'NB+FFT X=4','-.','+','k'),
-    # (8.0,8.0,8.0,1.0,"dicFFT",'NB+FFT X=8','-.','1','k'),
-    # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','-.','1','k'),
-    (1.0,1.0,1.0,1.0,"dicMult",'MultiDic. X=1',':','o','b'),
+    # (1.0,1.0,1.0,1.0,"dicBase",'Full Dic. X=1','-','o','r'),
+    # # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2','-','s','r'),
+    # (4.0,4.0,4.0,1.0,"dicBase",'Full Dic. X=4','-','D','r'),
+    # # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','-','v','r'),
+    # (1.0,1.0,1.0,1.0,"dicFFT",'NB+FFT X=1','-.','*','k'),
+    # # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a','-.','x','k'),
+    # (4.0,4.0,4.0,1.0,"dicFFT",'NB+FFT X=4','-.','+','k'),
+    # # (8.0,8.0,8.0,1.0,"dicFFT",'NB+FFT X=8','-.','1','k'),
+    # # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','-.','1','k'),
+    # (1.0,1.0,1.0,1.0,"dicMult",'MultiDic. X=1',':','o','b'),
     # (2.0,2.0,2.0,1.0,"dicMult",'MultiDic. X=2',':','s','b'),
-    (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
-    (8.0,8.0,8.0,1.0,"dicMult",'MultiDic. X=8','-.','v','b'),
-    # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
+    # (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
+    # (8.0,8.0,8.0,1.0,"dicMult",'MultiDic. X=8','-.','v','b'),
+    # # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
     (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
-    # (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
+    (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
     (4.0,4.0,4.0,1.0,"dicFast",'3D-FFT X=4','--','+','g'),
     (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
+    # (2.0,2.0,2.0,1.0,"dicSphr",'3D-FFT sphere X=2','--','x','g'),
     ]
 legStrAlgs=[x[-1] for x in confAlgs]
 Nalg=len(confAlgs)
@@ -135,7 +144,8 @@ csDictionaries={
     "dicBase" :cs.CSCachedDictionary(),
     "dicMult" :cs.CSMultiDictionary(),
     "dicFFT"  :cs.CSBasicFFTDictionary(),
-    "dicFast" :cs.CSMultiFFTDictionary()
+    "dicFast" :cs.CSMultiFFTDictionary(),
+    "dicSphr" :cs.CSSphereFFTDictionary()
     }
 pilgen = mc.MIMOPilotChannel("IDUV")
 channelResponseFunctions = {
@@ -234,6 +244,9 @@ else:
             dicObj=csDictionaries[dicName]
             Lt,La,Ld=(int(Ncp*Xt),int(Na*Xa),int(Nd*Xd))
             
+            # print(f'Paramos OMP con coeficiente {stopModifierPfpOMP(PFP,Lt*La*Ld)} x sigma')
+            # OMPstopmodifier = stopModifierPfpOMP(1e-1,Lt*La*Ld)
+            OMPstopmodifier = 1
             Nobserv=(Nrfr*K*Nframe)
             Nsearch=Lt*La*Ld
             print(f"Pregen CS dict alg={confAlgs[ialg][5]} shape={frameDims[ifdim]} th. max paths {int(np.floor(Nobserv/np.log2(Nsearch)))}")
@@ -273,7 +286,7 @@ else:
                     yp=yp_noiseless+zp_bb*np.sqrt(sigma2)
                     t0 = time.time()
                     omprunner.setDictionary(dicObj)
-                    hest,paths,_,_=omprunner.OMP(yp,2*sigma2*K*Nframe*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Ncp)
+                    hest,paths,_,_=omprunner.OMP(yp,OMPstopmodifier*sigma2*K*Nframe*Nrfr,ichan,vp,wp, Xt,Xa,Xd,Xmu,Ncp)
                     MSE[ifdim,ialg,isnr,ichan] = np.mean(np.abs(hk-hest)**2)/np.mean(np.abs(hk)**2)
                     runTimes[ifdim,ialg,isnr,ichan] = time.time()-t0
                     Npaths[ifdim,ialg,isnr,ichan] = len(paths.TDoA)
@@ -300,11 +313,15 @@ else:
 confAlgs=np.array(confAlgs) #for easier search
 bytesPerFloat = np.array([0],dtype=np.complex128).itemsize
 if NframeDims>1:
-    algLegendList = [x[5]+'-'+y for y in frameDims for x in confAlgs ]
+    if Nalg>1:
+        algLegendList = [x[5]+'-'+y for y in frameDims for x in confAlgs ]
+    else:
+        algLegendList = frameDims
 else:
     algLegendList = confAlgs[:,5]
 listOfMarkers = list(mplin.Line2D.markers.keys())
 listOfLTypes = ['-',':','-.','--']
+listOfPatterns = [ None, "x" , "-"  , "/", "\\" , "|", "+" , "x", "o", "O", ".", "*" ]
 fig_ctr=0
 
 fig_ctr+=1
@@ -313,8 +330,8 @@ plt.yscale("log")
 barwidth= 0.9/(2*NframeDims)
 for ifdim in range(NframeDims):
     offset=(-1/2)*barwidth+ifdim*.9/2
-    lbmod = frameDims[ifdim] if NframeDims>1 else ''
-    plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeHDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Phi$ dict'+lbmod)
+    lbmod = ' '+frameDims[ifdim] if NframeDims>1 else ''
+    plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeHDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Psi$ dict'+lbmod)
     offset=(+1/2)*barwidth+ifdim*.9/2
     plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeYDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
 plt.xticks(ticks=np.arange(0,Nalg),labels=confAlgs[:,5],rotation=-15)
@@ -328,33 +345,28 @@ plt.figure(fig_ctr)
 plt.yscale("log")
 barwidth= 0.9/(2*NframeDims)
 for ifdim in range(NframeDims):
-    offset=(-1/2)*barwidth+ifdim*.9/2
-    lbmod = frameDims[ifdim] if NframeDims>1 else ''
-    plt.bar(np.arange(Nalg)+offset,prepHTime[ifdim,:],width=barwidth,label='$\\Phi$ dict'+lbmod)
-    offset=(+1/2)*barwidth+ifdim*.9/2
+    offset=(-1/2)*barwidth+ifdim*.9
+    lbmod = ' '+frameDims[ifdim] if NframeDims>1 else ''
+    plt.bar(np.arange(Nalg)+offset,prepHTime[ifdim,:],width=barwidth,label='$\\Psi$ dict'+lbmod)
+    offset=(+1/2)*barwidth+ifdim*.9
     plt.bar(np.arange(Nalg)+offset,np.mean(prepYTime[ifdim,:,:],axis=1),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
 plt.xticks(ticks=np.arange(0,Nalg,1),labels=confAlgs[:,5],rotation=-15)
-# plt.xlabel('Algoritm')
+# plt.xlabel('Algoritm')1
 plt.ylabel('precomputation time')
 plt.legend()
 plt.savefig(outfoldername+'/DicCompvsAlg.svg')
 
 fig_ctr+=1
 plt.figure(fig_ctr)
-
 for ifdim in range(NframeDims):
     for ialg in range(Nalg):
         Xt,Xd,Xa,Xmu,dicName,label,lin,mrk,clr = confAlgs[ialg][:]
-        if Nalg>1:
-            lb=label
-        else:
-            lb=''
+        lidx = ifdim*Nalg+ialg
         if NframeDims>1:
             mrk=listOfMarkers[2+ifdim]
             lin=listOfLTypes[ialg % len(listOfLTypes)]
-            lb=lb+frameDims[ifdim]
-            clr=cm.turbo((ifdim*Nalg+ialg)/(NframeDims*Nalg-1))
-        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=lb)
+            clr=cm.turbo(lidx/(NframeDims*Nalg-1))
+        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=algLegendList[lidx])
 plt.legend()
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
@@ -365,10 +377,18 @@ plt.figure(fig_ctr)
 plt.yscale("log")
 barwidth= 0.9/(Nalg*NframeDims)  * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
 
+uniqueRunners,order = np.unique(confAlgs[:,4],return_index=True)
+uniqueRunners=confAlgs[np.sort(order),4]
+Nrunners = len(uniqueRunners)
+runnerIndices = [ int(np.where(uniqueRunners==x)[0][0]) for x in confAlgs[:,4] ]
+
 for ifdim in range(NframeDims):
     for ialg in range(Nalg):
-        offset=(ialg+ifdim*Nalg-(Nalg*NframeDims-1)/2)*barwidth
-        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:],axis=1),width=barwidth,label=algLegendList[ialg])
+        lidx = ifdim*Nalg+ialg
+        offset=(lidx-(Nalg*NframeDims-1)/2)*barwidth
+        patInd =  runnerIndices[ialg]        
+        clr=cm.turbo(lidx/(Nalg*NframeDims-1))
+        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=listOfPatterns[patInd],label=algLegendList[lidx])
 plt.xlabel('SNR(dB)')
 plt.ylabel('runtime')
 plt.legend(algLegendList)
@@ -379,8 +399,11 @@ plt.figure(fig_ctr)
 barwidth=0.9/(Nalg*NframeDims) * np.mean(np.diff(10*np.log10(SNRs)))
 for ifdim in range(NframeDims):
     for ialg in range(0,Nalg):
-        offset=(ialg+ifdim*Nalg-(Nalg*NframeDims-1)/2)*barwidth
-        plt.bar(10*np.log10(SNRs)+offset,np.mean(Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,label=algLegendList[ialg])
+        lidx = ifdim*Nalg+ialg
+        offset=(lidx-(Nalg*NframeDims-1)/2)*barwidth
+        patInd = runnerIndices[ialg]  
+        clr=cm.turbo(lidx/(Nalg*NframeDims-1))
+        plt.bar(10*np.log10(SNRs)+offset,np.mean(Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=listOfPatterns[patInd],label=algLegendList[lidx])
 plt.xlabel('SNR(dB)')
 plt.ylabel('N paths')
 plt.legend()
@@ -393,8 +416,11 @@ barwidth= 0.9/(Nalg*NframeDims)  * (np.mean(np.diff(10*np.log10(SNRs))) if len(S
 
 for ifdim in range(NframeDims):
     for ialg in range(Nalg):
-        offset=(ialg+ifdim*Nalg-(Nalg*NframeDims-1)/2)*barwidth
-        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:]/Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,label=algLegendList[ialg])
+        lidx = ifdim*Nalg+ialg
+        offset=(lidx-(Nalg*NframeDims-1)/2)*barwidth
+        patInd = runnerIndices[ialg]  
+        clr=cm.turbo(lidx/(Nalg*NframeDims-1))
+        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:]/Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=listOfPatterns[patInd],label=algLegendList[lidx])
 plt.xlabel('SNR(dB)')
 plt.ylabel('per iteration runtime')
 plt.legend(algLegendList)

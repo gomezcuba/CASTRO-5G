@@ -14,16 +14,16 @@ from CASTRO5G import multipathChannel as mc
 from CASTRO5G import compressedSensingTools as cs
 
 #values for 8GB memory usage in the biggest dictionary
-K=1024
-Ncp=128
-Na=8
-Nd=8
+K=2048
+Ncp=256
+Na=16
+Nd=16
 Nframe=3
 Nrfr=1
 Nrft=1
 Tcp=570e-9 #mu=2
 Ts=Tcp/Ncp
-SNR=1e-2
+SNR=1e2
 dimH=(K,Ncp,Na,Nd)
 dimPhi=(4*Ncp,4*Na,4*Nd)
 dimY=(Nframe,K,Nrfr)
@@ -101,7 +101,7 @@ if bTestSphr:
     dicSphr.setYDic("someID",(wp,vp))
     print(f'Create YDic sphr: {time.time()-tini:.2f} seconds {0} MB memory')
 
-chgen=mc.UniformMultipathChannelModel(Npath=1,Ds=.9*Tcp,mode3D=False)
+chgen=mc.UniformMultipathChannelModel(Npath=3,Ds=.9*Tcp,mode3D=False)
 allPathsData=chgen.create_channel()
 print(allPathsData)
 
@@ -134,7 +134,7 @@ if bTestMult:
 if bTestFast:
     cFast= dicFast.projY(yp.reshape(-1,1))
 if bTestSphr:
-    cFast= dicSphr.projY(yp.reshape(-1,1))
+    cSphr= dicSphr.projY(yp.reshape(-1,1))
 
 if bTestBase and bTestMult:
     print(f'Mult dictioary is equal to base: {np.all(np.isclose(cBase,cMult))}')
@@ -153,8 +153,8 @@ plt.xlabel("Dictionary item")
 plt.ylabel("Projection metric")
 plt.legend()
 
-if bTestMult:
-    tau,aoa,aod=dicMult.ind2Param(np.argmax(cMult))
+if bTestFast:
+    tau,aoa,aod=dicMult.ind2Param(np.argmax(cFast))
     tau=tau*Ts
     #NOTE the aoa and aod estimates are from -pi/2 to pi/2. The array suffers simetry sin(phi)=sin(pi-phi) and the "backlobe" angles are mirrored
     print(f"""Estimated multipath values:

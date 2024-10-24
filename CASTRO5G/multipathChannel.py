@@ -212,10 +212,27 @@ class MIMOPilotChannel:
             desired_G[mask1 & mask2,sec] = 1    
         A_array_design = fULA(angles_design, Nant, .5)
         W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
-        return(W_ls)
+        return(W_ls/np.linalg.norm(W_ls,axis=0))
     def applyPilotChannel(self,hk,wp,vp,zp=None):          
         yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=-1,keepdims=True) + ( 0 if zp is None else zp))        
         return(yp)
+    def approxCBHBF(self,V,Nrft):
+        Nt=V.shape[-1]
+        if len(V.shape)>1:
+            V=V.reshape(-1,Nt)
+            Nvec=V.shape[0]
+        Vbb=np.zeros((Nvec,Nrft),dtype=complex)
+        Vrf=np.ones((Nvec,Nt,Nrft),dtype=complex)
+        for nv in range(Nvec):
+            r=V[nv,:]
+            for nr in range(Nrft):
+                Vrf[nv,:,nr]=np.exp(1j*np.angle(r))/np.sqrt(Nt)
+                Vbb_unorm=np.linalg.lstsq(Vrf[nv,:,0:nr+1], V[nv,:],rcond=None)[0]
+                Vbb[nv,0:nr+1]=Vbb_unorm/np.linalg.norm(Vrf[nv,:,0:nr+1]@Vbb_unorm)
+                r=V[nv,:]-Vrf[nv,:,0:nr+1]@Vbb[nv,0:nr+1,None][...,0]
+        Vrf=Vrf.reshape(V.shape+(Nrft,))
+        Vbb=Vbb.reshape(V.shape[:-1]+(Nrft,))
+        return(Vrf,Vbb)
 
 class MultipathDEC:
     def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), dfPaths = None, customResponse=None ):
