@@ -51,26 +51,48 @@ parser.add_argument('--noest',help='Do not perform channel estimation, load exis
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
-# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSize --show --print".split(' '))
-# args = parser.parse_args("-N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizePFP --show --print".split(' '))
-args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
-
 # args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label test --show --print".split(' '))
 
-# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:16:16:1 --label BigDicSize --show --print".split(' '))
-
-# args = parser.parse_args("-N 4 -G Uni:5 -F=1:128:8:1:4:4:1,1:256:16:1:4:4:1,1:512:32:1:8:8:1,1:1024:64:1:8:8:1,1:2048:128:1:16:16:1 --label BigDicSizeX4 --show --print".split(' '))
-# args = parser.parse_args("-N 100 -G Uni:5 -F=3:64:32:3:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
-# args = parser.parse_args("-N 4 -G Uni:5 -F=31:1024:64:1:16:16:1 --label BigDicSizePFP --show --print".split(' '))
 ####
+# Basic uni tests
+
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
 # args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
 # there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
-# args = parser.parse_args("-N 10 -G 3gpp -F=3:64:32:2:8:8:1 --label test3GPPsmall --show --print".split(' '))
-# this config is a bit slow but is the minimal working one
-# args = parser.parse_args("-N 10 -G 3gpp -F=3:256:16:1:8:8:1 --label test3GPPsmall --show --print".split(' '))
-# args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:1:8:8:1,2:512:32:1:8:8:1,3:256:16:1:8:8:1 --label test3GPPframe --show --print".split(' '))
-# args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPP16 --show --print".split(' '))
+# args = parser.parse_args("-N 10 -G 3gpp -F=3:64:32:2:8:8:1 --label test3GPPinsuficient --show --print".split(' '))
+
+####
+# Simulation uni results
+
+# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSize --show --print".split(' '))
+# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
+# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizePFP --show --print".split(' '))
+
+# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSize --show --print".split(' '))
+# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSizeX100 --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=31:1024:64:1:16:16:1 --label BigDicSizePFP --show --print".split(' '))
+
+####
+# Basic 3gpp tests
+
+# this config does not work due to insufficient number of combs and symbols
+# args = parser.parse_args("-N 10 -G 3gpp -F=2:32:16:1:4:4:1 --label test3GPPtiny --show --print".split(' '))
+# this config works but delay is very coarse
+# args = parser.parse_args("-N 10 -G 3gpp -F=2:64:4:1:4:4:1 --label test3GPPtiny --show --print".split(' '))#10it/s
+# this config is a bit slow but is the minimal working one with large FIR channel
+# args = parser.parse_args("-N 2 -G 3gpp -F=2:256:16:1:4:4:1 --label test3GPPsmall --show --print".split(' '))#1it/s
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:512:32:2:8:8:1 --label test3GPPsmallplus --show --print".split(' '))#10s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPmedium --show --print".split(' '))#100s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPPmedium16 --show --print".split(' '))#400s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:4:16:16:1 --label test3GPPbig --show --print".split(' '))#1000s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:1:2:2:1 --label test3GPPhuge2 --show --print".split(' '))# 30s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:1:4:4:1 --label test3GPPhuge4 --show --print".split(' '))# 500s iter
+# args = parser.parse_args("--nompg --noest -N 2 -G 3gpp -F=1:4096:256:2:8:8:1 --label test3GPPhuge8 --show --print".split(' '))#900s iter
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:4096:256:4:16:16:1 --label test3GPPhuge --show --print".split(' '))#???s iter
+# args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=3:512:16:1:4:4:1,2:1024:64:2:8:8:1,1:1024:64:4:16:16:1 --label test3GPPframe --show --print".split(' '))
+
+####
+# Simulation 3gpp results
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPalg --show --print".split(' '))
 
 plt.close('all')
@@ -130,10 +152,10 @@ confAlgs=[#Xt Xd Xa Xmu accel legend string name
     # (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
     # (8.0,8.0,8.0,1.0,"dicMult",'MultiDic. X=8','-.','v','b'),
     # # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
-    (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
-    (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
+    # (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
+    # (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
     (4.0,4.0,4.0,1.0,"dicFast",'3D-FFT X=4','--','+','g'),
-    (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
+    # (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
     # (2.0,2.0,2.0,1.0,"dicSphr",'3D-FFT sphere X=2','--','x','g'),
     ]
 legStrAlgs=[x[-1] for x in confAlgs]
@@ -322,6 +344,19 @@ else:
 listOfMarkers = list(mplin.Line2D.markers.keys())
 listOfLTypes = ['-',':','-.','--']
 listOfPatterns = [ None, "x" , "-"  , "/", "\\" , "|", "+" , "x", "o", "O", ".", "*" ]
+
+complementMarkers= [#markers are visually related vertically for example star vs pengagon, x vs square, + vs diamond etc
+    ['o','s','d','v','^','<','>'],
+    ['*','x','+','1','2','3','4'],
+    ['p','|','D', 4 , 5 , 6 , 7 ]
+]
+
+
+uniqueRunners,order = np.unique(confAlgs[:,4],return_index=True)
+uniqueRunners=confAlgs[np.sort(order),4]
+Nrunners = len(uniqueRunners)
+runnerIndices = [ int(np.where(uniqueRunners==x)[0][0]) for x in confAlgs[:,4] ]
+
 fig_ctr=0
 
 fig_ctr+=1
@@ -363,10 +398,12 @@ for ifdim in range(NframeDims):
         Xt,Xd,Xa,Xmu,dicName,label,lin,mrk,clr = confAlgs[ialg][:]
         lidx = ifdim*Nalg+ialg
         if NframeDims>1:
-            mrk=listOfMarkers[2+ifdim]
-            lin=listOfLTypes[ialg % len(listOfLTypes)]
+            mrk=complementMarkers[ialg % Nrunners][1+runnerIndices[ialg]]   
+            lin=listOfLTypes[ifdim % len(listOfLTypes)]
             clr=cm.turbo(lidx/(NframeDims*Nalg-1))
         plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=algLegendList[lidx])
+        # Nframe,K,Ncp,Nrfr,Na,Nd,Nrft = [int(x) for x in frameDims[ifdim].split(':')]
+        # plt.semilogy(10*np.log10(SNRs),np.mean(Npaths[ifdim,ialg,:,:],axis=1)/(Nframe*K*Nrfr)/SNRs,color=clr,marker='s',linestyle=':',label='LB'+algLegendList[lidx])
 plt.legend()
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
@@ -377,10 +414,6 @@ plt.figure(fig_ctr)
 plt.yscale("log")
 barwidth= 0.9/(Nalg*NframeDims)  * (np.mean(np.diff(10*np.log10(SNRs))) if len(SNRs)>1 else 1)
 
-uniqueRunners,order = np.unique(confAlgs[:,4],return_index=True)
-uniqueRunners=confAlgs[np.sort(order),4]
-Nrunners = len(uniqueRunners)
-runnerIndices = [ int(np.where(uniqueRunners==x)[0][0]) for x in confAlgs[:,4] ]
 
 for ifdim in range(NframeDims):
     for ialg in range(Nalg):

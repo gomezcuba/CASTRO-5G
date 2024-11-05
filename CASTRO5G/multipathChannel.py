@@ -30,10 +30,15 @@ def fUCA(incidAngle , Nant = 5, dInterElement = .5):
     a=np.exp(-2j*np.pi*R*np.cos(incidAngle-phiAnt)) /np.sqrt(Nant)
     return(a)
 
-def pSinc(tau,N,Nmin=0,oversampling=1):    
+def pSinc(tau,N,Nmin=0,oversampling=1,trunc=None):    
     if isinstance(tau,np.ndarray):
         tau=tau[...,None]
-    return np.sinc(np.arange(Nmin,N,1/oversampling)-tau)#should work for any shape of tau, adding one dimension at the end  
+    taxis=np.arange(Nmin,N,1/oversampling)-tau
+    if trunc is None:
+       mask=1
+    else:
+       mask=(taxis<trunc)&(taxis>-trunc)
+    return mask*np.sinc(taxis)#should work for any shape of tau, adding one dimension at the end  
 
 def pCExp(tau,K,Kmin=0,oversampling=1):
     if isinstance(tau,np.ndarray):
@@ -233,6 +238,7 @@ class MIMOPilotChannel:
         Vrf=Vrf.reshape(V.shape+(Nrft,))
         Vbb=Vbb.reshape(V.shape[:-1]+(Nrft,))
         return(Vrf,Vbb)
+
 
 class MultipathDEC:
     def __init__(self, tPos = (0,0,10), rPos = (0,1,1.5), dfPaths = None, customResponse=None ):

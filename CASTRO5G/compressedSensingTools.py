@@ -363,10 +363,10 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         TDoAdic=np.arange(0.0,Ncp,float(Ncp)/Lt)#in discrete samples Ds = Ts*Ncp, fractional TDoA supported
         AoAdic=np.fft.fftshift(np.arcsin(np.arange(-1.0,1.0,2.0/La)))
         AoDdic=np.fft.fftshift(np.arcsin(np.arange(-1.0,1.0,2.0/Ld)))
-        mPhiH_aoa=self.funAoAh(AoAdic,Na)
-        mPhiH_aod=self.funAoDh(AoDdic,Nd)
-        mPhiH=(mPhiH_aoa,mPhiH_aod)
-        # mPhiH=None
+        # mPhiH_aoa=self.funAoAh(AoAdic,Na)
+        # mPhiH_aod=self.funAoDh(AoDdic,Nd)
+        # mPhiH=(mPhiH_aoa,mPhiH_aod)
+        mPhiH=None
         return( self.typeHCacheItem(TDoAdic,AoDdic,AoAdic,mPhiH,{}) )    
     def getHCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
@@ -389,10 +389,10 @@ class CSMultiFFTDictionary(CSMultiDictionary):
         dimY=(Nsym,K,Nrfr)
         Lt,La,Ld = self.dimPhi
         K,Ncp,Na,Nd = self.dimH
-        mPhiY_aoa=np.fft.fft(wp,La,axis=3,norm="backward")
-        mPhiY_aod=np.fft.fft(vp,Ld,axis=2,norm="backward").transpose((0,1,3,2))
-        mPhiY=(mPhiY_aoa,mPhiY_aod)
-        # mPhiY = None
+        # mPhiY_aoa=np.fft.fft(wp,La,axis=3,norm="backward")
+        # mPhiY_aod=np.fft.fft(vp,Ld,axis=2,norm="backward").transpose((0,1,3,2))
+        # mPhiY=(mPhiY_aoa,mPhiY_aod)
+        mPhiY = None
         return( self.typeYCacheItem( dimY, pilotPattern, mPhiY ) )  
     def getYCols(self,inds=None):
         inds = inds if inds else np.arange(np.prod(self.dimPhi),dtype=int)
