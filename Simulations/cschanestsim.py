@@ -21,76 +21,69 @@ from CASTRO5G import compressedSensingTools as cs
 from CASTRO5G import multipathChannel as mc
 from CASTRO5G import threeGPPMultipathGenerator as mpg
 parser = argparse.ArgumentParser(description='MIMO OFDM CS Multipath Channel Estimation Simulator')
-#parameters that affect number of simulations
-parser.add_argument('-N', type=int,help='No. simulated channels')
-#TODO
+
 # parser.add_argument('--z3D', action='store_true', help='Activate 3d simulation mode')
 
-#parameters that affect frame
-parser.add_argument('-F', type=str,help='comma-separated list of frames dimension cases Nframe:K:Ncp,')
-
-#parameters that affect multipath generator
+parser.add_argument('--mpg',help='Generate multipath channels, (existing csv file must exist otherwise)', action='store_true')
+parser.add_argument('-N', type=int,help='No. simulated channels')
 parser.add_argument('-G', type=str,help='Type of generator. "3gpp" or "Uni:N" for N uniform IID paths')
 
-#parameters that affect estimation algorithms
-#TODO
-# parser.add_argument('-A', type=str,help='comma-separated list of algorithms')
+parser.add_argument('--est',help='Perform channel estimation, (existing npz and csv files must exist otherwise)', action='store_true')
+parser.add_argument('-F', type=str,help='comma-separated list of frames dimension cases Nframe:K:Ncp,')
 #TODO
 # parser.add_argument('-P', type=str,help='comma-separated list of pilot schemes')
-
+parser.add_argument('-A', type=str,help='comma-separated list of algorithms')
 parser.add_argument('-S', type=str,help='SNR values in dB min:max:step')
-
 
 #parameters that affect plots
 
 #parameters that affect workflow
-parser.add_argument('--label', type=str,help='str label appended to storage files')
+parser.add_argument('--label', type=str,help='str label appended to result storage folder and figures')
 parser.add_argument('--nosave', help='Do not save simulation data to new results file', action='store_true')
-parser.add_argument('--nompg',help='Do not perform multipath generation, load existing file', action='store_true')
-parser.add_argument('--noest',help='Do not perform channel estimation, load existing file', action='store_true')
 parser.add_argument('--show', help='Open plot figures during execution', action='store_true')
 parser.add_argument('--print', help='Save plot files in svg to results folder', action='store_true')
 
-# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=3:64:32:3:8:8:1 --label test --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=3:64:32:3:8:8:1 -A dicMult:2:2:2:1,dicMult:4:4:4:1,dicFast:2:2:2:1,dicFast:4:4:4:1 --label test --show --print".split(' '))
 
 ####
 # Basic uni tests
-
-# args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
-# args = parser.parse_args("--nompg --noest -N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
-# there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
-# args = parser.parse_args("-N 10 -G 3gpp -F=3:64:32:2:8:8:1 --label test3GPPinsuficient --show --print".split(' '))
+# args = parser.parse_args("-N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
+# args = parser.parse_args("-N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
 
 ####
 # Simulation uni results
 
-# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSize --show --print".split(' '))
-# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
-# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizePFP --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSize --show --print".split(' '))
+# args = parser.parse_args("-N 100 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizePFP --show --print".split(' '))
 
-# args = parser.parse_args("--nompg --noest -N 4 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSize --show --print".split(' '))
-# args = parser.parse_args("--nompg --noest -N 100 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSizeX100 --show --print".split(' '))
+# args = parser.parse_args("-N 4 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSize --show --print".split(' '))
+# args = parser.parse_args("-N 100 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSizeX100 --show --print".split(' '))
 # args = parser.parse_args("-N 4 -G Uni:5 -F=31:1024:64:1:16:16:1 --label BigDicSizePFP --show --print".split(' '))
 
 ####
 # Basic 3gpp tests
+# there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
+# args = parser.parse_args("--mgp -N 10 -G 3gpp --est -F=3:64:32:2:8:8:1 --label test3GPPinsuficient --show --print".split(' '))
 
 # this config does not work due to insufficient number of combs and symbols
 # args = parser.parse_args("-N 10 -G 3gpp -F=2:32:16:1:4:4:1 --label test3GPPtiny --show --print".split(' '))
 # this config works but delay is very coarse
 # args = parser.parse_args("-N 10 -G 3gpp -F=2:64:4:1:4:4:1 --label test3GPPtiny --show --print".split(' '))#10it/s
 # this config is a bit slow but is the minimal working one with large FIR channel
-# args = parser.parse_args("-N 2 -G 3gpp -F=2:256:16:1:4:4:1 --label test3GPPsmall --show --print".split(' '))#1it/s
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:512:32:2:8:8:1 --label test3GPPsmallplus --show --print".split(' '))#10s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPmedium --show --print".split(' '))#100s iter
+# args = parser.parse_args("-N 100 -G 3gpp -F=2:256:16:1:4:4:1 --label test3GPPsmall --show --print".split(' '))#1.4s/it
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:512:32:2:8:8:1 --label test3GPPsmallplus --show --print".split(' '))#21s iter
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPmedium --show --print".split(' '))#130s iter
 # args = parser.parse_args("-N 2 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPPmedium16 --show --print".split(' '))#400s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:4:16:16:1 --label test3GPPbig --show --print".split(' '))#1000s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:1:2:2:1 --label test3GPPhuge2 --show --print".split(' '))# 30s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:1:4:4:1 --label test3GPPbig4 --show --print".split(' '))#120 iter
+args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:2:8:8:1 --label test3GPPbig8 --show --print".split(' '))#?180s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:4:16:16:1 --label test3GPPbig --show --print".split(' '))#?s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:1:2:2:1 --label test3GPPhuge2 --show --print".split(' '))# 100s iter
 # args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:1:4:4:1 --label test3GPPhuge4 --show --print".split(' '))# 500s iter
-# args = parser.parse_args("--nompg --noest -N 2 -G 3gpp -F=1:4096:256:2:8:8:1 --label test3GPPhuge8 --show --print".split(' '))#900s iter
-# args = parser.parse_args("-N 10 -G 3gpp -F=1:4096:256:4:16:16:1 --label test3GPPhuge --show --print".split(' '))#???s iter
-# args = parser.parse_args("--nompg --noest -N 10 -G 3gpp -F=3:512:16:1:4:4:1,2:1024:64:2:8:8:1,1:1024:64:4:16:16:1 --label test3GPPframe --show --print".split(' '))
-
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:2:8:8:1 --label test3GPPhuge8 --show --print".split(' '))#900s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:4:16:16:1 --label test3GPPhuge --show --print".split(' '))#950?s iter
+# args = parser.parse_args("-N 10 -G 3gpp -F=3:512:16:1:4:4:1,2:1024:64:1:4:4:1,1:2048:128:1:4:4:1,1:4096:256:1:4:4:1 --label test3GPPframe --show --print".split(' '))
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:4096:256:1:4:4:1,1:4096:256:2:8:8:1,1:4096:256:4:16:16:1 --label test3GPPant --show --print".split(' '))
 ####
 # Simulation 3gpp results
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPalg --show --print".split(' '))
@@ -103,9 +96,9 @@ Nchan=args.N if args.N else 10
 # bMode3D = args.z3D
 if args.F:
     #TODO support multiple frame shapes in a single run
-    frameDims = args.F.split(',')
+    frameDims = np.array([ [int(x) for x in line.split(':')] for line in args.F.split(',')],dtype=int)
 else:
-    frameDims = [3,32,16,2,4,4,1]
+    frameDims = np.array([[3,32,16,2,4,4,1]])
 NframeDims = len(frameDims)
 
 # Ds=390e-9 #Ts=2.5ns with Rs=400MHz in NYUwim
@@ -127,7 +120,7 @@ mpgen=mpgenInfo[0]
 if args.label:
     outfoldername=f'../Results/CSChanEstresults{args.label}'
 else:
-    outfoldername=f'../Results/CSChanEstresults-{":".join([str(x) for x in frameDims])}'
+    outfoldername=f'../Results/CSChanEstresults-{time.ctime()}'
 if not os.path.isdir(outfoldername) and not args.nosave:
     os.mkdir(outfoldername)
 
@@ -137,28 +130,56 @@ def stopModifierPfpOMP(Pfp,N):
 
 PFP = .25
 
-confAlgs=[#Xt Xd Xa Xmu accel legend string name
-    # (1.0,1.0,1.0,1.0,"dicBase",'Full Dic. X=1','-','o','r'),
-    # # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2','-','s','r'),
-    # (4.0,4.0,4.0,1.0,"dicBase",'Full Dic. X=4','-','D','r'),
-    # # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','-','v','r'),
-    # (1.0,1.0,1.0,1.0,"dicFFT",'NB+FFT X=1','-.','*','k'),
-    # # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a','-.','x','k'),
-    # (4.0,4.0,4.0,1.0,"dicFFT",'NB+FFT X=4','-.','+','k'),
-    # # (8.0,8.0,8.0,1.0,"dicFFT",'NB+FFT X=8','-.','1','k'),
-    # # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','-.','1','k'),
-    # (1.0,1.0,1.0,1.0,"dicMult",'MultiDic. X=1',':','o','b'),
-    # (2.0,2.0,2.0,1.0,"dicMult",'MultiDic. X=2',':','s','b'),
-    # (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
-    # (8.0,8.0,8.0,1.0,"dicMult",'MultiDic. X=8','-.','v','b'),
-    # # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
-    # (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
-    # (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
-    (4.0,4.0,4.0,1.0,"dicFast",'3D-FFT X=4','--','+','g'),
-    # (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
-    # (2.0,2.0,2.0,1.0,"dicSphr",'3D-FFT sphere X=2','--','x','g'),
-    ]
-legStrAlgs=[x[-1] for x in confAlgs]
+
+if args.A:
+    confAlgsStr = [l.split(':') for l in args.A.split(',')]
+    confAlgs = [(l[0],tuple(map(lambda x:float(x),l[1:]))) for l in confAlgsStr]
+else:
+    confAlgs=[# dicName, oversampling = (Xt Xd Xa Xmu)
+        # ("dicBase",(1.0,1.0,1.0,1.0)),
+        # ("dicBase",(2.0,2.0,2.0,1.0)),
+        # ("dicBase",(4.0,4.0,4.0,1.0)),
+        # ("dicBase",(8.0,8.0,8.0,1.0)),
+        # ("dicBase",(1.0,1.0,1.0,10.0)),
+        # ("dicFFT",(1.0,1.0,1.0,1.0)),
+        # ("dicFFT",(2.0,2.0,2.0,1.0)),
+        # ("dicFFT",(4.0,4.0,4.0,1.0)),
+        # ("dicFFT",(8.0,8.0,8.0,1.0)),
+        # ("dicFFT",(1.0,1.0,1.0,10.0)),
+        # ("dicMult",(1.0,1.0,1.0,1.0)),
+        ("dicMult",(2.0,2.0,2.0,1.0)),
+        ("dicMult",(4.0,4.0,4.0,1.0)),
+        # ("dicMult",(8.0,8.0,8.0,1.0)),
+        # ("dicMult",(1.0,1.0,1.0,10.0)),
+        # ("dicFast",(1.0,1.0,1.0,1.0)),
+        ("dicFast",(2.0,2.0,2.0,1.0)),
+        ("dicFast",(4.0,4.0,4.0,1.0)),
+        # ("dicFast",(8.0,8.0,8.0,1.0)),
+        # ("dicFast",(1.0,1.0,1.0,10.0)),
+        ]
+
+# confAlgs=[#Xt Xd Xa Xmu accel legend string name
+#     # (1.0,1.0,1.0,1.0,"dicBase",'Full Dic. X=1','-','o','r'),
+#     # # (2.0,2.0,2.0,1.0,"dicBase",'OMPx2','-','s','r'),
+#     # (4.0,4.0,4.0,1.0,"dicBase",'Full Dic. X=4','-','D','r'),
+#     # # (1.0,1.0,1.0,100.0,"dicBase",'OMPBR','-','v','r'),
+#     # (1.0,1.0,1.0,1.0,"dicFFT",'NB+FFT X=1','-.','*','k'),
+#     # # (2.0,2.0,2.0,1.0,"dicFFT",'OMPx2a','-.','x','k'),
+#     # (4.0,4.0,4.0,1.0,"dicFFT",'NB+FFT X=4','-.','+','k'),
+#     # # (8.0,8.0,8.0,1.0,"dicFFT",'NB+FFT X=8','-.','1','k'),
+#     # # (1.0,1.0,1.0,10.0,"dicFFT",'OMPBRa','-.','1','k'),
+#     # (1.0,1.0,1.0,1.0,"dicMult",'MultiDic. X=1',':','o','b'),
+#     (2.0,2.0,2.0,1.0,"dicMult",'MultiDic. X=2',':','s','b'),
+#     (4.0,4.0,4.0,1.0,"dicMult",'MultiDic. X=4',':','D','b'),
+#     # (8.0,8.0,8.0,1.0,"dicMult",'MultiDic. X=8','-.','v','b'),
+#     # # (1.0,1.0,1.0,10.0,"dicMult",'OMPBRm',':','^','b'),
+#     # (1.0,1.0,1.0,1.0,"dicFast",'3D-FFT X=1','--','*','g'),
+#     (2.0,2.0,2.0,1.0,"dicFast",'3D-FFT X=2','--','x','g'),
+#     (4.0,4.0,4.0,1.0,"dicFast",'3D-FFT X=4','--','+','g'),
+#     # (8.0,8.0,8.0,1.0,"dicFast",'3D-FFT X=8','--','1','g'),
+#     # (2.0,2.0,2.0,1.0,"dicSphr",'3D-FFT sphere X=2','--','x','g'),
+#     ]
+
 Nalg=len(confAlgs)
 
 omprunner = cs.CSDictionaryRunner()
@@ -178,12 +199,7 @@ channelResponseFunctions = {
     }
 mpch = mc.MultipathDEC((0,0,10),(40,0,1.5),customResponse=channelResponseFunctions)
 #-------------------------------------------------------------------------------
-
-if args.nompg:    
-    # allUserData=pd.read_csv(outfoldername+'/userGenData.csv',index_col=['ue']) 
-    allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n']) 
-else:
-    
+if args.mpg:        
     if mpgen=='3gpp':
         lMultipathParameters = []
         chgen = mpg.ThreeGPPMultipathChannelModel(scenario="UMi",bLargeBandwidthOption=True)
@@ -212,23 +228,12 @@ else:
     if not args.nosave: 
         # allUserData.to_csv(outfoldername+'/userGenData.csv') 
         allPathsData.to_csv(outfoldername+'/chanGenData.csv')
-
+else:
+    # allUserData=pd.read_csv(outfoldername+'/userGenData.csv',index_col=['ue']) 
+    allPathsData=pd.read_csv(outfoldername+'/chanGenData.csv',index_col=['ue','n']) 
 #-------------------------------------------------------------------------------
 
-if args.noest:    
-    data=np.load(outfoldername+'/chanEstResults.npz')    
-    MSE=data["MSE"]
-    Npaths=data["Npaths"]
-    prepYTime=data["prepYTime"]
-    prepHTime=data["prepHTime"]
-    sizeYDic=data["sizeYDic"]
-    sizeHDic=data["sizeHDic"]
-    runTimes=data["runTimes"]
-    confAlgs=data["confAlgs"]
-    
-    legStrAlgs=[x[-1] for x in confAlgs]
-    Nalg=len(confAlgs)
-else:
+if args.est:    
     MSE=np.zeros((NframeDims,Nalg,Nsnr,Nchan))
     Npaths=np.zeros((NframeDims,Nalg,Nsnr,Nchan))
     prepYTime=np.zeros((NframeDims,Nalg,Nchan))
@@ -238,7 +243,7 @@ else:
     runTimes=np.zeros((NframeDims,Nalg,Nsnr,Nchan))
 
     for ifdim in range(NframeDims):
-        Nframe,K,Ncp,Nrfr,Na,Nd,Nrft = [int(x) for x in frameDims[ifdim].split(':')]
+        Nframe,K,Ncp,Nrfr,Na,Nd,Nrft = frameDims[ifdim,:]
         Ts=Tcp/Ncp
     
         hk_all = np.zeros((Nchan,K,Na,Nd),dtype=complex)
@@ -246,7 +251,7 @@ else:
         vp_all = np.zeros((Nchan,Nframe,K,Nd,Nrft),dtype=complex)
         zp_bb_all = np.zeros((Nchan,Nframe,K,Nrfr,1),dtype=complex)
         yp_noiseless_all = np.zeros((Nchan,Nframe,K,Nrfr,1),dtype=complex)
-        for ichan in  tqdm(range(Nchan),desc=f"DEC with shape {frameDims[ifdim]}: "):
+        for ichan in  tqdm(range(Nchan),desc=f"DEC with shape {frameDims[ifdim,:]}: "):
             mpch.insertPathsFromDF(allPathsData.loc[ichan,:])
             ht=mpch.getDEC(Na,Nd,Ncp,Ts)*np.sqrt(Nd*Na)#mpch uses normalized matrices of gain 1
             hk_all[ichan,:,:,:]=np.fft.fft(ht,K,axis=0)
@@ -262,7 +267,8 @@ else:
         
     #-------------------------------------------------------------------------------
             t0 = time.time()
-            Xt,Xa,Xd,Xmu,dicName,label,_,_,_ = confAlgs[ialg]
+            dicName,superresolution = confAlgs[ialg]
+            Xt,Xa,Xd,Xmu=superresolution
             dicObj=csDictionaries[dicName]
             Lt,La,Ld=(int(Ncp*Xt),int(Na*Xa),int(Nd*Xd))
             
@@ -271,7 +277,7 @@ else:
             OMPstopmodifier = 1
             Nobserv=(Nrfr*K*Nframe)
             Nsearch=Lt*La*Ld
-            print(f"Pregen CS dict alg={confAlgs[ialg][5]} shape={frameDims[ifdim]} th. max paths {int(np.floor(Nobserv/np.log2(Nsearch)))}")
+            print(f"Pregen CS dict alg={confAlgs[ialg]} shape={frameDims[ifdim]} th. max paths {int(np.floor(Nobserv/np.log2(Nsearch)))}")
             dicObj.setHDic((K,Ncp,Na,Nd),(Lt,La,Ld))# duplicates handled by cache
             if isinstance(dicObj.currHDic.mPhiH,np.ndarray):
                 sizeHDic[ifdim,ialg] = dicObj.currHDic.mPhiH.size
@@ -282,7 +288,7 @@ else:
             prepHTime[ifdim,ialg] = time.time()-t0         
             print(f"Finished in {prepHTime[ifdim,ialg]:3f} seconds")
             
-            for ichan in  tqdm(range(Nchan),desc=f"CS Sim {confAlgs[ialg][5]} - {frameDims[ifdim]} =>", position=0):
+            for ichan in  tqdm(range(Nchan),desc=f"CS Sim {confAlgs[ialg]} - {frameDims[ifdim,:]} =>", position=0):
                 #load the DEC values once for all SNRS
                 hk = hk_all[ichan,:,:,:]
                 vp = vp_all[ichan,:,:,:,:]
@@ -328,35 +334,95 @@ else:
                     prepHTime=prepHTime,
                     sizeYDic=sizeYDic,
                     sizeHDic=sizeHDic,
-                    runTimes=runTimes,
-                    confAlgs=confAlgs)
-            
-
-confAlgs=np.array(confAlgs) #for easier search
-bytesPerFloat = np.array([0],dtype=np.complex128).itemsize
-if NframeDims>1:
-    if Nalg>1:
-        algLegendList = [x[5]+'-'+y for y in frameDims for x in confAlgs ]
-    else:
-        algLegendList = frameDims
+                    runTimes=runTimes)
+        confAlgsStr = np.array([[x[0]]+ [str(y) for y in x[1]] for x in confAlgs])
+        np.savetxt(outfoldername+'/confAlgs.csv',confAlgsStr,delimiter=',',fmt='%s')
+        np.savetxt(outfoldername+'/frameDims.csv',frameDims,delimiter=',',fmt='%d')
 else:
-    algLegendList = confAlgs[:,5]
-listOfMarkers = list(mplin.Line2D.markers.keys())
-listOfLTypes = ['-',':','-.','--']
+    data=np.load(outfoldername+'/chanEstResults.npz')    
+    MSE=data["MSE"]
+    Npaths=data["Npaths"]
+    prepYTime=data["prepYTime"]
+    prepHTime=data["prepHTime"]
+    sizeYDic=data["sizeYDic"]
+    sizeHDic=data["sizeHDic"]
+    runTimes=data["runTimes"]
+    if 'confAlgs' in data:#convert old format to new
+        confAlgsStr = data["confAlgs"][:,[4,0,1,2,3]]
+        np.savetxt(outfoldername+'/confAlgs.csv',confAlgsStr,delimiter=',',fmt='%s')
+        np.savetxt(outfoldername+'/frameDims.csv',frameDims,delimiter=',',fmt='%d')
+    confAlgsStr=np.loadtxt(outfoldername+'/confAlgs.csv',delimiter=',',dtype='U32')
+    confAlgs = [ (x[0], tuple([float(y) for y in x[1:]])) for x in confAlgsStr]
+    Nalg=len(confAlgs)
+    frameDims=np.loadtxt(outfoldername+'/frameDims.csv',delimiter=',',dtype=int)
+    if frameDims.ndim==1:
+        frameDims=frameDims.reshape(1,-1)
+    NframeDims = len(frameDims)
+            
+listOfLineTypes = ['-',':','-.','--']
 listOfPatterns = [ None, "x" , "-"  , "/", "\\" , "|", "+" , "x", "o", "O", ".", "*" ]
-
-complementMarkers= [#markers are visually related vertically for example star vs pengagon, x vs square, + vs diamond etc
+listOfMarkersComplementary= [#markers are visually related vertically for example star vs pengagon, x vs square, + vs diamond etc
     ['o','s','d','v','^','<','>'],
     ['*','x','+','1','2','3','4'],
     ['p','|','D', 4 , 5 , 6 , 7 ]
 ]
+bytesPerFloat = np.array([0],dtype=np.complex128).itemsize
 
-
-uniqueRunners,order = np.unique(confAlgs[:,4],return_index=True)
-uniqueRunners=confAlgs[np.sort(order),4]
+uniqueRunners,order,oinv,count = np.unique([x[0] for x in confAlgs],return_index=True,return_inverse=True,return_counts=True)
+uniqueRunners=[ confAlgs[x][0] for x in np.sort(order)]
+count=count[np.argsort(order)]
 Nrunners = len(uniqueRunners)
-runnerIndices = [ int(np.where(uniqueRunners==x)[0][0]) for x in confAlgs[:,4] ]
+runnerIndices = [ int(np.where(np.array(uniqueRunners)==x[0])[0][0]) for x in confAlgs ]
+runnerCount = np.zeros_like(runnerIndices)
+for r in range(Nrunners):
+    mask =  np.array([uniqueRunners[r]==x[0] for x in confAlgs])
+    runnerCount[mask] = np.arange(0,count[r])
+Nsize=np.max(count)
+frameDimsStr = [':'.join(map(str,x)) for x in frameDims]
 
+algLbl={
+        "dicBase":"Full Dic.",
+        "dicFFT":"NB+FFT",
+        "dicMult":"MultiDic.",
+        "dicFast":"3D-FFT",
+        "dicSphr":"SphereD",
+    }
+if Nalg>1:    
+    labelList=[]
+    for a in range(Nalg):
+        k,ov=confAlgs[a]
+        al=algLbl[k]
+        sz=('BR' if ov[-1]>1 else f'X={int(np.mean(ov[0:-1]))}')
+        if Nrunners>1:            
+            if count[runnerIndices[a]]>1:
+                labelList.append(f'{al} {sz}')
+            else:
+                labelList.append(al)
+        elif count[0]>1:
+            labelList.append(sz)
+    
+if NframeDims>1:    
+    if Nalg>1:
+        labelList = [x+'-'+y for y in frameDimsStr for x in labelList ]
+    else:
+        labelList = frameDims
+
+ldecor=[]
+for ifdim in range(NframeDims):
+    for ialg in range(Nalg):        
+        lidx = ifdim*Nalg+ialg
+        if NframeDims*Nalg>1:
+            clr=cm.turbo(lidx/(NframeDims*Nalg-1))
+        else:
+            clr=cm.turbo(.5)
+        lin=listOfLineTypes[ifdim % len(listOfLineTypes)]
+        if Nrunners<=3:
+            mrk=listOfMarkersComplementary[runnerIndices[ialg]][1+runnerCount[ialg]]
+        else:
+            mrk=listOfMarkersComplementary[runnerCount[ialg]][1+runnerIndices[ialg]]
+        pat=listOfPatterns[runnerIndices[ialg]]
+        ldecor.append((clr,lin,mrk,pat))
+            
 fig_ctr=0
 
 fig_ctr+=1
@@ -365,11 +431,11 @@ plt.yscale("log")
 barwidth= 0.9/(2*NframeDims)
 for ifdim in range(NframeDims):
     offset=(-1/2)*barwidth+ifdim*.9/2
-    lbmod = ' '+frameDims[ifdim] if NframeDims>1 else ''
+    lbmod = ' '+frameDimsStr[ifdim] if NframeDims>1 else ''
     plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeHDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Psi$ dict'+lbmod)
     offset=(+1/2)*barwidth+ifdim*.9/2
     plt.bar(np.arange(Nalg)+offset,bytesPerFloat*sizeYDic[ifdim,:]*(2.0**-20),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
-plt.xticks(ticks=np.arange(0,Nalg),labels=confAlgs[:,5],rotation=-15)
+plt.xticks(ticks=np.arange(0,Nalg),labels=[x[0] for x in confAlgs],rotation=-15)
 # plt.xlabel('Algoritm')
 plt.ylabel('Dictionary size MByte')
 plt.legend()
@@ -381,11 +447,11 @@ plt.yscale("log")
 barwidth= 0.9/(2*NframeDims)
 for ifdim in range(NframeDims):
     offset=(-1/2)*barwidth+ifdim*.9
-    lbmod = ' '+frameDims[ifdim] if NframeDims>1 else ''
+    lbmod = ' '+frameDimsStr[ifdim] if NframeDims>1 else ''
     plt.bar(np.arange(Nalg)+offset,prepHTime[ifdim,:],width=barwidth,label='$\\Psi$ dict'+lbmod)
     offset=(+1/2)*barwidth+ifdim*.9
     plt.bar(np.arange(Nalg)+offset,np.mean(prepYTime[ifdim,:,:],axis=1),width=barwidth,label='$\\Upsilon$ dict'+lbmod)
-plt.xticks(ticks=np.arange(0,Nalg,1),labels=confAlgs[:,5],rotation=-15)
+plt.xticks(ticks=np.arange(0,Nalg,1),labels=[x[0] for x in confAlgs],rotation=-15)
 # plt.xlabel('Algoritm')1
 plt.ylabel('precomputation time')
 plt.legend()
@@ -395,15 +461,11 @@ fig_ctr+=1
 plt.figure(fig_ctr)
 for ifdim in range(NframeDims):
     for ialg in range(Nalg):
-        Xt,Xd,Xa,Xmu,dicName,label,lin,mrk,clr = confAlgs[ialg][:]
         lidx = ifdim*Nalg+ialg
-        if NframeDims>1:
-            mrk=complementMarkers[ialg % Nrunners][1+runnerIndices[ialg]]   
-            lin=listOfLTypes[ifdim % len(listOfLTypes)]
-            clr=cm.turbo(lidx/(NframeDims*Nalg-1))
-        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=algLegendList[lidx])
+        clr,lin,mrk,pat=ldecor[lidx]
+        plt.semilogy(10*np.log10(SNRs),np.mean(MSE[ifdim,ialg,:,:],axis=1),color=clr,marker=mrk,linestyle=lin,label=labelList[lidx])
         # Nframe,K,Ncp,Nrfr,Na,Nd,Nrft = [int(x) for x in frameDims[ifdim].split(':')]
-        # plt.semilogy(10*np.log10(SNRs),np.mean(Npaths[ifdim,ialg,:,:],axis=1)/(Nframe*K*Nrfr)/SNRs,color=clr,marker='s',linestyle=':',label='LB'+algLegendList[lidx])
+        # plt.semilogy(10*np.log10(SNRs),np.mean(Npaths[ifdim,ialg,:,:],axis=1)/(Nframe*K*Nrfr)/SNRs,color=clr,marker='s',linestyle=':',label='LB'+labelList[lidx])
 plt.legend()
 plt.xlabel('SNR(dB)')
 plt.ylabel('MSE')
@@ -419,12 +481,11 @@ for ifdim in range(NframeDims):
     for ialg in range(Nalg):
         lidx = ifdim*Nalg+ialg
         offset=(lidx-(Nalg*NframeDims-1)/2)*barwidth
-        patInd =  runnerIndices[ialg]        
-        clr=cm.turbo(lidx/(Nalg*NframeDims-1))
-        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=listOfPatterns[patInd],label=algLegendList[lidx])
+        clr,lin,mrk,pat=ldecor[lidx]
+        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=pat,label=labelList[lidx])
 plt.xlabel('SNR(dB)')
 plt.ylabel('runtime')
-plt.legend(algLegendList)
+plt.legend(labelList)
 plt.savefig(outfoldername+'/CSCompvsSNR.svg')
 
 fig_ctr+=1
@@ -434,9 +495,8 @@ for ifdim in range(NframeDims):
     for ialg in range(0,Nalg):
         lidx = ifdim*Nalg+ialg
         offset=(lidx-(Nalg*NframeDims-1)/2)*barwidth
-        patInd = runnerIndices[ialg]  
-        clr=cm.turbo(lidx/(Nalg*NframeDims-1))
-        plt.bar(10*np.log10(SNRs)+offset,np.mean(Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=listOfPatterns[patInd],label=algLegendList[lidx])
+        clr,lin,mrk,pat=ldecor[lidx]
+        plt.bar(10*np.log10(SNRs)+offset,np.mean(Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=pat,label=labelList[lidx])
 plt.xlabel('SNR(dB)')
 plt.ylabel('N paths')
 plt.legend()
@@ -451,10 +511,9 @@ for ifdim in range(NframeDims):
     for ialg in range(Nalg):
         lidx = ifdim*Nalg+ialg
         offset=(lidx-(Nalg*NframeDims-1)/2)*barwidth
-        patInd = runnerIndices[ialg]  
-        clr=cm.turbo(lidx/(Nalg*NframeDims-1))
-        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:]/Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=listOfPatterns[patInd],label=algLegendList[lidx])
+        clr,lin,mrk,pat=ldecor[lidx]
+        plt.bar(10*np.log10(SNRs)+offset,np.mean(runTimes[ifdim,ialg,:,:]/Npaths[ifdim,ialg,:,:],axis=1),width=barwidth,color=clr,hatch=pat,label=labelList[lidx])
 plt.xlabel('SNR(dB)')
 plt.ylabel('per iteration runtime')
-plt.legend(algLegendList)
+plt.legend(labelList)
 plt.savefig(outfoldername+'/CSItervsSNR.svg')
