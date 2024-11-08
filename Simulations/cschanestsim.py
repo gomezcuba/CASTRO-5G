@@ -64,7 +64,7 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 ####
 # Basic 3gpp tests
 # there are TOO MANY PATHS in 3gpp channel. this config does not have enough observations for good CS
-# args = parser.parse_args("--mgp -N 10 -G 3gpp --est -F=3:64:32:2:8:8:1 --label test3GPPinsuficient --show --print".split(' '))
+# args = parser.parse_args("--mpg -N 10 -G 3gpp --est -F=3:64:32:2:8:8:1 --label test3GPPinsuficient --show --print".split(' '))
 
 # this config does not work due to insufficient number of combs and symbols
 # args = parser.parse_args("-N 10 -G 3gpp -F=2:32:16:1:4:4:1 --label test3GPPtiny --show --print".split(' '))
@@ -74,12 +74,12 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 # args = parser.parse_args("-N 100 -G 3gpp -F=2:256:16:1:4:4:1 --label test3GPPsmall --show --print".split(' '))#1.4s/it
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:512:32:2:8:8:1 --label test3GPPsmallplus --show --print".split(' '))#21s iter
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:2:8:8:1 --label test3GPPmedium --show --print".split(' '))#130s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPPmedium16 --show --print".split(' '))#400s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:1:4:4:1 --label test3GPPbig4 --show --print".split(' '))#120 iter
-args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:2:8:8:1 --label test3GPPbig8 --show --print".split(' '))#?180s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:4:16:16:1 --label test3GPPbig --show --print".split(' '))#?s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:1:2:2:1 --label test3GPPhuge2 --show --print".split(' '))# 100s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:1:4:4:1 --label test3GPPhuge4 --show --print".split(' '))# 500s iter
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:1024:64:4:16:16:1 --label test3GPPmedium16 --show --print".split(' '))#750s iter
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:2048:128:1:4:4:1 --label test3GPPbig4 --show --print".split(' '))#66s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:2:8:8:1 --label test3GPPbig8 --show --print".split(' '))#?350s iter
+# args = parser.parse_args("--mpg -N 2 -G 3gpp --est -F=1:2048:128:4:16:16:1 -A=dicFast:2:2:2:1,dicFast:4:4:4:1 --label test3GPPbig --show --print".split(' '))#?s iter
+args = parser.parse_args("--mpg -N 2 -G 3gpp --est -F=1:4096:256:1:2:2:1 --label test3GPPhuge2 --show --print".split(' '))# 100s iter
+args = parser.parse_args("--mpg -N 2 -G 3gpp --est -F=1:4096:256:1:4:4:1 -A=dicFast:4:4:4:1 --label test3GPPhuge4 --show --print".split(' '))# 500s iter
 # args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:2:8:8:1 --label test3GPPhuge8 --show --print".split(' '))#900s iter
 # args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:4:16:16:1 --label test3GPPhuge --show --print".split(' '))#950?s iter
 # args = parser.parse_args("-N 10 -G 3gpp -F=3:512:16:1:4:4:1,2:1024:64:1:4:4:1,1:2048:128:1:4:4:1,1:4096:256:1:4:4:1 --label test3GPPframe --show --print".split(' '))
@@ -352,6 +352,8 @@ else:
         np.savetxt(outfoldername+'/confAlgs.csv',confAlgsStr,delimiter=',',fmt='%s')
         np.savetxt(outfoldername+'/frameDims.csv',frameDims,delimiter=',',fmt='%d')
     confAlgsStr=np.loadtxt(outfoldername+'/confAlgs.csv',delimiter=',',dtype='U32')
+    if confAlgsStr.ndim==1:
+        confAlgsStr=confAlgsStr.reshape(1,-1)
     confAlgs = [ (x[0], tuple([float(y) for y in x[1:]])) for x in confAlgsStr]
     Nalg=len(confAlgs)
     frameDims=np.loadtxt(outfoldername+'/frameDims.csv',delimiter=',',dtype=int)
