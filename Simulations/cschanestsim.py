@@ -48,17 +48,17 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 ####
 # Basic uni tests
 # args = parser.parse_args("-N 100 -G Uni:10 -F=3:32:16:2:4:4:1,3:64:16:2:4:4:1 --label compareBaseDic --show --print".split(' '))
-# args = parser.parse_args("-N 100 -G Uni:10 -F=2:128:32:1:8:8:1 --label compareResolution --show --print".split(' '))
+# args = parser.parse_args("-N 2 -G Uni:5 -F=1:2048:256:4:16:16:1 --label compareResolution --show --print".split(' '))
 
 ####
 # Simulation uni results
 
-# args = parser.parse_args("-N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSize --show --print".split(' '))
+args = parser.parse_args("--mpg -N 4 -G Uni:5 --est -F=5:64:32:2:8:8:1 --label SmallDicSize --show --print".split(' '))
 # args = parser.parse_args("-N 100 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
 # args = parser.parse_args("-N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizePFP --show --print".split(' '))
 
-# args = parser.parse_args("-N 4 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSize --show --print".split(' '))
-# args = parser.parse_args("-N 100 -G Uni:5 -F=1:256:16:1:4:4:1,1:512:32:2:8:8:1,1:1024:64:4:16:16:1 --label BigDicSizeX100 --show --print".split(' '))
+# args = parser.parse_args("--mpg -N 4 -G Uni:5 --est -F=1:512:16:1:4:4:1,1:1024:32:2:8:8:1,1:2048:64:4:16:16:1 --label BigDicSize --show --print".split(' '))
+# args = parser.parse_args("-N 100 -G Uni:5 -F=1:512:16:1:4:4:1,1:1024:32:2:8:8:1,1:2048:64:4:16:16:1 --label BigDicSizeX100 --show --print".split(' '))
 # args = parser.parse_args("-N 4 -G Uni:5 -F=31:1024:64:1:16:16:1 --label BigDicSizePFP --show --print".split(' '))
 
 ####
@@ -78,10 +78,10 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:2048:128:1:4:4:1 --label test3GPPbig4 --show --print".split(' '))#66s iter
 # args = parser.parse_args("-N 2 -G 3gpp -F=1:2048:128:2:8:8:1 --label test3GPPbig8 --show --print".split(' '))#?350s iter
 # args = parser.parse_args("--mpg -N 2 -G 3gpp --est -F=1:2048:128:4:16:16:1 -A=dicFast:2:2:2:1,dicFast:4:4:4:1 --label test3GPPbig --show --print".split(' '))#?s iter
-args = parser.parse_args("--mpg -N 2 -G 3gpp --est -F=1:4096:256:1:2:2:1 --label test3GPPhuge2 --show --print".split(' '))# 100s iter
-args = parser.parse_args("--mpg -N 2 -G 3gpp --est -F=1:4096:256:1:4:4:1 -A=dicFast:4:4:4:1 --label test3GPPhuge4 --show --print".split(' '))# 500s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:2:8:8:1 --label test3GPPhuge8 --show --print".split(' '))#900s iter
-# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:4:16:16:1 --label test3GPPhuge --show --print".split(' '))#950?s iter
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:4096:256:1:2:2:1 --label test3GPPhuge2 --show --print".split(' '))# 50s iter
+# args = parser.parse_args("-N 10 -G 3gpp -F=1:4096:256:1:4:4:1 --label test3GPPhuge4 --show --print".split(' '))# 130s iter
+# args = parser.parse_args("-N 2 -G 3gpp -F=1:4096:256:2:8:8:1 --label test3GPPhuge8 --show --print".split(' '))#1500s iter
+# args = parser.parse_args("--mpg -N 2 -G 3gpp --est -F=1:4096:256:4:16:16:1 -A=dicFast:4:4:4:1 -S=-10:0:10 --label test3GPPhuge --show --print".split(' '))#950?s iter
 # args = parser.parse_args("-N 10 -G 3gpp -F=3:512:16:1:4:4:1,2:1024:64:1:4:4:1,1:2048:128:1:4:4:1,1:4096:256:1:4:4:1 --label test3GPPframe --show --print".split(' '))
 # args = parser.parse_args("-N 10 -G 3gpp -F=1:4096:256:1:4:4:1,1:4096:256:2:8:8:1,1:4096:256:4:16:16:1 --label test3GPPant --show --print".split(' '))
 ####
@@ -102,9 +102,12 @@ else:
 NframeDims = len(frameDims)
 
 # Ds=390e-9 #Ts=2.5ns with Rs=400MHz in NYUwim
-Tcp=570e-9 #mu=2
+# Tcp=520e-9 #mu=3
+# Tcp=285e-9 #mu=4
+Tcp=4166e-9#
+
 if args.S:
-    minSNRdB,maxSNRdB,stepSNRdB = args.S.split(':')
+    minSNRdB,maxSNRdB,stepSNRdB = [float(x) for x in args.S.split(':')]
 else:
     minSNRdB,maxSNRdB,stepSNRdB = (-10,20,10)
 SNRs=10**(np.arange(minSNRdB,maxSNRdB+0.01,stepSNRdB)/10)
@@ -136,25 +139,25 @@ if args.A:
     confAlgs = [(l[0],tuple(map(lambda x:float(x),l[1:]))) for l in confAlgsStr]
 else:
     confAlgs=[# dicName, oversampling = (Xt Xd Xa Xmu)
-        # ("dicBase",(1.0,1.0,1.0,1.0)),
+        ("dicBase",(1.0,1.0,1.0,1.0)),
         # ("dicBase",(2.0,2.0,2.0,1.0)),
-        # ("dicBase",(4.0,4.0,4.0,1.0)),
+        ("dicBase",(4.0,4.0,4.0,1.0)),
         # ("dicBase",(8.0,8.0,8.0,1.0)),
         # ("dicBase",(1.0,1.0,1.0,10.0)),
-        # ("dicFFT",(1.0,1.0,1.0,1.0)),
+        ("dicFFT",(1.0,1.0,1.0,1.0)),
         # ("dicFFT",(2.0,2.0,2.0,1.0)),
-        # ("dicFFT",(4.0,4.0,4.0,1.0)),
+        ("dicFFT",(4.0,4.0,4.0,1.0)),
         # ("dicFFT",(8.0,8.0,8.0,1.0)),
         # ("dicFFT",(1.0,1.0,1.0,10.0)),
-        # ("dicMult",(1.0,1.0,1.0,1.0)),
-        ("dicMult",(2.0,2.0,2.0,1.0)),
+        ("dicMult",(1.0,1.0,1.0,1.0)),
+        # ("dicMult",(2.0,2.0,2.0,1.0)),
         ("dicMult",(4.0,4.0,4.0,1.0)),
-        # ("dicMult",(8.0,8.0,8.0,1.0)),
+        ("dicMult",(8.0,8.0,8.0,1.0)),
         # ("dicMult",(1.0,1.0,1.0,10.0)),
-        # ("dicFast",(1.0,1.0,1.0,1.0)),
-        ("dicFast",(2.0,2.0,2.0,1.0)),
+        ("dicFast",(1.0,1.0,1.0,1.0)),
+        # ("dicFast",(2.0,2.0,2.0,1.0)),
         ("dicFast",(4.0,4.0,4.0,1.0)),
-        # ("dicFast",(8.0,8.0,8.0,1.0)),
+        ("dicFast",(8.0,8.0,8.0,1.0)),
         # ("dicFast",(1.0,1.0,1.0,10.0)),
         ]
 
@@ -389,7 +392,8 @@ algLbl={
         "dicFast":"3D-FFT",
         "dicSphr":"SphereD",
     }
-if Nalg>1:    
+
+if Nalg>1:  
     labelList=[]
     for a in range(Nalg):
         k,ov=confAlgs[a]
@@ -409,6 +413,8 @@ if NframeDims>1:
     else:
         labelList = frameDims
 
+if NframeDims==1 and Nalg==1:
+    labelList=[confAlgs[0][0]]
 ldecor=[]
 for ifdim in range(NframeDims):
     for ialg in range(Nalg):        

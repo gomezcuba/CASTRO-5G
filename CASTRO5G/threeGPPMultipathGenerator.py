@@ -516,6 +516,11 @@ class ThreeGPPMultipathChannelModel:
         if not key in self.dLOSGenerated:
            self.dLOSGenerated[key] = np.random.rand(1)[0]
         return(self.dLOSGenerated[key])
+    def setLOSUnifAtLocation(self,P,txPos, rxPos):
+        dCorr = self.scenarioParams.LOS.corrLOS
+        key =  self.calculateGridCoeffs(txPos,rxPos,dCorr)
+        self.dLOSGenerated[key] = P
+        return()
         
     #macro => Large Scale Correlated parameters
     def get_macro_from_location(self,txPos, rxPos,los):
@@ -529,6 +534,16 @@ class ThreeGPPMultipathChannelModel:
             return(self.create_macro(macrokey))#saves result to memory
         else:
             return(self.dMacrosGenerated.loc[macrokey,:])
+    def setMacroAtLocation(self,macroValues,txPos, rxPos, los):
+        #macroValues = (sfdB,ds,asa,asd,zsa,zsd_lslog,K)
+        if los:
+            dCorr = self.scenarioParams.LOS.corrStatistics
+        else:
+            dCorr = self.scenarioParams.NLOS.corrStatistics
+        TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex= self.calculateGridCoeffs(txPos,rxPos, dCorr) #ray corr distance
+        macrokey = (TgridXIndex,TgridYIndex,RgridXIndex,RgridYIndex,los)
+        self.dMacrosGenerated.loc[macrokey,:]=macroValues
+        return()
         
     def create_macro(self, macrokey):
         los=macrokey[4]
@@ -699,7 +714,7 @@ class ThreeGPPMultipathChannelModel:
         return(subpaths)
    
     
-    def create_subpaths_largeBW(self,smallStatistics,clusters,LOSangles,d2D,hut):
+    def create_subpaths_largeBW(self,smallStatistics,clusters,LOSangles):
         los,DS,ASA,ASD,ZSA,ZSD,K,czsd,muZoD = smallStatistics
         (losAoD,losAoA,losZoD,losZoA) = LOSangles
         (tau,powC,AoA,AoD,ZoA,ZoD)=clusters.T.to_numpy()
@@ -777,13 +792,12 @@ class ThreeGPPMultipathChannelModel:
         return(subpaths)
     
     
-    def create_small_param(self,LOSangles,smallStatistics,d2D,hut):
-        los,DS,ASA,ASD,ZSA,ZSD,K,cZSD,muZoD = smallStatistics
+    def create_small_param(self,LOSangles,smallStatistics):  
         
         clusters = self.create_clusters(smallStatistics,LOSangles)
         
         if self.bLargeBandwidthOption:
-            subpaths = self.create_subpaths_largeBW(smallStatistics,clusters,LOSangles,d2D,hut)
+            subpaths = self.create_subpaths_largeBW(smallStatistics,clusters,LOSangles)
         else:
             subpaths = self.create_subpaths_basics(smallStatistics,clusters,LOSangles)
     
@@ -956,14 +970,14 @@ class ThreeGPPMultipathChannelModel:
                 param = self.scenarioParams.LOS            
             else:
                 param = self.scenarioParams.NLOS
-            sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
+            sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro
             zsd_mu = param.funZSD_mu(d2D,hut)          
             zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
             zod_offset_mu = param.funZoDoffset(d2D,hut)        
             czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
             smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)
             
-            clusters, subpaths = self.create_small_param(LOSangles, smallStatistics, d2D, hut)
+            clusters, subpaths = self.create_small_param(LOSangles, smallStatistics)
             if self.funPostprocess:
                 plinfo,clusters,subpaths = self.funPostprocess(txPos,rxPos,plinfo,clusters,subpaths)
                 # self.dClustersGenerated = self.dClustersGenerated.append(pd.concat({ keyChannel: clusters },names=['Xt','Yt','Zt','Xr','Yr','Zr']))
