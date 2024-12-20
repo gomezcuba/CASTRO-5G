@@ -459,11 +459,12 @@ class CSSphereFFTDictionary(CSMultiFFTDictionary):
         mpr = { -Uini:(-1,-1,-1)}
         lU = [-Uini]       
         stop=False
+        L=len(dimPhi)
         while not stop:
             # it=max(mp,key=lambda x: mp.get(x)[1])
             it=mpr[lU[0]]
             d,Uprev,Qprev = mp[it]
-            if d==len(dimPhi):
+            if d==L:
                 stop=True
                 break;            
             #TODO make this arbitrary dimensions    

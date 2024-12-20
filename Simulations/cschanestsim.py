@@ -53,7 +53,7 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 ####
 # Simulation uni results
 
-args = parser.parse_args("--mpg -N 4 -G Uni:5 --est -F=5:64:32:2:8:8:1 --label SmallDicSize --show --print".split(' '))
+args = parser.parse_args("-N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSize --show --print".split(' '))
 # args = parser.parse_args("-N 100 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizeX100 --show --print".split(' '))
 # args = parser.parse_args("-N 4 -G Uni:5 -F=5:64:32:2:8:8:1 --label SmallDicSizePFP --show --print".split(' '))
 
@@ -127,12 +127,21 @@ else:
 if not os.path.isdir(outfoldername) and not args.nosave:
     os.mkdir(outfoldername)
 
-def stopModifierPfpOMP(Pfp,N):
+# def stopModifierPfpOMP(Pfp,N):
     
-    return(-np.log(1-(1-Pfp)**(1/N)))
+#     return(-np.log(1-(1-Pfp)**(1/N)))
 
 PFP = .25
 
+def toppowAWGN(f):
+    # Calculates the average sum power of the (1-f)N smallest coefficients of
+    # a CAWGN vector of N coefficients. Result normalized by 1/N*σ².
+    return (1+(1-f)*(1-np.log(1-f)))
+
+def stopModifierPfpOMP(Pfp):
+    #when SNR->0 the 'f' largest noise coefficients are selected, this upper-
+    # -bounds the Pfp1
+    return toppowAWGN(Pfp)
 
 if args.A:
     confAlgsStr = [l.split(':') for l in args.A.split(',')]
@@ -148,7 +157,7 @@ else:
         # ("dicFFT",(2.0,2.0,2.0,1.0)),
         ("dicFFT",(4.0,4.0,4.0,1.0)),
         # ("dicFFT",(8.0,8.0,8.0,1.0)),
-        # ("dicFFT",(1.0,1.0,1.0,10.0)),
+        # ("dicFFT",(1.0,1.0,1.0,10.0)),stopModifierPfpOMP
         ("dicMult",(1.0,1.0,1.0,1.0)),
         # ("dicMult",(2.0,2.0,2.0,1.0)),
         ("dicMult",(4.0,4.0,4.0,1.0)),
@@ -276,8 +285,8 @@ if args.est:
             Lt,La,Ld=(int(Ncp*Xt),int(Na*Xa),int(Nd*Xd))
             
             # print(f'Paramos OMP con coeficiente {stopModifierPfpOMP(PFP,Lt*La*Ld)} x sigma')
-            # OMPstopmodifier = stopModifierPfpOMP(1e-1,Lt*La*Ld)
-            OMPstopmodifier = 1
+            OMPstopmodifier = stopModifierPfpOMP(1e-1)
+            # OMPstopmodifier = 1
             Nobserv=(Nrfr*K*Nframe)
             Nsearch=Lt*La*Ld
             print(f"Pregen CS dict alg={confAlgs[ialg]} shape={frameDims[ifdim]} th. max paths {int(np.floor(Nobserv/np.log2(Nsearch)))}")
