@@ -170,7 +170,8 @@ class MIMOPilotChannel:
             "IDUV": self.getCodebookIDUV,
             "QPSK": self.getCodebookQPSK,
             "UPhase": self.getCodebookQPSK,
-            "Rectangular": self.getCodebookRectangular
+            "Rectangular": self.getCodebookRectangular,
+            "BPSK": self.getCodebookBPSK
             }
         return(cbFunDict[algorithm])
     def generatePilots(self,Np,Nr,Nt,Npr=None,rShape=None,tShape=None,algorithm=None):      
@@ -218,6 +219,9 @@ class MIMOPilotChannel:
         A_array_design = fULA(angles_design, Nant, .5)
         W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
         return(W_ls/np.linalg.norm(W_ls,axis=0))
+    def getCodebookBPSK(self, Nant, Ncol):
+        return np.exp(1j * np.pi * np.random.randint(0, 2, size=(Nant, Ncol))) * np.sqrt(1 / Nant)
+
     def applyPilotChannel(self,hk,wp,vp,zp=None):          
         yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=-1,keepdims=True) + ( 0 if zp is None else zp))        
         return(yp)
