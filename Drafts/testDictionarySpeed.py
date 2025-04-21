@@ -30,7 +30,7 @@ dimY=(Nframe,K,Nrfr)
 
 bTestBase = False #disable for large sizes
 bTestFFT = False
-bTestMult = False
+bTestMult = True
 bTestFast = True
 bTestSphr = True
 
