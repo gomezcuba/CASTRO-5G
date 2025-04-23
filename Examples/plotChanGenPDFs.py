@@ -56,7 +56,7 @@ listaZoD = [] #sometimes fewer clusters are generated
 listaZoA = [] #sometimes fewer clusters are generated
 
 for i in range(Nchannels):
-    clusters, subpaths =model.create_small_param(angles,smallStatistics,d2D,hut)
+    clusters, subpaths =model.create_small_param(angles,smallStatistics)
     tau,powC,AOA,AOD,ZOA,ZOD =clusters.T.to_numpy()
     listaTau.append(tau[1:])#first cluster always has delay 0
     

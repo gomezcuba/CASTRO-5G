@@ -15,8 +15,8 @@ fig_ctr = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
-sce = "UMa"
-transform = "AOA" #type None for no transform
+sce = "InH-Office-Mixed"
+transform = "DERandom" #type None for no transform
 delBacklobe = False
 bool3D=True
 
@@ -24,6 +24,7 @@ bool3D=True
 
 tx = (0,0,10)
 rx = (100,0,1.5)
+nItsctRad = 25 #10m
 txArrayAngle = 0
 rxArrayAngle = -180
 vLOS=np.array(rx)-np.array(tx)
@@ -35,20 +36,22 @@ phi0 = 0
 # ----------------------------
 
 modelA = mpg.ThreeGPPMultipathChannelModel(scenario = sce, bLargeBandwidthOption=True)
-# plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
-# los, PLfree, SF = plinfo
-# nNLOSsp=subpathsNAD.loc[1,:].shape[0]
+plinfo,macro,clustersNAD,subpathsNAD = modelA.create_channel(tx,rx)
+los, PLfree, SF = plinfo
+nNLOSsp=subpathsNAD.loc[1,:].shape[0]
+
 # print("Condition: ",(clustersNAD.P[0]<.9)&(los))
 # clustersNAD.to_csv("../Results/changendataAdaptation3GPP/clustersNAD.csv")
 # subpathsNAD.to_csv("../Results/changendataAdaptation3GPP/subpathsNAD.csv")
 # macro.to_csv("../Results/changendataAdaptation3GPP/macro.csv")
 # np.savez("../Results/changendataAdaptation3GPP/plinfo.npz",plinfo=plinfo)
-data=np.load("../Results/changendataAdaptation3GPP/plinfo.npz")
-plinfo=tuple(data['plinfo'])
-macro=pd.read_csv("../Results/changendataAdaptation3GPP/macro.csv")
-macro=macro.drop('Unnamed: 0',axis=1)
-clustersNAD=pd.read_csv("../Results/changendataAdaptation3GPP/clustersNAD.csv",index_col=["n"])
-subpathsNAD=pd.read_csv("../Results/changendataAdaptation3GPP/subpathsNAD.csv",index_col=["n","m"])
+
+# data=np.load("../Results/changendataAdaptation3GPP/plinfo.npz")
+# plinfo=tuple(data['plinfo'])
+# macro=pd.read_csv("../Results/changendataAdaptation3GPP/macro.csv")
+# macro=macro.drop('Unnamed: 0',axis=1)
+# clustersNAD=pd.read_csv("../Results/changendataAdaptation3GPP/clustersNAD.csv",index_col=["n"])
+# subpathsNAD=pd.read_csv("../Results/changendataAdaptation3GPP/subpathsNAD.csv",index_col=["n","m"])
 nClusters = clustersNAD.shape[0]
 # plinfo=data.plinfo
 # macro=data.macro
@@ -90,15 +93,15 @@ nACL=np.sum(clustersAD.Xs<np.inf)
 
 c=3e8
 #Distancia entre receptor e posición do rebote
-liRX_cNA = (clustersNAD.TDoA*c+d2D)/2
-liRX_cA=np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2).where(clustersAD.Xs<np.inf,d2D/2)
-liRX_sNA = (subpathsNAD.TDoA*c+d2D)/2
-liRX_sA=np.sqrt((subpathsAD.Xs-rx[0])**2+(subpathsAD.Ys - rx[1])**2).where(subpathsAD.Xs<np.inf,d2D/2)
+liRX_cNA = (clustersNAD.TDoA*c+d2D)/2 if nItsctRad is None else nItsctRad*np.ones_like(clustersNAD.TDoA)
+liRX_cA=np.sqrt((clustersAD.Xs-rx[0])**2+(clustersAD.Ys - rx[1])**2).where(clustersAD.Xs<np.inf,liRX_cNA)
+liRX_sNA = (subpathsNAD.TDoA*c+d2D)/2 if nItsctRad is None else nItsctRad*np.ones_like(subpathsNAD.TDoA)
+liRX_sA=np.sqrt((subpathsAD.Xs-rx[0])**2+(subpathsAD.Ys - rx[1])**2).where(subpathsAD.Xs<np.inf,liRX_sNA)
 #Distancia entre transmisor e posicion do rebote
-liTX_cNA = (clustersNAD.TDoA*c+d2D)/2
-liTX_cA=np.sqrt((clustersAD.Xs)**2+(clustersAD.Ys)**2).where(clustersAD.Xs<np.inf,d2D/2)
-liTX_sNA = (subpathsNAD.TDoA*c+d2D)/2
-liTX_sA=np.sqrt((subpathsAD.Xs)**2+(subpathsAD.Ys)**2).where(subpathsAD.Xs<np.inf,d2D/2)
+liTX_cNA = (clustersNAD.TDoA*c+d2D)/2 if nItsctRad is None else nItsctRad*np.ones_like(clustersNAD.TDoA)
+liTX_cA=np.sqrt((clustersAD.Xs)**2+(clustersAD.Ys)**2).where(clustersAD.Xs<np.inf,liTX_cNA)
+liTX_sNA = (subpathsNAD.TDoA*c+d2D)/2 if nItsctRad is None else nItsctRad*np.ones_like(subpathsNAD.TDoA)
+liTX_sA=np.sqrt((subpathsAD.Xs)**2+(subpathsAD.Ys)**2).where(subpathsAD.Xs<np.inf,liTX_sNA)
 
 # ---- Gráfica 1, camiños non adaptados:
 
@@ -110,9 +113,14 @@ plt.ylabel('y-location (m)')
 
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 # plt.plot(clustersAD.Xs,clustersAD.Ys,'xk',label='C. Scatterers')
+uD = modelA.getUnitaryVectors(clustersNAD.AoD*np.pi/180)
+uA = modelA.getUnitaryVectors(clustersNAD.AoA*np.pi/180)
 for i in range(0,nClusters): 
-    plt.plot([tx[0],tx[0]+liTX_cNA[i]*np.cos(clustersNAD.AoD[i]*np.pi/180)],[tx[1],tx[1]+liTX_cNA[i]*np.sin(clustersNAD.AoD[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
-    plt.plot([rx[0],rx[0]+liRX_cNA[i]*np.cos(clustersNAD.AoA[i]*np.pi/180)],[rx[1],rx[1]+liRX_cNA[i]*np.sin(clustersNAD.AoA[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9')
+    plt.plot([tx[0],tx[0]+liTX_cNA[i]*uD[i,0]],[tx[1],tx[1]+liTX_cNA[i]*uD[i,1]],color=cm.jet(i/(nClusters-1)),linewidth = '2')
+    plt.plot(tx[0]+liTX_cNA[i]*uD[i,0],tx[1]+liTX_cNA[i]*uD[i,1],color=cm.jet(i/(nClusters-1)),linewidth = '3',markersize=10,marker=(3,0,-90+clustersNAD.AoD[i]))      
+    plt.plot([rx[0],rx[0]+liRX_cNA[i]*uA[i,0]],[rx[1],rx[1]+liRX_cNA[i]*uA[i,1]],color=cm.jet(i/(nClusters-1)),linewidth = '2')
+    plt.plot(rx[0]+.05*liRX_cNA[i]*uA[i,0],rx[1]+.05*liRX_cNA[i]*uA[i,1],color=cm.jet(i/(nClusters-1)),linewidth = '3',markersize=10,marker=(3,0,90+clustersNAD.AoA[i])) 
+    # plt.gca().annotate("", xytext=tx[0:2], xy=tx[0:2]+liTX_cNA[i]*uD[i,:],arrowprops=dict(arrowstyle="->"),linecolor=cm.jet(i/(nClusters-1)))
 plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 
@@ -132,7 +140,7 @@ if delBacklobe:
 
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.savefig("../Figures/fit%s_clusNAD.eps"%(transform))
+plt.savefig("../Figures/fit%s_clusNAD.svg"%(transform))
 
 
 #Gráfica 2 - Camiños clusters adaptados 
@@ -145,11 +153,15 @@ plt.xlabel('x-location (m)')
 plt.ylabel('y-location (m)')
 
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
-plt.plot(clustersAD.Xs,clustersAD.Ys,'xk',label='C. Scatterers')
+plt.plot(clustersAD.Xs,clustersAD.Ys,'xk',label='C. Scatterers',linewidth='2')
+uD = modelA.getUnitaryVectors(clustersAD.AoD*np.pi/180)
+uA = modelA.getUnitaryVectors(clustersAD.AoA*np.pi/180)
 for ctr in range(0,clustersAD.shape[0]):
     i=clustersAD.index[ctr]
-    plt.plot([tx[0],tx[0]+liTX_cA[i]*np.cos(clustersAD.AoD[i]*np.pi/180)],[tx[1],tx[1]+liTX_cA[i]*np.sin(clustersAD.AoD[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
-    plt.plot([rx[0],rx[0]+liRX_cA[i]*np.cos(clustersAD.AoA[i]*np.pi/180)],[rx[1],rx[1]+liRX_cA[i]*np.sin(clustersAD.AoA[i]*np.pi/180)],color=cm.jet(i/(nClusters-1)),linewidth = '0.9')
+    plt.plot([tx[0],tx[0]+liTX_cA[i]*uD[i,0]],[tx[1],tx[1]+liTX_cA[i]*uD[i,1]],color=cm.jet(i/(nClusters-1)),linewidth = '2')
+    plt.plot(tx[0]+.95*liTX_cA[i]*uD[i,0],tx[1]+.95*liTX_cA[i]*uD[i,1],color=cm.jet(i/(nClusters-1)),linewidth = '3',markersize=10,marker=(3,0,-90+clustersAD.AoD[i]))      
+    plt.plot([rx[0],rx[0]+liRX_cA[i]*uA[i,0]],[rx[1],rx[1]+liRX_cA[i]*uA[i,1]],color=cm.jet(i/(nClusters-1)),linewidth = '2')
+    plt.plot(rx[0]+.05*liRX_cA[i]*uA[i,0],rx[1]+.05*liRX_cA[i]*uA[i,1],color=cm.jet(i/(nClusters-1)),linewidth = '3',markersize=10,marker=(3,0,90+clustersAD.AoA[i])) 
 plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 if delBacklobe:
@@ -161,9 +173,9 @@ if delBacklobe:
     plt.title("%d|%d|%d of %d clusters adapted|kept|deleted"%(nACL,nKCL,nCL-nKCL,nCL))
 else:
     plt.title("%d of %d clusters adapted"%(nACL,nCL))
-plt.savefig("../Figures/fit%s_clusAD.eps"%(transform))
+plt.savefig("../Figures/fit%s_clusAD.svg"%(transform))
 
-# Gráfica 3 - Subpaths non adaptados
+# Gráfica 3 - Subpaths non adaptadosz
 
 fig_ctr+=1
 fig = plt.figure(fig_ctr)
@@ -173,10 +185,12 @@ plt.ylabel('y-location (m)')
 
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 # plt.plot(subpathsAD.Xs,subpathsAD.Ys,'xk',label='S. Scatterers')
+uD = modelA.getUnitaryVectors(subpathsNAD.AoD*np.pi/180)
+uA = modelA.getUnitaryVectors(subpathsNAD.AoA*np.pi/180)
 for i in range(0,nClusters): 
     Nsp=subpathsNAD.AoD[i].size
-    plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.cos(subpathsNAD.AoD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*np.sin(subpathsNAD.AoD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
-    plt.plot(rx[0]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*np.cos(subpathsNAD.AoA[i]*np.pi/180)]),rx[1]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*np.sin(subpathsNAD.AoA[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
+    plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*uD[i*Nsp:(i+1)*Nsp,0]]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sNA[i]*uD[i*Nsp:(i+1)*Nsp,1]]),color=cm.jet(i/(nClusters-1)),linewidth = '2') 
+    plt.plot(rx[0]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*uA[i*Nsp:(i+1)*Nsp,0]]),rx[1]+np.vstack([np.zeros(Nsp),liRX_sNA[i]*uA[i*Nsp:(i+1)*Nsp,1]]),color=cm.jet(i/(nClusters-1)),linewidth = '2') 
 plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 if delBacklobe:
@@ -185,7 +199,7 @@ if delBacklobe:
 legend = plt.legend(shadow=True, fontsize='10')
 if transform == "TDOA":
     plt.axis([-d2D+vLOS[0]/2,d2D+vLOS[0]/2,-d2D+vLOS[1]/2,d2D+vLOS[1]/2])
-plt.savefig("../Figures/fit%s_subpNAD.eps"%(transform))
+plt.savefig("../Figures/fit%s_subpNAD.svg"%(transform))
 
 # Gráfica 4 - Subpaths adaptados
 
@@ -197,11 +211,13 @@ plt.ylabel('y-location (m)')
 
 plt.plot([tx[0],rx[0]],[tx[1],rx[1]],'--')
 plt.plot(subpathsAD.Xs,subpathsAD.Ys,'xk',label='S. Scatterers')
+uD = modelA.getUnitaryVectors(subpathsAD.AoD*np.pi/180)
+uA = modelA.getUnitaryVectors(subpathsAD.AoA*np.pi/180)
 for ctr in range(0,clustersAD.shape[0]):
     i=clustersAD.index[ctr]
     Nsp=subpathsAD.AoD[i].size
-    plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sA[i]*np.cos(subpathsAD.AoD[i]*np.pi/180)]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sA[i]*np.sin(subpathsAD.AoD[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
-    plt.plot(rx[0]+np.vstack([np.zeros(Nsp),liRX_sA[i]*np.cos(subpathsAD.AoA[i]*np.pi/180)]),rx[1]+np.vstack([np.zeros(Nsp),liRX_sA[i]*np.sin(subpathsAD.AoA[i]*np.pi/180)]),color=cm.jet(i/(nClusters-1)),linewidth = '0.9') 
+    plt.plot(tx[0]+np.vstack([np.zeros(Nsp),liTX_sA[i]*uD[i*Nsp:(i+1)*Nsp,0]]),tx[1]+np.vstack([np.zeros(Nsp),liTX_sA[i]*uD[i*Nsp:(i+1)*Nsp,1]]),color=cm.jet(i/(nClusters-1)),linewidth = '2') 
+    plt.plot(rx[0]+np.vstack([np.zeros(Nsp),liRX_sA[i]*uA[i*Nsp:(i+1)*Nsp,0]]),rx[1]+np.vstack([np.zeros(Nsp),liRX_sA[i]*uA[i*Nsp:(i+1)*Nsp,1]]),color=cm.jet(i/(nClusters-1)),linewidth = '2') 
 plt.plot(tx[0],tx[1],'^r',label='BS',linewidth = '4.5')
 plt.plot(rx[0],rx[1],'sb',label='UE', linewidth='4.5')
 if delBacklobe:
@@ -212,7 +228,7 @@ else:
     plt.title("%d of %d subpaths adapted"%(nASP,nSP))
 legend = plt.legend(shadow=True, fontsize='10')
 
-plt.savefig("../Figures/fit%s_subpAD.eps"%(transform))
+plt.savefig("../Figures/fit%s_subpAD.svg"%(transform))
 
 # Gráfica 5: Deck de subpaths AOD, AOA e TDOA non correxido
 
@@ -247,7 +263,7 @@ for n in range(nClusters):
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()
 
-plt.savefig("../Figures/fit%s_deckNAD.eps"%(transform))
+plt.savefig("../Figures/fit%s_deckNAD.svg"%(transform))
 
 
 # Gráfica 6: Deck de subpaths AOD, AOA e TDOA correxido
@@ -286,5 +302,5 @@ for ctr in range(0,clustersAD.shape[0]):
     plt.setp(markerline, color=cm.jet(n/(nClusters-1))) 
 plt.grid()
 
-plt.savefig("../Figures/fit%s_deckAD.eps"%(transform))
+plt.savefig("../Figures/fit%s_deckAD.svg"%(transform))
 

@@ -24,11 +24,11 @@ model = pg.ThreeGPPMultipathChannelModel(scenario="UMi")
 Npoint = 101
 distance=np.arange(0,200,10)
 
-LOSprobabilityUMi = model.tableFunLOSprob["UMi"](distance,1.5)
-LOSprobabilityUMa = model.tableFunLOSprob["UMa"](distance,1.5)
-LOSprobabilityRMa = model.tableFunLOSprob["RMa"](distance,1.5)
-LOSprobabilityOpen = model.tableFunLOSprob["InH-Office-Open"](distance,1.5)
-LOSprobabilityMixed = model.tableFunLOSprob["InH-Office-Mixed"](distance,1.5)
+LOSprobabilityUMi = model.getLOSprobFun("UMi")(distance,1.5)
+LOSprobabilityUMa = model.getLOSprobFun("UMa")(distance,1.5)
+LOSprobabilityRMa = model.getLOSprobFun("RMa")(distance,1.5)
+LOSprobabilityOpen = model.getLOSprobFun("InH-Office-Open")(distance,1.5)
+LOSprobabilityMixed = model.getLOSprobFun("InH-Office-Mixed")(distance,1.5)
 
 plt.plot(distance, LOSprobabilityUMi, color = 'tab:red', linestyle = 'dashed' , label = 'UMi')
 plt.plot(distance, LOSprobabilityUMa, color = 'tab:blue', linestyle = 'dashed' , label = 'UMa')

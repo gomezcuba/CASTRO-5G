@@ -3,15 +3,87 @@ import pandas as pd
 
 class ThreeGPPMultipathChannelModel:
     
-    tableFunLOSprob = {
-        #functions admit np.array inputs |if   ,then, else    
-        "RMa": lambda d2D,hut : np.where(d2D<10, 1  , np.exp(-(d2D-10.0)/1000.0) ),
-        "UMi": lambda d2D,hut : np.where(d2D<18, 1  , 18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/36.0)*(1-18.0/np.where(d2D>0,d2D,1)) ),
-        "UMa": lambda d2D,hut : np.where(d2D<18, 1  , (18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/63.0)*(1-18.0/np.where(d2D>0,d2D,1)))*(1 + np.where(hut<=23, 0, ((hut-13.0)/10.0)**1.5)*1.25*((d2D/100.0)**3.0)*np.exp(-d2D/150.0)) ),
-        "InH-Office-Mixed": lambda d2D,hut : np.where( d2D<1.2, 1  , np.where( d2D<6.5, np.exp(-(d2D-1.2)/4.7) , (np.exp(-(d2D-6.5)/32.6))*0.32) ),
-        "InH-Office-Open": lambda d2D,hut : np.where(  d2D<=5, 1, np.where( d2D<49, np.exp(-(d2D-5.0)/70.8)  , (np.exp(-(d2D-49.0)/211.7))*0.54) )
-    }
-    
+    def getLOSprobFun(self,scenario):
+        if scenario=="RMa":
+            return( lambda d2D,hut : np.where(d2D<10, 1  , np.exp(-(d2D-10.0)/1000.0) ) )
+        if scenario=="UMi":
+            return( lambda d2D,hut : np.where(d2D<18, 1  , 18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/36.0)*(1-18.0/np.where(d2D>0,d2D,1)) ) )
+        if scenario=="UMa":
+            return(  lambda d2D,hut : np.where(d2D<18, 1  , (18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/63.0)*(1-18.0/np.where(d2D>0,d2D,1)))*(1 + np.where(hut<=23, 0, ((np.where(hut<=23, 23,hut)-13.0)/10.0)**1.5)*1.25*((d2D/100.0)**3.0)*np.exp(-d2D/150.0)) ) )
+        if scenario=="InH-Office-Mixed":
+            return(  lambda d2D,hut : np.where( d2D<1.2, 1  , np.where( d2D<6.5, np.exp(-(d2D-1.2)/4.7) , (np.exp(-(d2D-6.5)/32.6))*0.32) ) )
+        if scenario=="InH-Office-Open":
+            return( lambda d2D,hut : np.where(  d2D<=5, 1, np.where( d2D<49, np.exp(-(d2D-5.0)/70.8)  , (np.exp(-(d2D-49.0)/211.7))*0.54) ) )
+        if scenario=="InF-SL":
+            k=-self.dclutter/np.log(1-self.rclutter)
+            return( lambda d2D,hut :  np.exp(-d2D/k) )
+        # if scenario=="InF-DL":
+        #     dclutter,r = options if options is not None else 2,.5
+        #     k=-dclutter/np.log(1-r)
+        #     return( lambda d2D,hut :  np.exp(-d2D/k) )
+        # if scenario=="InF-SH":
+        #     dclutter,r,hbs,hc = options if options is not None else 10,.3,8,10
+        #     k = lambda hut:-dclutter/np.log(1-r)*(hbs-hc)/(hut-hc)
+        #     return( lambda d2D,hut :  np.exp(-d2D/k(hut)) )
+        # if scenario=="InF-DH":
+        #     dclutter,r,hbs,hc = options if options is not None else 2,.5,8,10
+        #     k = lambda hut:-dclutter/np.log(1-r)*(hbs-hc)/(hut-hc)
+        #     return( lambda d2D,hut :  np.exp(-d2D/k(hut)) )
+        # if scenario=="InF-HH":
+        #     return( lambda d2D,hut :  1 )
+    # def funLOSProbInf(d2D,hut,hbs):
+    #     if (hbs>self.hclutter):
+    #         if (hut>self.hclutter):#
+    #             returnt(1)
+    #         else:
+    #             if self.rclutter<=.4:#SH
+    #             else:#DH
+    #     else:#
+    #         if self.rclutter<=.4:#SL
+    #         else:#DL
+                    
+                
+    def handleScenarioCustomParams(self,fc,sce,param={}):
+        if "avgStreetWidth" in param:
+            self.W = param["averageStreetWidth"]
+        else:
+            self.W = 20
+        if "avgBuildingHeight" in param:
+            self.h = param["avgBuildingHeight"]            
+        if "arrayWidth" in param:
+            self.Dh=param["arrayWidth"]
+        else:
+            self.Dh=1
+        if "arrayHeight" in param:
+            self.Dv=param["arrayHeight"]
+        else:
+            self.Dv=1
+        if "factoryVolume" in param:
+            self.V=param["factoryVolume"]
+        else:
+            self.V=1
+        if "factoryClutterDensity" in param:
+            self.rclutter=param["factoryClutterDensity"]
+        else:
+            self.rclutter=.4
+        if "factoryClutterHeigh" in param:
+            self.hclutter=param["factoryClutterHeigh"]
+        else:
+            self.hclutter= 5#0-10
+        if "factoryClutterSize" in param:
+            self.dclutter=param["factoryClutterSize"]
+        else:
+            self.dclutter= 10 if self.rclutter<=.4 else 2
+        if "factoryVolume" in param:
+            self.V=param["factoryVolume"]
+        else:
+            self.V=1
+        if "factoryVolume" in param:
+            self.V=param["factoryVolume"]
+        else:
+            self.V=1
+        
+        
     def dfTS38900Table756(self,fc):
         df = pd.DataFrame(
             index=[
@@ -42,7 +114,7 @@ class ThreeGPPMultipathChannelModel:
                     -0.05*np.log10(1+fc)+1.21, 0.41, #logASD mu sigma
                     -0.08*np.log10(1+fc)+1.73, 0.014*np.log10(1+fc)+0.28,#logASA mu sigma
                     -0.1*np.log10(1+fc)+0.73, -0.04*np.log10(1+fc)+0.34,#logZSA mu sigma
-                    lambda d2D,hut: np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-10.0) +0.83),
+                    lambda d2D,hut,hbs: np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-10.0) +0.83),
                     0.35,
                     4,
                     9, 5,
@@ -71,7 +143,7 @@ class ThreeGPPMultipathChannelModel:
                     0.05*np.log10(1+fc)+0.3,
                     -0.04*np.log10(1+fc)+0.92,
                     -0.07*np.log10(1+fc)+0.41,
-                    lambda d2D,hut: np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-10.0) +0.83),
+                    lambda d2D,hut,hbs: np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(hut-15.0,0) +0.2),
                     0.35,                    
                     7.82,
                     0,
@@ -106,7 +178,7 @@ class ThreeGPPMultipathChannelModel:
                     0.20,
                     0.95,
                     0.16, 
-                    lambda d2D,hut: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.75),
+                    lambda d2D,hut,hbs: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.75),
                     0.40,
                     4, 
                     9, 
@@ -141,7 +213,7 @@ class ThreeGPPMultipathChannelModel:
                     0.11,
                     -0.3236*np.log10(fc) + 1.512,
                     0.16,
-                    lambda d2D,hut: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.9),
+                    lambda d2D,hut,hbs: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.9),
                     0.49,
                     6,
                     0,
@@ -176,7 +248,7 @@ class ThreeGPPMultipathChannelModel:
                     0.24,
                     0.47,
                     0.40,
-                    lambda d2D,hut:  np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.22),
+                    lambda d2D,hut,hbs:  np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.22),
                     0.34,
                     4, 
                     7,
@@ -211,7 +283,7 @@ class ThreeGPPMultipathChannelModel:
                     0.13,
                     0.58,
                     0.37,
-                    lambda d2D,hut: np.maximum(-1, -0.19*(d2D/1000) - 0.01*(hut - 1.5) + 0.28),
+                    lambda d2D,hut,hbs: np.maximum(-1, -0.19*(d2D/1000) - 0.01*(hut - 1.5) + 0.28),
                     0.30,
                     8,
                     0,
@@ -238,27 +310,21 @@ class ThreeGPPMultipathChannelModel:
                     50,60,60
                 ],                
                 ('InH-Office-Mixed','LOS'): [
-                    -0.01*np.log10(1+fc) - 7.692,
-                    0.18,
-                    1.60,
-                    0.18,
-                    -0.19*np.log10(1+fc) + 1.781,
-                    0.12*np.log10(1+fc) + 0.119,
-                    -0.26*np.log10(1+fc) + 1.44,
-                    -0.04*np.log10(1+fc) + 0.264,
-                    lambda d2D,hut: -1.43*np.log10(1 + fc) + 2.228,
+                    -0.01*np.log10(1+fc) - 7.692,  0.18,#'ds_mu','ds_sg',
+                    1.60,  0.18, # 'asd_mu','asd_sg',
+                    -0.19*np.log10(1+fc) + 1.781,   0.12*np.log10(1+fc) + 0.119, # 'asa_mu','asa_sg',
+                    -0.26*np.log10(1+fc) + 1.44,  -0.04*np.log10(1+fc) + 0.264,#  'zsa_mu','zsa_sg',
+                    lambda d2D,hut,hbs: -1.43*np.log10(1 + fc) + 2.228,#'funZSD_mu','zsd_sg',#ZSD lognormal mu depends on hut and d2D
                     0.13*np.log10(1 + fc) + 0.30,
-                    3,
-                    7,
-                    4,
-                    3.6,
-                    15,
-                    20,
-                    3.91,
-                    5,
-                    8,
-                    9,
-                    6,
+                    3, #sg sf
+                    7,  4, #K mu sg
+                    3.6, #rt
+                    15, 20,  # N,M
+                    3.91, #cds
+                    5, #casd
+                    8, #casa
+                    9, #czsa
+                    6, #xi per cluster shadowing std
                     np.array([[1,0.5,-0.8,-0.4,-0.5,0.2,0.3],
                        [0.5,1,-0.5,0,0,0,0.1],
                        [-0.8,-0.5,1,0.6,0.8,0.1,0.2],
@@ -268,8 +334,7 @@ class ThreeGPPMultipathChannelModel:
                        [0.3,0.1,0.2,0,0.5,0,1]]),
                    self.scenarioPlossInLOS,
                    lambda d2D,hut: 0,
-                   11,
-                   4,
+                   11, 4,#xpr mu sg
                    0,10,10
                 ],                
                 ('InH-Office-Mixed','NLOS'): [
@@ -281,7 +346,7 @@ class ThreeGPPMultipathChannelModel:
                     0.12*np.log10(1+fc) + 0.059,
                     -0.15*np.log10(1+fc) + 1.387,
                     -0.09*np.log10(1+fc) + 0.746,
-                    lambda d2D,hut: 1.08,
+                    lambda d2D,hut,hbs: 1.08,
                     0.36,
                     8.03,
                     0,
@@ -316,7 +381,7 @@ class ThreeGPPMultipathChannelModel:
                     0.12*np.log10(1+fc) + 0.119,
                     -0.26*np.log10(1+fc) + 1.44,
                     -0.04*np.log10(1+fc) + 0.264,
-                    lambda d2D,hut: -1.43*np.log10(1 + fc) + 2.228,
+                    lambda d2D,hut,hbs: -1.43*np.log10(1 + fc) + 2.228,
                     0.13*np.log10(1 + fc) + 0.30,
                     3,
                     7,
@@ -351,7 +416,7 @@ class ThreeGPPMultipathChannelModel:
                     0.12*np.log10(1+fc) + 0.059,
                     -0.15*np.log10(1+fc) + 1.387,
                     -0.09*np.log10(1+fc) + 0.746,
-                    lambda d2D,hut: 1.08,
+                    lambda d2D,hut,hbs: 1.08,
                     0.36,
                     8.03,
                     0,
@@ -376,7 +441,9 @@ class ThreeGPPMultipathChannelModel:
                     10,
                     4,
                     0,10,10
-                ]
+                ],                     
+                # ('Inf','LOS'): 
+                # ],        
            })
         return(df)
     
@@ -397,24 +464,21 @@ class ThreeGPPMultipathChannelModel:
         ]
     
     #RMa hasta 7GHz y el resto hasta 100GHz
-    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False, avgStreetWidth=20, avgBuildingHeight=5, bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, funPostprocess = None, smallCorrDist = None):
+    def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False,  bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, funPostprocess = None, smallCorrDist = None, customParams={}):
         self.frecRefGHz = fc
         self.scenario = scenario
         #self.corrDistance = corrDistance
-        self.W=avgStreetWidth
-        self.h=avgBuildingHeight
+        self.handleScenarioCustomParams(scenario,customParams)
         self.bLargeBandwidthOption = bLargeBandwidthOption
         self.B=bandwidth
-        self.Dh=arrayWidth
-        self.Dv=arrayHeight
         self.maxM=maxM
         self.clight=3e8
         self.wavelength = 3e8/(fc*1e9)
         self.allParamTable = self.dfTS38900Table756(fc)
         
         self.funPostprocess = funPostprocess
-
-        self.scenarioLosProb= self.tableFunLOSprob[self.scenario]
+        #TODO admit InF optional values
+        self.scenarioLosProb= self.getLOSprobFun(scenario)
         self.scenarioParams = self.allParamTable[self.scenario]
 
         self.smallCorrDist = smallCorrDist
@@ -630,7 +694,10 @@ class ThreeGPPMultipathChannelModel:
         Yzod = np.random.normal(0, ZSD/7 ,size=powC.shape)
         ZoA = Xzoa*tetaZoAprima + Yzoa + losZoA - (Xzoa[0]*tetaZoAprima[0] + Yzoa[0] if (los==1) else 0)
         ZoD = Xzod*tetaZoDprima + Yzod + losZoD + muZoD - (Xzod[0]*tetaZoDprima[0] + Yzod[0] + muZoD if (los==1) else 0)
-          
+        
+        # #wrap the laplacian to prevents "flip" to the AoAAoD when clusters are bit
+        # ZoA = np.mod(ZoA,180)
+        # ZoD = np.mod(ZoD,180)
         return( pd.DataFrame(columns=['TDoA','P','AoA','AoD','ZoA','ZoD'],
                              data=np.array([tau,powC,AoA,AoD,ZoA,ZoD]).T,
                              index=pd.Index(np.arange(nClusters),name='n')) )
@@ -675,11 +742,13 @@ class ThreeGPPMultipathChannelModel:
                 for scl in range(3):#c
                     AoD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(AoD_sp[n,self.tableSubclusterIndices[scl]])
                     ZoA_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZoA_sp[n,self.tableSubclusterIndices[scl]])
-                    ZoD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZoD_sp[n,self.tableSubclusterIndices[scl]])
-            
-        #mask = (ZoA_sp>=180) & (ZoA_sp<=360)
-        #ZoA_sp[mask] = 360 - ZoA_sp             
-    
+                    ZoD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZoD_sp[n,self.tableSubclusterIndices[scl]])        
+        # mask = (ZoA_sp>=180) & (ZoA_sp<=360)
+        # ZoA_sp[mask] = 360 - ZoA_sp                
+        
+        #wrap the laplacian to prevents "flip" to the AoAAoD when clusters are bit
+        # ZoA_sp = np.mod(ZoA_sp,180)
+        # ZoD_sp = np.mod(ZoD_sp,180)
         # Generate the cross polarization power ratios
         xpr_mu = param.xpr_mu
         xpr_sg = param.xpr_sg
@@ -757,7 +826,9 @@ class ThreeGPPMultipathChannelModel:
        
         ZoA_sp = np.tile(ZoA[:,None],(1,M)) + czsa*alpha_ZoA
         ZoD_sp = np.tile(ZoD[:,None],(1,M)) + czsd*alpha_ZoD
-        
+        #wrap the laplacian to prevents "flip" to the AoAAoD when clusters are bit
+        # ZoA_sp = np.mod(ZoA_sp,180)
+        # ZoD_sp = np.mod(ZoD_sp,180)
         # Generate the cross polarization power ratios
         xpr_mu = param.xpr_mu
         xpr_sg = param.xpr_sg
@@ -971,7 +1042,7 @@ class ThreeGPPMultipathChannelModel:
             else:
                 param = self.scenarioParams.NLOS
             sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro
-            zsd_mu = param.funZSD_mu(d2D,hut)          
+            zsd_mu = param.funZSD_mu(d2D,hut,hbs)          
             zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
             zod_offset_mu = param.funZoDoffset(d2D,hut)        
             czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD
@@ -1200,7 +1271,10 @@ class ThreeGPPMultipathChannelModel:
         else:
             validIntersection = self.checkValidIntersection2D(txPos,rxPos,data.AoA*np.pi/180,data.AoD*np.pi/180).to_numpy()
         PV = np.sum(validIntersection)/data.shape[0]#prob adapt tau is valid
-        PtoaCV=np.minimum(P[3]/PV,1)# P (adapt toa | valid)
+        if PV>0:
+            PtoaCV=np.minimum(P[3]/PV,1)# P (adapt toa | valid)
+        else:
+            PtoaCV=0# P (adapt toa | valid)
         PothersCV=(1-PtoaCV) * P[0:3] /(np.sum(P[0:3]))# P ( others | valid)
         PCV=np.concatenate([PothersCV,[PtoaCV]])
         PtoaCN=0# P (adapt tau | not valid) = 0

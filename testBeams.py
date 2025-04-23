@@ -85,7 +85,7 @@ plt.savefig('beamDiagHBFSectorall-%d-%d.svg'%(Nant,Nsectors))
 
 
 
-#PMI 5GNR test
+#PMI 5GNR TS 38.214 chapter 5.2.2.2 test
 i11=0
 i12=0
 i13=0

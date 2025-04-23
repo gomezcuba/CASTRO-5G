@@ -11,7 +11,7 @@ from matplotlib import cm
 plt.close('all')
 fig_ctr=0
 
-model = pg.ThreeGPPMultipathChannelModel(bLargeBandwidthOption=True)
+model = pg.ThreeGPPMultipathChannelModel(scenario="RMa",bLargeBandwidthOption=True)
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
 los, PLfree, SF = plinfo
 nClusters = clusters.shape[0]
