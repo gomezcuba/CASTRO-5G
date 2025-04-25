@@ -33,8 +33,9 @@ dicMult=cs.CSMultiDictionary()
 # Lista de pilotos a comparar
 pilots_config = [
     ("IDUV", "IDUV"),
-    ("BPSK", "BPSK")  # Usamos QPSK que es similar a BPSK pero con fase fija
+    ("MPSK", "MPSK")
 ]
+M_PSK=2
 
 Npilots = len(pilots_config)
 Nsnr = len(SNRs)
@@ -83,7 +84,7 @@ for ichan in range(Nchan):
 
 #-------------------------------------------------------------------------------
 for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot Types: ")):
-    pilgen = mc.MIMOPilotChannel(pilot_alg)
+    pilgen = mc.MIMOPilotChannel(pilot_alg,M_PSK)
     
     for ichan in tqdm(range(Nchan), desc=f"Channels for {pilot_name}: ", leave=False):
         (pathsparse, hsparse, hk, zp) = listPreparedChannels[ichan]
@@ -121,7 +122,7 @@ for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot
             MSE[ichan, isnr, ipilot] = np.mean(np.abs(hk - hest)**2) / np.mean(np.abs(hk)**2)
         
         # Liberar memoria del diccionario Y para este canal
-        dicMult.freeCacheOfPilot(ichan, (Ncp, Na, Nd), (Xt*Ncp, Xa*Na, Xd*Nd))
+        dicMult.freeCacheOfPilot(ichan, (K, Ncp, Na, Nd), (Lt, La, Ld))
 
 # Gráficos (adaptados para comparar pilotos en lugar de algoritmos)
 outputFileTag = f'{Nsym}-{K}-{Ncp}-{Nrfr}-{Na}-{Nd}-{Nrfr}'

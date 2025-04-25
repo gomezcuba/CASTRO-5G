@@ -28,6 +28,8 @@ dimH=(K,Ncp,Na,Nd)
 dimPhi=(4*Ncp,4*Na,4*Nd)
 dimY=(Nframe,K,Nrfr)
 
+M_PSK=2
+
 bTestBase = False #disable for large sizes
 bTestFFT = False
 bTestMult = True
@@ -72,7 +74,7 @@ if bTestSphr:
     dicSphr.setHDic(dimH,dimPhi)
     print(f'Create HDic sphr: {time.time()-tini:.2f} seconds {0} MB memory')
 
-pilgen = mc.MIMOPilotChannel("IDUV")
+pilgen = mc.MIMOPilotChannel("IDUV",M_PSK)
 wp,vp=pilgen.generatePilots(Nframe*K*Nrft,Na,Nd,Npr=Nframe*K*Nrfr,rShape=(Nframe,K,Nrfr,Na),tShape=(Nframe,K,Nd,Nrft))
 
 if bTestBase:

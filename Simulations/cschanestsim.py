@@ -202,7 +202,9 @@ csDictionaries={
     "dicFast" :cs.CSMultiFFTDictionary(),
     "dicSphr" :cs.CSSphereFFTDictionary()
     }
-pilgen = mc.MIMOPilotChannel("IDUV")
+
+M_PSK=2
+pilgen = mc.MIMOPilotChannel("IDUV", M_PSK)
 channelResponseFunctions = {
     # "TDoA" : mc.pSinc,
     "TDoA" : lambda t,M: np.fft.ifft(mc.pCExp(t,M)),  

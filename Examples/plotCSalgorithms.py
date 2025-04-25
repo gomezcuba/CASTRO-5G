@@ -29,12 +29,14 @@ SNRs=10**(np.arange(-1,2.01,1.0))
 #SNRs=10**(np.arange(1,1.01,1.0))
 # SNRs=np.array([100])
 
+M_PSK=2
+
 omprunner = cs.CSDictionaryRunner()
 dicBase=cs.CSCachedDictionary()
 dicMult=cs.CSMultiDictionary()
 dicFFT=cs.CSBasicFFTDictionary()
 dicFast=cs.CSMultiFFTDictionary()
-pilgen = mc.MIMOPilotChannel("IDUV")
+pilgen = mc.MIMOPilotChannel("IDUV",M_PSK)
 model=mc.DiscreteMultipathChannelModel(dims=(Ncp,Na,Nd),fftaxes=())
 listPreparedChannels = []
 for ichan in range(Nchan):    

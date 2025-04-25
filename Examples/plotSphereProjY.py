@@ -8,7 +8,9 @@ import bisect
 import sys
 sys.path.append('../')
 from CASTRO5G import multipathChannel as mc
-pilgen = mc.MIMOPilotChannel("IDUV")
+
+M_PSK=2
+pilgen = mc.MIMOPilotChannel("IDUV",M_PSK)
 channelResponseFunctions = {
     # "TDoA" : mc.pSinc,
     "TDoA" : lambda t,M: np.fft.ifft(mc.pCExp(t,M)),  
