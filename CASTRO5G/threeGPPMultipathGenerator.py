@@ -3,487 +3,43 @@ import pandas as pd
 
 class ThreeGPPMultipathChannelModel:
     
-    def getLOSprobFun(self,scenario):
-        if scenario=="RMa":
-            return( lambda d2D,hut : np.where(d2D<10, 1  , np.exp(-(d2D-10.0)/1000.0) ) )
-        if scenario=="UMi":
-            return( lambda d2D,hut : np.where(d2D<18, 1  , 18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/36.0)*(1-18.0/np.where(d2D>0,d2D,1)) ) )
-        if scenario=="UMa":
-            return(  lambda d2D,hut : np.where(d2D<18, 1  , (18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/63.0)*(1-18.0/np.where(d2D>0,d2D,1)))*(1 + np.where(hut<=23, 0, ((np.where(hut<=23, 23,hut)-13.0)/10.0)**1.5)*1.25*((d2D/100.0)**3.0)*np.exp(-d2D/150.0)) ) )
-        if scenario=="InH-Office-Mixed":
-            return(  lambda d2D,hut : np.where( d2D<1.2, 1  , np.where( d2D<6.5, np.exp(-(d2D-1.2)/4.7) , (np.exp(-(d2D-6.5)/32.6))*0.32) ) )
-        if scenario=="InH-Office-Open":
-            return( lambda d2D,hut : np.where(  d2D<=5, 1, np.where( d2D<49, np.exp(-(d2D-5.0)/70.8)  , (np.exp(-(d2D-49.0)/211.7))*0.54) ) )
-        if scenario=="InF-SL":
-            k=-self.dclutter/np.log(1-self.rclutter)
-            return( lambda d2D,hut :  np.exp(-d2D/k) )
-        # if scenario=="InF-DL":
-        #     dclutter,r = options if options is not None else 2,.5
-        #     k=-dclutter/np.log(1-r)
-        #     return( lambda d2D,hut :  np.exp(-d2D/k) )
-        # if scenario=="InF-SH":
-        #     dclutter,r,hbs,hc = options if options is not None else 10,.3,8,10
-        #     k = lambda hut:-dclutter/np.log(1-r)*(hbs-hc)/(hut-hc)
-        #     return( lambda d2D,hut :  np.exp(-d2D/k(hut)) )
-        # if scenario=="InF-DH":
-        #     dclutter,r,hbs,hc = options if options is not None else 2,.5,8,10
-        #     k = lambda hut:-dclutter/np.log(1-r)*(hbs-hc)/(hut-hc)
-        #     return( lambda d2D,hut :  np.exp(-d2D/k(hut)) )
-        # if scenario=="InF-HH":
-        #     return( lambda d2D,hut :  1 )
-    # def funLOSProbInf(d2D,hut,hbs):
-    #     if (hbs>self.hclutter):
-    #         if (hut>self.hclutter):#
-    #             returnt(1)
-    #         else:
-    #             if self.rclutter<=.4:#SH
-    #             else:#DH
-    #     else:#
-    #         if self.rclutter<=.4:#SL
-    #         else:#DL
-                    
-                
-    def handleScenarioCustomParams(self,fc,sce,param={}):
-        if "avgStreetWidth" in param:
-            self.W = param["averageStreetWidth"]
-        else:
-            self.W = 20
-        if "avgBuildingHeight" in param:
-            self.h = param["avgBuildingHeight"]            
-        if "arrayWidth" in param:
-            self.Dh=param["arrayWidth"]
-        else:
-            self.Dh=1
-        if "arrayHeight" in param:
-            self.Dv=param["arrayHeight"]
-        else:
-            self.Dv=1
-        if "factoryVolume" in param:
-            self.V=param["factoryVolume"]
-        else:
-            self.V=1
-        if "factoryClutterDensity" in param:
-            self.rclutter=param["factoryClutterDensity"]
-        else:
-            self.rclutter=.4
-        if "factoryClutterHeigh" in param:
-            self.hclutter=param["factoryClutterHeigh"]
-        else:
-            self.hclutter= 5#0-10
-        if "factoryClutterSize" in param:
-            self.dclutter=param["factoryClutterSize"]
-        else:
-            self.dclutter= 10 if self.rclutter<=.4 else 2
-        if "factoryVolume" in param:
-            self.V=param["factoryVolume"]
-        else:
-            self.V=1
-        if "factoryVolume" in param:
-            self.V=param["factoryVolume"]
-        else:
-            self.V=1
+    ###########################################################################
+    # main Model generator life cycle 
+    ###########################################################################
         
-        
-    def dfTS38900Table756(self,fc):
-        df = pd.DataFrame(
-            index=[
-                    'ds_mu','ds_sg',
-                    'asd_mu','asd_sg',
-                    'asa_mu','asa_sg',
-                    'zsa_mu','zsa_sg',
-                    'funZSD_mu','zsd_sg',#ZSD lognormal mu depends on hut and d2D
-                    'sf_sg',
-                    'K_mu','K_sg',
-                    'rt',
-                    'N',
-                    'M',
-                    'cds',
-                    'casd',
-                    'casa',
-                    'czsa',
-                    'xi',
-                    'Cc', #Correlations Matrix Azimut [sSF, sK, sDS, sASD, sASA, sZSD, sZSA]
-                    'funPathLoss',
-                    'funZoDoffset',
-                    'xpr_mu','xpr_sg',
-                    'corrO21','corrLOS','corrStatistics'
-                ],
-            data={
-                ('UMi','LOS'): [
-                    -0.24*np.log10(1+fc)-7.14, 0.38, #logDS mu sigma
-                    -0.05*np.log10(1+fc)+1.21, 0.41, #logASD mu sigma
-                    -0.08*np.log10(1+fc)+1.73, 0.014*np.log10(1+fc)+0.28,#logASA mu sigma
-                    -0.1*np.log10(1+fc)+0.73, -0.04*np.log10(1+fc)+0.34,#logZSA mu sigma
-                    lambda d2D,hut,hbs: np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-10.0) +0.83),
-                    0.35,
-                    4,
-                    9, 5,
-                    3,
-                    12, 20,
-                    5, 3, 17, 7, # cds casd casa czsa
-                    3,
-                    np.array([[1,0.5,-0.4,-0.5,-0.4,0,0],
-                       [0.5,1,-0.7,-0.2,-0.3,0,0],
-                       [-0.4,-0.7,1,0.5,0.8,0,0.2],
-                       [-0.5,-0.2,0.5,1,0.4,0.5,0.3],
-                       [-0.4,-0.3,0.8,0.4,1,0,0],
-                       [0,0,0,0.5,0,1,0],
-                       [0,0,0.2,0.3,0,0,1]]),
-                    self.scenarioPlossUMiLOS,
-                    lambda d2D,hut: 0,
-                    9, 3, # cross polarization mu sigma
-                    50,50,12
-                ],
-                ('UMi','NLOS'): [
-                    -0.24*np.log10(1+fc)-6.83,
-                    0.16*np.log10(1+fc)+0.28,
-                    -0.23*np.log10(1+fc)+1.53,
-                    0.11*np.log10(1+fc)+0.33,
-                    -0.08*np.log10(1+fc)+1.81,
-                    0.05*np.log10(1+fc)+0.3,
-                    -0.04*np.log10(1+fc)+0.92,
-                    -0.07*np.log10(1+fc)+0.41,
-                    lambda d2D,hut,hbs: np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(hut-15.0,0) +0.2),
-                    0.35,                    
-                    7.82,
-                    0,
-                    0,
-                    2.1,
-                    19,
-                    20,
-                    11,
-                    10,
-                    22,
-                    7,
-                    3,
-                    np.array([[1,0,-0.7,0,-0.4,0,0],
-                       [0,1,0,0,0,0,0],
-                       [-0.7,0,1,0,0.4,0,-0.5],
-                       [0,0,0,1,0,0.5,0.5],
-                       [-0.4,0,0.4,0,1,0,0.2],
-                       [0,0,0,0.5,0,1,0],
-                       [0,0,-0.5,0.5,0.2,0,1]]),
-                    self.scenarioPlossUMiNLOS,
-                    lambda d2D,hut: -np.power(10.0,-1.5*np.log10(np.maximum(10,d2D)) + 3.3),
-                    8,
-                    3,
-                    50,50,15
-                ],
-                ('UMa','LOS'): [
-                    -6.955 - 0.0963*np.log10(fc),
-                    0.66,
-                    1.06 + 0.1114*np.log10(fc),
-                    0.28, 
-                    1.81,
-                    0.20,
-                    0.95,
-                    0.16, 
-                    lambda d2D,hut,hbs: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.75),
-                    0.40,
-                    4, 
-                    9, 
-                    3.5, 
-                    2.5,
-                    12,
-                    20,
-                    np.maximum(0.25,6.5622 - 3.4084*np.log10(fc)),
-                    5,
-                    11,
-                    7,
-                    3,
-                    np.array([[1,0,-0.4,-0.5,-0.5,0,-0.8],
-                       [0,1,-0.4,0,-0.2,0,0],
-                       [-0.4,-0.4,1,0.4,0.8,-0.2,0],
-                       [-0.5,0,0.4,1,0,0.5,0],
-                       [-0.5,-0.2,0.8,0,1,-0.3,0.4],
-                       [0,0,-0.2,0.5,-0.3,1,0],
-                       [-0.8,0,0,0,0.4,0,1]]),
-                    self.scenarioPlossUMaLOS,
-                    lambda d2D,hut: 0,
-                    8,
-                    4,
-                    50,50,40
-                ],
-                ('UMa','NLOS'): [
-                    -6.28 - 0.204*np.log10(fc),
-                    0.39,
-                    1.5 - 0.1144*np.log10(fc),
-                    0.28,
-                    2.08 - 0.27*np.log10(fc),
-                    0.11,
-                    -0.3236*np.log10(fc) + 1.512,
-                    0.16,
-                    lambda d2D,hut,hbs: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.9),
-                    0.49,
-                    6,
-                    0,
-                    0,
-                    2.3,
-                    20,
-                    20,
-                    np.maximum(0.25, 6.5622 - 3.4084*np.log10(fc)),
-                    2,
-                    15,
-                    7,
-                    3,
-                    np.array([[1,0,-0.4,-0.6,0,0,-0.4],
-                       [0,1,0,0,0,0,0],
-                       [-0.4,0,1,0.4,0.6,-0.5,0],
-                       [-0.6,0,0.4,1,0.4,0.5,-0.1],
-                       [0,0,0.6,0.4,1,0,0],
-                       [0,0,-0.5,0.5,0,1,0],
-                       [-0.4,0,0,-0.1,0,0,1]]),
-                    self.scenarioPlossUMaNLOS,
-                    lambda d2D,hut: 7.66*np.log10(self.frecRefGHz) - 5.96 - np.power(10, (0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(hut - 1.5)  ),
-                    7,
-                    3,
-                    50,50,50
-                ],
-                ('RMa','LOS'): [
-                    -7.49,
-                    0.55,
-                    0.90,
-                    0.38,
-                    1.52,
-                    0.24,
-                    0.47,
-                    0.40,
-                    lambda d2D,hut,hbs:  np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.22),
-                    0.34,
-                    4, 
-                    7,
-                    4,
-                    3.8,
-                    11,
-                    20,
-                    3.91,
-                    2,
-                    3,
-                    3,
-                    3,
-                    np.array([[1,0,-0.5,0,0,0.1,-0.17],
-                       [0,1,0,0,0,0,-0.02],
-                       [-0.5,0,1,0,0,-0.05,0.27],
-                       [0,0,0,1,0,0.73,-0.14],
-                       [0,0,0,0,1,-0.20,0.24],
-                       [0.01,0,-0.05,0.73,-0.20,1,-0.07],
-                       [-0.17,-0.02,0.27,-0.14,0.24,-0.07,1]]),
-                    self.scenarioPlossRMaNLOS,
-                    lambda d2D,hut: 0,
-                    12,
-                    4,
-                    50,60,60
-                ],
-                ('RMa','NLOS'): [
-                    -7.43,
-                    0.48,
-                    0.95,
-                    0.45,
-                    1.52,
-                    0.13,
-                    0.58,
-                    0.37,
-                    lambda d2D,hut,hbs: np.maximum(-1, -0.19*(d2D/1000) - 0.01*(hut - 1.5) + 0.28),
-                    0.30,
-                    8,
-                    0,
-                    0,
-                    1.7,
-                    10,
-                    20,
-                    3.91,
-                    2,
-                    3,
-                    3,
-                    3,
-                    np.array([[1,0,-0.5,0.6,0,-0.04,-0.25],
-                       [0,1,0,0,0,0,0],
-                       [-0.5,0,1,-0.4,0,-0.1,-0.4],
-                       [0.6,0,-0.4,1,0,0.42,-0.27],
-                       [0,0,0,0,1,-0.18,0.26],
-                       [-0.04,0,-0.1,0.42,-0.18,1,-0.27],
-                       [-0.25,0,-0.4,-0.27,0.26,-0.27,1]]),
-                    self.scenarioPlossRMaNLOS,
-                    lambda d2D,hut: np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D),
-                    7,
-                    3,
-                    50,60,60
-                ],                
-                ('InH-Office-Mixed','LOS'): [
-                    -0.01*np.log10(1+fc) - 7.692,  0.18,#'ds_mu','ds_sg',
-                    1.60,  0.18, # 'asd_mu','asd_sg',
-                    -0.19*np.log10(1+fc) + 1.781,   0.12*np.log10(1+fc) + 0.119, # 'asa_mu','asa_sg',
-                    -0.26*np.log10(1+fc) + 1.44,  -0.04*np.log10(1+fc) + 0.264,#  'zsa_mu','zsa_sg',
-                    lambda d2D,hut,hbs: -1.43*np.log10(1 + fc) + 2.228,#'funZSD_mu','zsd_sg',#ZSD lognormal mu depends on hut and d2D
-                    0.13*np.log10(1 + fc) + 0.30,
-                    3, #sg sf
-                    7,  4, #K mu sg
-                    3.6, #rt
-                    15, 20,  # N,M
-                    3.91, #cds
-                    5, #casd
-                    8, #casa
-                    9, #czsa
-                    6, #xi per cluster shadowing std
-                    np.array([[1,0.5,-0.8,-0.4,-0.5,0.2,0.3],
-                       [0.5,1,-0.5,0,0,0,0.1],
-                       [-0.8,-0.5,1,0.6,0.8,0.1,0.2],
-                       [-0.4,0,0.6,1,0.4,0.5,0],
-                       [-0.5,0,0.8,0.4,1,0,0.5],
-                       [0.2,0,0.1,0.5,0,1,0],
-                       [0.3,0.1,0.2,0,0.5,0,1]]),
-                   self.scenarioPlossInLOS,
-                   lambda d2D,hut: 0,
-                   11, 4,#xpr mu sg
-                   0,10,10
-                ],                
-                ('InH-Office-Mixed','NLOS'): [
-                    -0.28*np.log10(1+fc) - 7.173,
-                    0.10*np.log10(1+fc) + 0.055,
-                    1.62,
-                    0.25,
-                    -0.11*np.log10(1+fc) + 1.863,
-                    0.12*np.log10(1+fc) + 0.059,
-                    -0.15*np.log10(1+fc) + 1.387,
-                    -0.09*np.log10(1+fc) + 0.746,
-                    lambda d2D,hut,hbs: 1.08,
-                    0.36,
-                    8.03,
-                    0,
-                    0,
-                    3,
-                    19,
-                    20,
-                    3.91,
-                    5,
-                    11,
-                    9,
-                    3,
-                    np.array([[1,0,-0.5,0,-0.4,0,0],
-                       [0,1,0,0,0,0,0],
-                       [-0.5,0,1,0.4,0,-0.27,-0.06],
-                       [0,0,0.4,1,0,0.35,0.23],
-                       [-0.4,0,0,0,1,-0.08,0.43],
-                       [0,0,-0.27,0.35,-0.08,1,0.42],
-                       [0,0,-0.06,0.23,0.43,0.42,1]]),
-                    self.scenarioPlossInNLOS,
-                    lambda d2D,hut: 0,
-                    10,
-                    4,
-                    0,10,10
-                ],                
-                ('InH-Office-Open','LOS'): [
-                    -0.01*np.log10(1+fc) - 7.692,
-                    0.18,
-                    1.60,
-                    0.18,
-                    -0.19*np.log10(1+fc) + 1.781,
-                    0.12*np.log10(1+fc) + 0.119,
-                    -0.26*np.log10(1+fc) + 1.44,
-                    -0.04*np.log10(1+fc) + 0.264,
-                    lambda d2D,hut,hbs: -1.43*np.log10(1 + fc) + 2.228,
-                    0.13*np.log10(1 + fc) + 0.30,
-                    3,
-                    7,
-                    4,
-                    3.6,
-                    15,
-                    20,
-                    3.91,
-                    5,
-                    8,
-                    9,
-                    6,
-                    np.array([[1,0.5,-0.8,-0.4,-0.5,0.2,0.3],
-                       [0.5,1,-0.5,0,0,0,0.1],
-                       [-0.8,-0.5,1,0.6,0.8,0.1,0.2],
-                       [-0.4,0,0.6,1,0.4,0.5,0],
-                       [-0.5,0,0.8,0.4,1,0,0.5],
-                       [0.2,0,0.1,0.5,0,1,0],
-                       [0.3,0.1,0.2,0,0.5,0,1]]),
-                   self.scenarioPlossInLOS,
-                   lambda d2D,hut: 0,
-                   11,
-                   4,
-                   0,10,10
-                ],                
-                ('InH-Office-Open','NLOS'): [
-                    -0.28*np.log10(1+fc) - 7.173,
-                    0.10*np.log10(1+fc) + 0.055,
-                    1.62,
-                    0.25,
-                    -0.11*np.log10(1+fc) + 1.863,
-                    0.12*np.log10(1+fc) + 0.059,
-                    -0.15*np.log10(1+fc) + 1.387,
-                    -0.09*np.log10(1+fc) + 0.746,
-                    lambda d2D,hut,hbs: 1.08,
-                    0.36,
-                    8.03,
-                    0,
-                    0,
-                    3,
-                    19,
-                    20,
-                    3.91,
-                    5,
-                    11,
-                    9,
-                    3,
-                    np.array([[1,0,-0.5,0,-0.4,0,0],
-                       [0,1,0,0,0,0,0],
-                       [-0.5,0,1,0.4,0,-0.27,-0.06],
-                       [0,0,0.4,1,0,0.35,0.23],
-                       [-0.4,0,0,0,1,-0.08,0.43],
-                       [0,0,-0.27,0.35,-0.08,1,0.42],
-                       [0,0,-0.06,0.23,0.43,0.42,1]]),
-                    self.scenarioPlossInNLOS,
-                    lambda d2D,hut: 0,
-                    10,
-                    4,
-                    0,10,10
-                ],                     
-                # ('Inf','LOS'): 
-                # ],        
-           })
-        return(df)
-    
-    #Crear tablas
-    CphiNLOStable = {4 : 0.779, 5 : 0.860 , 8 : 1.018, 10 : 1.090, 
-                11 : 1.123, 12 : 1.146, 14 : 1.190, 15 : 1.211, 16 : 1.226, 
-                19 : 1.273, 20 : 1.289, 25 : 1.358}
-    CtetaNLOStable = {8 : 0.889, 10 : 0.957, 11 : 1.031, 12 : 1.104, 
-                 15 : 1.1088, 19 : 1.184, 20 : 1.178, 25 : 1.282}
-    alphamTable = [0.0447, -0.0447, 0.1413, -0.1413, 0.2492, -0.2492,
-                   0.3715, -0.3715, 0.5129, -0.5129, 0.6797, -0.6797, 
-                   0.8844, -0.8844, 1.1481, -1.1481, 1.5195, -1.5195, 
-                   2.1551, -2.1551]
-    tableSubclusterIndices = [
-            [0,1,2,3,4,5,6,7,18,19],
-            [8,9,10,11,16,17],
-            [12,13,14,15],
-        ]
-    
     #RMa hasta 7GHz y el resto hasta 100GHz
     def __init__(self, fc = 28, scenario = "UMi", bLargeBandwidthOption=False,  bandwidth=20e6, arrayWidth=1,arrayHeight=1, maxM=40, funPostprocess = None, smallCorrDist = None, customParams={}):
-        self.frecRefGHz = fc
-        self.scenario = scenario
-        #self.corrDistance = corrDistance
-        self.handleScenarioCustomParams(scenario,customParams)
         self.bLargeBandwidthOption = bLargeBandwidthOption
         self.B=bandwidth
+        self.arrayWidth = arrayWidth
+        self.arrayHeight = arrayHeight
         self.maxM=maxM
         self.clight=3e8
         self.wavelength = 3e8/(fc*1e9)
-        self.allParamTable = self.dfTS38900Table756(fc)
+        self.allParamTable = self.dfTS38900Table756(fc)        
         
-        self.funPostprocess = funPostprocess
-        #TODO admit InF optional values
-        self.scenarioLosProb= self.getLOSprobFun(scenario)
-        self.scenarioParams = self.allParamTable[self.scenario]
-
+        self.setScenario(fc,scenario,customParams)
+        
+        #self.corrDistance = corrDistance        
         self.smallCorrDist = smallCorrDist
+        self.funPostprocess = funPostprocess        
+        self.initCache()    
+    
+    def setScenario(self,fc,sce,customValues={}):        
+        self.frecRefGHz = fc
+        self.scenario = sce
+        defaults = self.defaultScenarioValues[sce]
+        for k,v in defaults.items():
+            setattr(self,k,v)
+        for k,v in customValues.items():
+            setattr(self,k,v)
+        #special default rules when not custom
+        if ("factoryClutterDensity" in customValues) and ("factoryClutterSize" not in customValues):
+                self.factoryClutterSize = 10 if self.factoryClutterDensity<=.4 else 21
         
-        self.initCache()
+        self.scenarioLosProb= self.getLOSprobFun(sce)
+        self.funPathLossLOS, self.funPathLossNLOS = self.getScenarioPlossFuns(sce)
+        self.scenarioParams = self.allParamTable[sce]
         
     def initCache(self):
         self.dMacrosGenerated = pd.DataFrame(columns=[
@@ -501,7 +57,99 @@ class ThreeGPPMultipathChannelModel:
         #       'TDoA','P','AoA','AoD','ZoA','ZoD','XPR','phase00','phase01','phase10','phase11'
         # ]).set_index(['Xt','Yt','Zt','Xr','Yr','Zr','n','m'])
         self.dLOSGenerated = {}
-
+    
+    
+    ###############################################################
+    # LOS probability model part
+    ###############################################################
+    def funLOSPRMa(self,d2D,hut,hbs=None):
+        P=np.where(
+            #if
+            d2D<10,
+            #then
+            1  ,
+            #else
+            np.exp(-(d2D-10.0)/1000.0)
+            )
+        return(P)
+    def funLOSPUMi(self,d2D,hut,hbs=None):
+        P=np.where(
+            #if
+            d2D<18,
+            #then
+            1  ,
+            #else
+            18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/36.0)*(1-18.0/np.where(d2D>0,d2D,1))
+            )
+        return(P)
+    def funLOSPUMa(self,d2D,hut,hbs=None):
+        P=np.where(
+            #if
+            d2D<18,
+            #then
+            1  ,
+            #else
+            18.0/np.where(d2D>0,d2D,1) + np.exp(-d2D/63.0)*(1-18.0/np.where(d2D>0,d2D,1))*(1 + np.where(hut<=23, 0, ((np.where(hut<=23, 23,hut)-13.0)/10.0)**1.5)*1.25*((d2D/100.0)**3.0)*np.exp(-d2D/150.0))
+            )
+        return(P)    
+    def funLOSPInHOfficeMixed(self,d2D,hut,hbs=None):
+        P=np.where(
+            #if
+            d2D<1.2,
+            #then
+            1,
+            #else
+            np.where( d2D<6.5, np.exp(-(d2D-1.2)/4.7) , (np.exp(-(d2D-6.5)/32.6))*0.32)
+            )
+        return(P)
+    def funLOSPInHOfficeOpen(self,d2D,hut,hbs=None):
+        P=np.where(
+            #if
+            d2D<5,
+            #then
+            1,
+            #else
+            np.where( d2D<49, np.exp(-(d2D-5.0)/70.8)  , np.exp(-(d2D-49.0)/211.7)*0.54)
+            )                
+        return(P)
+    def funLOSPInF(self,d2D,hut,hbs=None, belowClutterHeight = True):
+        dclutter = self.factoryClutterSize
+        r = self.factoryClutterDensity
+        if belowClutterHeight:
+            k=-dclutter/np.log(1-r)
+        else:
+            hc = self.factoryClutterHeigh
+            k=(-dclutter/np.log(1-r)) * (hbs-hut)/(hc-hut)                            
+        return( np.exp(-d2D/k) )
+    
+    def getLOSprobFun(self,scenario=None):
+        if scenario is None:
+            scenario = self.scenario
+            
+        if scenario=="RMa":
+            return( self.funLOSPRMa )
+        elif scenario=="UMi":
+            return( self.funLOSPUMi )
+        elif scenario=="UMa":    
+            return( self.funLOSPUMa )
+        elif scenario=="InH-Office-Open":
+            return( self.funLOSPInHOfficeOpen )
+        elif scenario=="InH-Office-Mixed":
+            return( self.funLOSPInHOfficeMixed )
+        elif scenario=="InF-SL":
+            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = True) )    
+        elif scenario=="InF-DL":
+            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = True) )
+        elif scenario=="InF-SH":
+            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = False) )
+        elif scenario=="InF-DH":
+            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = False) )
+        elif scenario=="InF-HH":
+            return(  lambda d2D,hut,hbs: 1 )            
+    
+    ###############################################################
+    # Average Pathloss model part
+    ###############################################################
     # TODO introduce code for multi-floor hut in UMi & UMa
     #         if not indoor:
     #     n=1
@@ -545,26 +193,447 @@ class ThreeGPPMultipathChannelModel:
         dBp = (2*np.pi*hbs*hut)*(self.frecRefGHz*1e9/self.clight) #Break point distance
         ploss = np.where( d2D<dBp,#if
         #then
-             20*np.log10(40.0*np.pi*d3D*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.h,1.72),10)*np.log10(d3D)-np.minimum(0.044*np.power(self.h,1.72),14.77)+0.002*np.log10(self.h)*d3D,
+             20*np.log10(40.0*np.pi*d3D*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.avgBuildingHeight,1.72),10)*np.log10(d3D)-np.minimum(0.044*np.power(self.avgBuildingHeight,1.72),14.77)+0.002*np.log10(self.avgBuildingHeight)*d3D,
         #else
-            20*np.log10(40.0*np.pi*dBp*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.h,1.72),10)*np.log10(dBp)-np.minimum(0.044*np.power(self.h,1.72),14.77)+0.002*np.log10(self.h)*dBp + 40.0*np.log10(d3D/dBp)
+            20*np.log10(40.0*np.pi*dBp*self.frecRefGHz/3.0)+np.minimum(0.03*np.power(self.avgBuildingHeight,1.72),10)*np.log10(dBp)-np.minimum(0.044*np.power(self.avgBuildingHeight,1.72),14.77)+0.002*np.log10(self.avgBuildingHeight)*dBp + 40.0*np.log10(d3D/dBp)
             )
         return(ploss)
     def scenarioPlossRMaNLOS(self,d3D,d2D,hbs=25,hut=1.5):
-        PL1= 161.04 - (7.1*np.log10(self.W)) + 7.5*(np.log10(self.h)) - (24.37 - 3.7*(np.power((self.h/hbs),2)))*np.log10(hbs) + (43.42 - 3.1*(np.log10(hbs)))*(np.log10(d3D)-3) + 20*np.log10(3.55) - (3.2*np.power(np.log10(11.75*hut),2)) - 4.97
+        PL1= 161.04 - (7.1*np.log10(self.avgStreetWidth)) + 7.5*(np.log10(self.avgBuildingHeight)) - (24.37 - 3.7*(np.power((self.avgBuildingHeight/hbs),2)))*np.log10(hbs) + (43.42 - 3.1*(np.log10(hbs)))*(np.log10(d3D)-3) + 20*np.log10(3.55) - (3.2*np.power(np.log10(11.75*hut),2)) - 4.97
         PL2= self.scenarioPlossRMaLOS(d3D,d2D,hbs,hut)
         ploss = np.maximum(PL1,PL2)
         return(ploss)
     #Inh Path Loss Functions
-    def scenarioPlossInLOS(self,d3D,d2D,hbs=None,hut=None):
+    def scenarioPlossInHLOS(self,d3D,d2D,hbs=None,hut=None):
         ploss= 32.4 + 17.3*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
         return(ploss)
-    def scenarioPlossInNLOS(self,d3D,d2D,hbs=None,hut=None):
+    def scenarioPlossInHNLOS(self,d3D,d2D,hbs=None,hut=None):
         PL1= 38.3*np.log10(d3D) + 17.30 + 24.9*np.log10(self.frecRefGHz)
-        PL2= self.scenarioPlossInLOS(d3D,d2D,hbs,hut)
+        PL2= self.scenarioPlossInHLOS(d3D,d2D,hbs,hut)
         ploss= np.maximum(PL1,PL2)
         return(ploss)  
-       
+        
+    def getScenarioPlossFuns(self,scenario=None):
+        if scenario is None:
+            scenario = self.scenario
+            
+        if scenario=="RMa":
+            return( self.scenarioPlossRMaLOS , self.scenarioPlossRMaNLOS )
+        elif scenario=="UMi":
+            return( self.scenarioPlossUMiLOS , self.scenarioPlossUMiNLOS )
+        elif scenario=="UMa":    
+            return( self.scenarioPlossUMaLOS , self.scenarioPlossUMaNLOS )
+        elif scenario=="InH-Office-Open":
+            return( self.scenarioPlossInHLOS , self.scenarioPlossInHNLOS )
+        elif scenario=="InH-Office-Mixed":
+            return( self.scenarioPlossInHLOS , self.scenarioPlossInHNLOS )
+        elif scenario=="InF-SL":
+            return( self.scenarioPlossInFLOS , self.scenarioPlossInFSLNLOS )
+        elif scenario=="InF-DL":
+            return( self.scenarioPlossInFLOS , self.scenarioPlossInDSLNLOS )
+        elif scenario=="InF-SH":
+            return( self.scenarioPlossInFLOS , self.scenarioPlossInFSHNLOS )
+        elif scenario=="InF-DH":
+            return( self.scenarioPlossInFLOS , self.scenarioPlossInFDHNLOS )
+        elif scenario=="InF-HH":
+            return( self.scenarioPlossInHLOS , None )
+    defaultScenarioValues = {
+        "RMa":{
+            "avgStreetWidth" : 20,#m
+            "avgBuildingHeight" : 5#m
+            },
+        "UMi":{},
+        "UMa":{},
+        "InH-Office-Open":{},
+        "InH-Office-Mixed":{},
+        "InF-SL":{
+            "factoryVolume":1000,#m³
+            "factoryClutterDensity":.2,#%
+            "factoryClutterHeigh": 10,#m
+            "factoryClutterSize": 10
+            },        
+        "InF-DL":{
+            "factoryVolume":1000,#m³
+            "factoryClutterDensity":.7,#%
+            "factoryClutterHeigh": 10,#m
+            "factoryClutterSize": 2
+            },        
+        "InF-SH":{
+            "factoryVolume":1000,#m³
+            "factoryClutterDensity":.2,#%
+            "factoryClutterHeigh": 10,#m
+            "factoryClutterSize": 10
+            },        
+        "InF-DH":{
+            "factoryVolume":1000,#m³
+            "factoryClutterDensity":.7,#%
+            "factoryClutterHeigh": 10,#m
+            "factoryClutterSize": 2
+            },        
+        "InF-HH":{
+            "factoryVolume":1000,#m³
+            "factoryClutterDensity":.5,#%
+            "factoryClutterHeigh": 10,#m
+            "factoryClutterSize": 10
+            },
+        }
+    
+    
+    ###############################################################
+    # large scale propagation random meta-statistics model part
+    ###############################################################
+    def dfTS38900Table756(self,fc):
+        df = pd.DataFrame(
+            index=[
+                    'ds_mu','ds_sg',
+                    'asd_mu','asd_sg',
+                    'asa_mu','asa_sg',
+                    'zsa_mu','zsa_sg',
+                    'funZSD_mu','zsd_sg',#ZSD lognormal mu depends on hut and d2D
+                    'sf_sg',
+                    'K_mu','K_sg',
+                    'rt',
+                    'N',
+                    'M',
+                    'cds',
+                    'casd',
+                    'casa',
+                    'czsa',
+                    'xi',
+                    'Cc', #Correlations Matrix Azimut [sSF, sK, sDS, sASD, sASA, sZSD, sZSA]
+                    'funZoDoffset',
+                    'xpr_mu','xpr_sg',
+                    'corrO21','corrLOS','corrStatistics'
+                ],
+            data={
+                ('UMi','LOS'): [
+                    -0.24*np.log10(1+fc)-7.14, 0.38, #logDS mu sigma
+                    -0.05*np.log10(1+fc)+1.21, 0.41, #logASD mu sigma
+                    -0.08*np.log10(1+fc)+1.73, 0.014*np.log10(1+fc)+0.28,#logASA mu sigma
+                    -0.1*np.log10(1+fc)+0.73, -0.04*np.log10(1+fc)+0.34,#logZSA mu sigma
+                    lambda d2D,hut,hbs: np.maximum(-0.21, -14.8*(d2D/1000.0) + 0.01*np.abs(hut-10.0) +0.83),
+                    0.35,
+                    4,
+                    9, 5,
+                    3,
+                    12, 20,
+                    5, 3, 17, 7, # cds casd casa czsa
+                    3,
+                    np.array([[1,0.5,-0.4,-0.5,-0.4,0,0],
+                       [0.5,1,-0.7,-0.2,-0.3,0,0],
+                       [-0.4,-0.7,1,0.5,0.8,0,0.2],
+                       [-0.5,-0.2,0.5,1,0.4,0.5,0.3],
+                       [-0.4,-0.3,0.8,0.4,1,0,0],
+                       [0,0,0,0.5,0,1,0],
+                       [0,0,0.2,0.3,0,0,1]]),
+                    lambda d2D,hut: 0,
+                    9, 3, # cross polarization mu sigma
+                    50,50,12
+                ],
+                ('UMi','NLOS'): [
+                    -0.24*np.log10(1+fc)-6.83,
+                    0.16*np.log10(1+fc)+0.28,
+                    -0.23*np.log10(1+fc)+1.53,
+                    0.11*np.log10(1+fc)+0.33,
+                    -0.08*np.log10(1+fc)+1.81,
+                    0.05*np.log10(1+fc)+0.3,
+                    -0.04*np.log10(1+fc)+0.92,
+                    -0.07*np.log10(1+fc)+0.41,
+                    lambda d2D,hut,hbs: np.maximum(-0.5, -3.1*(d2D/1000.0) + 0.01*np.maximum(hut-15.0,0) +0.2),
+                    0.35,                    
+                    7.82,
+                    0,
+                    0,
+                    2.1,
+                    19,
+                    20,
+                    11,
+                    10,
+                    22,
+                    7,
+                    3,
+                    np.array([[1,0,-0.7,0,-0.4,0,0],
+                       [0,1,0,0,0,0,0],
+                       [-0.7,0,1,0,0.4,0,-0.5],
+                       [0,0,0,1,0,0.5,0.5],
+                       [-0.4,0,0.4,0,1,0,0.2],
+                       [0,0,0,0.5,0,1,0],
+                       [0,0,-0.5,0.5,0.2,0,1]]),
+                    lambda d2D,hut: -np.power(10.0,-1.5*np.log10(np.maximum(10,d2D)) + 3.3),
+                    8,
+                    3,
+                    50,50,15
+                ],
+                ('UMa','LOS'): [
+                    -6.955 - 0.0963*np.log10(fc),
+                    0.66,
+                    1.06 + 0.1114*np.log10(fc),
+                    0.28, 
+                    1.81,
+                    0.20,
+                    0.95,
+                    0.16, 
+                    lambda d2D,hut,hbs: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.75),
+                    0.40,
+                    4, 
+                    9, 
+                    3.5, 
+                    2.5,
+                    12,
+                    20,
+                    np.maximum(0.25,6.5622 - 3.4084*np.log10(fc)),
+                    5,
+                    11,
+                    7,
+                    3,
+                    np.array([[1,0,-0.4,-0.5,-0.5,0,-0.8],
+                       [0,1,-0.4,0,-0.2,0,0],
+                       [-0.4,-0.4,1,0.4,0.8,-0.2,0],
+                       [-0.5,0,0.4,1,0,0.5,0],
+                       [-0.5,-0.2,0.8,0,1,-0.3,0.4],
+                       [0,0,-0.2,0.5,-0.3,1,0],
+                       [-0.8,0,0,0,0.4,0,1]]),
+                    lambda d2D,hut: 0,
+                    8,
+                    4,
+                    50,50,40
+                ],
+                ('UMa','NLOS'): [
+                    -6.28 - 0.204*np.log10(fc),
+                    0.39,
+                    1.5 - 0.1144*np.log10(fc),
+                    0.28,
+                    2.08 - 0.27*np.log10(fc),
+                    0.11,
+                    -0.3236*np.log10(fc) + 1.512,
+                    0.16,
+                    lambda d2D,hut,hbs: np.maximum(-0.5, -2.1*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.9),
+                    0.49,
+                    6,
+                    0,
+                    0,
+                    2.3,
+                    20,
+                    20,
+                    np.maximum(0.25, 6.5622 - 3.4084*np.log10(fc)),
+                    2,
+                    15,
+                    7,
+                    3,
+                    np.array([[1,0,-0.4,-0.6,0,0,-0.4],
+                       [0,1,0,0,0,0,0],
+                       [-0.4,0,1,0.4,0.6,-0.5,0],
+                       [-0.6,0,0.4,1,0.4,0.5,-0.1],
+                       [0,0,0.6,0.4,1,0,0],
+                       [0,0,-0.5,0.5,0,1,0],
+                       [-0.4,0,0,-0.1,0,0,1]]),
+                    lambda d2D,hut: 7.66*np.log10(self.frecRefGHz) - 5.96 - np.power(10, (0.208*np.log10(self.frecRefGHz) - 0.782)*np.log10(np.maximum(25.0,d2D)) - 0.13*np.log10(self.frecRefGHz) + 2.03 - 0.07*(hut - 1.5)  ),
+                    7,
+                    3,
+                    50,50,50
+                ],
+                ('RMa','LOS'): [
+                    -7.49,
+                    0.55,
+                    0.90,
+                    0.38,
+                    1.52,
+                    0.24,
+                    0.47,
+                    0.40,
+                    lambda d2D,hut,hbs:  np.maximum(-1, -0.17*(d2D/1000.0) - 0.01*(hut - 1.5) + 0.22),
+                    0.34,
+                    4, 
+                    7,
+                    4,
+                    3.8,
+                    11,
+                    20,
+                    3.91,
+                    2,
+                    3,
+                    3,
+                    3,
+                    np.array([[1,0,-0.5,0,0,0.1,-0.17],
+                       [0,1,0,0,0,0,-0.02],
+                       [-0.5,0,1,0,0,-0.05,0.27],
+                       [0,0,0,1,0,0.73,-0.14],
+                       [0,0,0,0,1,-0.20,0.24],
+                       [0.01,0,-0.05,0.73,-0.20,1,-0.07],
+                       [-0.17,-0.02,0.27,-0.14,0.24,-0.07,1]]),
+                    lambda d2D,hut: 0,
+                    12,
+                    4,
+                    50,60,60
+                ],
+                ('RMa','NLOS'): [
+                    -7.43,
+                    0.48,
+                    0.95,
+                    0.45,
+                    1.52,
+                    0.13,
+                    0.58,
+                    0.37,
+                    lambda d2D,hut,hbs: np.maximum(-1, -0.19*(d2D/1000) - 0.01*(hut - 1.5) + 0.28),
+                    0.30,
+                    8,
+                    0,
+                    0,
+                    1.7,
+                    10,
+                    20,
+                    3.91,
+                    2,
+                    3,
+                    3,
+                    3,
+                    np.array([[1,0,-0.5,0.6,0,-0.04,-0.25],
+                       [0,1,0,0,0,0,0],
+                       [-0.5,0,1,-0.4,0,-0.1,-0.4],
+                       [0.6,0,-0.4,1,0,0.42,-0.27],
+                       [0,0,0,0,1,-0.18,0.26],
+                       [-0.04,0,-0.1,0.42,-0.18,1,-0.27],
+                       [-0.25,0,-0.4,-0.27,0.26,-0.27,1]]),
+                    lambda d2D,hut: np.arctan((35.0 - 3.5)/d2D) - np.arctan((35.0 - 1.5)/d2D),
+                    7,
+                    3,
+                    50,60,60
+                ],                
+                ('InH-Office-Mixed','LOS'): [
+                    -0.01*np.log10(1+fc) - 7.692,  0.18,#'ds_mu','ds_sg',
+                    1.60,  0.18, # 'asd_mu','asd_sg',
+                    -0.19*np.log10(1+fc) + 1.781,   0.12*np.log10(1+fc) + 0.119, # 'asa_mu','asa_sg',
+                    -0.26*np.log10(1+fc) + 1.44,  -0.04*np.log10(1+fc) + 0.264,#  'zsa_mu','zsa_sg',
+                    lambda d2D,hut,hbs: -1.43*np.log10(1 + fc) + 2.228,#'funZSD_mu','zsd_sg',#ZSD lognormal mu depends on hut and d2D
+                    0.13*np.log10(1 + fc) + 0.30,
+                    3, #sg sf
+                    7,  4, #K mu sg
+                    3.6, #rt
+                    15, 20,  # N,M
+                    3.91, #cds
+                    5, #casd
+                    8, #casa
+                    9, #czsa
+                    6, #xi per cluster shadowing std
+                    np.array([[1,0.5,-0.8,-0.4,-0.5,0.2,0.3],
+                       [0.5,1,-0.5,0,0,0,0.1],
+                       [-0.8,-0.5,1,0.6,0.8,0.1,0.2],
+                       [-0.4,0,0.6,1,0.4,0.5,0],
+                       [-0.5,0,0.8,0.4,1,0,0.5],
+                       [0.2,0,0.1,0.5,0,1,0],
+                       [0.3,0.1,0.2,0,0.5,0,1]]),
+                   lambda d2D,hut: 0,
+                   11, 4,#xpr mu sg
+                   0,10,10
+                ],                
+                ('InH-Office-Mixed','NLOS'): [
+                    -0.28*np.log10(1+fc) - 7.173,
+                    0.10*np.log10(1+fc) + 0.055,
+                    1.62,
+                    0.25,
+                    -0.11*np.log10(1+fc) + 1.863,
+                    0.12*np.log10(1+fc) + 0.059,
+                    -0.15*np.log10(1+fc) + 1.387,
+                    -0.09*np.log10(1+fc) + 0.746,
+                    lambda d2D,hut,hbs: 1.08,
+                    0.36,
+                    8.03,
+                    0,
+                    0,
+                    3,
+                    19,
+                    20,
+                    3.91,
+                    5,
+                    11,
+                    9,
+                    3,
+                    np.array([[1,0,-0.5,0,-0.4,0,0],
+                       [0,1,0,0,0,0,0],
+                       [-0.5,0,1,0.4,0,-0.27,-0.06],
+                       [0,0,0.4,1,0,0.35,0.23],
+                       [-0.4,0,0,0,1,-0.08,0.43],
+                       [0,0,-0.27,0.35,-0.08,1,0.42],
+                       [0,0,-0.06,0.23,0.43,0.42,1]]),
+                    lambda d2D,hut: 0,
+                    10,
+                    4,
+                    0,10,10
+                ],                
+                ('InH-Office-Open','LOS'): [
+                    -0.01*np.log10(1+fc) - 7.692,
+                    0.18,
+                    1.60,
+                    0.18,
+                    -0.19*np.log10(1+fc) + 1.781,
+                    0.12*np.log10(1+fc) + 0.119,
+                    -0.26*np.log10(1+fc) + 1.44,
+                    -0.04*np.log10(1+fc) + 0.264,
+                    lambda d2D,hut,hbs: -1.43*np.log10(1 + fc) + 2.228,
+                    0.13*np.log10(1 + fc) + 0.30,
+                    3,
+                    7,
+                    4,
+                    3.6,
+                    15,
+                    20,
+                    3.91,
+                    5,
+                    8,
+                    9,
+                    6,
+                    np.array([[1,0.5,-0.8,-0.4,-0.5,0.2,0.3],
+                       [0.5,1,-0.5,0,0,0,0.1],
+                       [-0.8,-0.5,1,0.6,0.8,0.1,0.2],
+                       [-0.4,0,0.6,1,0.4,0.5,0],
+                       [-0.5,0,0.8,0.4,1,0,0.5],
+                       [0.2,0,0.1,0.5,0,1,0],
+                       [0.3,0.1,0.2,0,0.5,0,1]]),
+                   lambda d2D,hut: 0,
+                   11,
+                   4,
+                   0,10,10
+                ],                
+                ('InH-Office-Open','NLOS'): [
+                    -0.28*np.log10(1+fc) - 7.173,
+                    0.10*np.log10(1+fc) + 0.055,
+                    1.62,
+                    0.25,
+                    -0.11*np.log10(1+fc) + 1.863,
+                    0.12*np.log10(1+fc) + 0.059,
+                    -0.15*np.log10(1+fc) + 1.387,
+                    -0.09*np.log10(1+fc) + 0.746,
+                    lambda d2D,hut,hbs: 1.08,
+                    0.36,
+                    8.03,
+                    0,
+                    0,
+                    3,
+                    19,
+                    20,
+                    3.91,
+                    5,
+                    11,
+                    9,
+                    3,
+                    np.array([[1,0,-0.5,0,-0.4,0,0],
+                       [0,1,0,0,0,0,0],
+                       [-0.5,0,1,0.4,0,-0.27,-0.06],
+                       [0,0,0.4,1,0,0.35,0.23],
+                       [-0.4,0,0,0,1,-0.08,0.43],
+                       [0,0,-0.27,0.35,-0.08,1,0.42],
+                       [0,0,-0.06,0.23,0.43,0.42,1]]),
+                    lambda d2D,hut: 0,
+                    10,
+                    4,
+                    0,10,10
+                ],                     
+                # ('Inf','LOS'): 
+                # ],        
+           })
+        return(df)
+               
     #macro => Large Scale Correlated parameters
     def calculateGridCoeffs(self,txPos, rxPos,Dcorr):
         XgridtIndex= (txPos[0] + Dcorr/2) // Dcorr
@@ -627,6 +696,26 @@ class ThreeGPPMultipathChannelModel:
         zsa = min( np.power(10.0, param.zsa_mu + param.zsa_sg * vDep[6] ), 52.0)
         self.dMacrosGenerated.loc[macrokey,:]=(sfdB,ds,asa,asd,zsa,zsd_lslog,K)
         return(self.dMacrosGenerated.loc[macrokey,:])
+    
+    ###########################################################################
+    # small scale fading model part
+    ###########################################################################
+    
+    #Crear tablas
+    CphiNLOStable = {4 : 0.779, 5 : 0.860 , 8 : 1.018, 10 : 1.090, 
+                11 : 1.123, 12 : 1.146, 14 : 1.190, 15 : 1.211, 16 : 1.226, 
+                19 : 1.273, 20 : 1.289, 25 : 1.358}
+    CtetaNLOStable = {8 : 0.889, 10 : 0.957, 11 : 1.031, 12 : 1.104, 
+                 15 : 1.1088, 19 : 1.184, 20 : 1.178, 25 : 1.282}
+    alphamTable = [0.0447, -0.0447, 0.1413, -0.1413, 0.2492, -0.2492,
+                   0.3715, -0.3715, 0.5129, -0.5129, 0.6797, -0.6797, 
+                   0.8844, -0.8844, 1.1481, -1.1481, 1.5195, -1.5195, 
+                   2.1551, -2.1551]
+    tableSubclusterIndices = [
+            [0,1,2,3,4,5,6,7,18,19],
+            [8,9,10,11,16,17],
+            [12,13,14,15],
+        ]
     
     #clusters => small scale groups of pahts
     def create_clusters(self,smallStatistics,LOSangles):
@@ -803,8 +892,8 @@ class ThreeGPPMultipathChannelModel:
         #The number of rays per cluster, replacing param.M
         k = 0.5#sparsity coefficient
         M_t = np.ceil(4*k*cds*self.B)
-        M_AoD = np.ceil(4*k*casd*((np.pi*self.Dh)/(180*self.wavelength)))
-        M_ZoD = np.ceil(4*k*czsd*((np.pi*self.Dv)/(180*self.wavelength)))
+        M_AoD = np.ceil(4*k*casd*((np.pi*self.arrayWidth)/(180*self.wavelength)))
+        M_ZoD = np.ceil(4*k*czsd*((np.pi*self.arrayHeight)/(180*self.wavelength)))
         M = int(np.minimum( np.maximum(M_t*M_AoD*M_ZoD, param.M ) ,self.maxM))
         #The offset angles alpha_m
         alpha_AoA = np.random.uniform(-2,2,size=(nClusters,M))
@@ -861,8 +950,7 @@ class ThreeGPPMultipathChannelModel:
             subpaths.loc[(0,M),:]= (tau[0],K/(K+1),losAoA,losAoD,losZoA,losZoD,0,0,0,0,0)
         
         return(subpaths)
-    
-    
+        
     def create_small_param(self,LOSangles,smallStatistics):  
         
         clusters = self.create_clusters(smallStatistics,LOSangles)
@@ -993,14 +1081,13 @@ class ThreeGPPMultipathChannelModel:
     def create_channel(self, txPos, rxPos):
         vLOS,d2D,d3D,hbs,hut,LOSangles = self.getLOSmeasurements(txPos,rxPos)
                 
-        pLos=self.scenarioLosProb(d2D,hut)
+        pLos=self.scenarioLosProb(d2D,hut,hbs)
         los = ( self.get_LOSUnif_from_location(txPos, rxPos) <= pLos)#TODO: make this memorized
         
-        if los:
-            param = self.scenarioParams.LOS            
-        else:
-            param = self.scenarioParams.NLOS
-        PLconst = param.funPathLoss(d3D,d2D,hbs,hut)        
+        if los:   
+            PLconst = self.funPathLossLOS(d3D,d2D,hbs,hut)        
+        else: 
+            PLconst = self.funPathLossNLOS(d3D,d2D,hbs,hut)        
         if isinstance(PLconst, np.ndarray): #for safety remove numpy array properties of scalar pathloss return value
             PLconst = float(PLconst)
         # PL = PLconst + sf
