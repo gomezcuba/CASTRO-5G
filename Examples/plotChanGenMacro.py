@@ -78,9 +78,9 @@ plt.grid(axis='both', color='gray')
 txPos = np.array((0,0,10))
 Nusers = 300
 cellDiameter=150#m
-corrLOS=modelUMi.scenarioParams.LOS.corrLOS
-corrStatLOS=modelUMi.scenarioParams.LOS.corrStatistics
-corrStatNLOS=modelUMi.scenarioParams.NLOS.corrStatistics
+corrLOS=modelUMi.scenarioParams.loc["LOS"].corrLOS
+corrStatLOS=modelUMi.scenarioParams.loc["LOS"].corrStatistics
+corrStatNLOS=modelUMi.scenarioParams.loc["NLOS"].corrStatistics
 numberBinsLOS = np.ceil(cellDiameter/corrLOS)
 numberBinsStatLOS = np.ceil(cellDiameter/corrStatLOS)
 numberBinsStatNLOS = np.ceil(cellDiameter/corrStatNLOS)

@@ -36,17 +36,18 @@ losZoA=(180.0/np.pi)*losZoA
 angles = (losAoD,losAoA,losZoD,losZoA)
 
 hut=rxPos[2]
+hbs=txPos[2]
 los=False
 macro = model.create_macro((txPos[0],txPos[1],rxPos[0],rxPos[1],los))
 sfdB,ds,asa,asd,zsa,zsd_lslog,K =macro            
-zsd_mu = model.scenarioParams.NLOS.funZSD_mu(d2D,hut)#unlike other statistics, ZSD changes with hut and d2D             
+zsd_mu = model.scenarioParams.loc["NLOS"].funZSD_mu(d2D,hut,hbs)#unlike other statistics, ZSD changes with hut and d2D             
 zsd = min( np.power(10.0,zsd_mu + zsd_lslog ), 52.0)
-zod_offset_mu = model.scenarioParams.NLOS.funZoDoffset(d2D,hut)    
+zod_offset_mu = model.scenarioParams.loc["NLOS"].funZoDoffset(d2D,hut)    
 czsd = (3/8)*(10**zsd_mu)#intra-cluster ZSD    
 smallStatistics = (los,ds,asa,asd,zsa,zsd,K,czsd,zod_offset_mu)        
 
 Nchannels = 1000
-Ncluster = model.scenarioParams.NLOS.N
+Ncluster = model.scenarioParams.loc["NLOS"].N
 Cphi=model.CphiNLOStable[Ncluster]
 Cteta=model.CtetaNLOStable[Ncluster]
 listaTau = [] #sometimes fewer clusters are generated
@@ -73,7 +74,7 @@ plt.figure(1)
 tau_all = np.concatenate(listaTau)
 plt.hist(tau_all, bins=20, density=True,label='Histogram')
 aux_x = np.linspace(0,np.max(tau_all),101)
-lambda_tau = 1/(macro.ds*model.scenarioParams.NLOS.rt)
+lambda_tau = 1/(macro.ds*model.scenarioParams.loc["NLOS"].rt)
 plt.plot(aux_x,lambda_tau*np.exp(-aux_x*lambda_tau),'r:', label = "PDF")
 plt.legend()
 plt.title("Histogram of cluster delays vs p.d.f.")
