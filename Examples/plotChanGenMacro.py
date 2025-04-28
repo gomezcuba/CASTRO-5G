@@ -26,7 +26,7 @@ modelOpen = pg.ThreeGPPMultipathChannelModel(scenario="InH-Office-Open")
 modelMixed = pg.ThreeGPPMultipathChannelModel(scenario="InH-Office-Mixed")
 
 Npoint = 101
-distance=np.arange(0,200,10)
+distance=np.linspace(0,200,Npoint)
 
 LOSprobabilityUMi = modelUMi.scenarioLosProb(distance,1.5)
 LOSprobabilityUMa = modelUMa.scenarioLosProb(distance,1.5)
@@ -44,6 +44,37 @@ plt.legend()
 plt.grid(axis='both', color='gray')
 plt.xlabel('Distance (m)')
 plt.ylabel('LOS Probability')
+plt.show()
+
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+
+modelSL = pg.ThreeGPPMultipathChannelModel(scenario="InF-SL")
+modelDL = pg.ThreeGPPMultipathChannelModel(scenario="InF-DL")
+modelSH = pg.ThreeGPPMultipathChannelModel(scenario="InF-SH")
+modelDH = pg.ThreeGPPMultipathChannelModel(scenario="InF-DH")
+modelHH = pg.ThreeGPPMultipathChannelModel(scenario="InF-HH")
+
+Npoint = 101
+distance=np.linspace(0,80,Npoint)
+
+LOSprobabilitySL = modelSL.scenarioLosProb(distance,1.5)
+LOSprobabilityDL = modelDL.scenarioLosProb(distance,1.5)
+LOSprobabilitySH = modelSH.scenarioLosProb(distance,1.5,8)#hbs mandatory
+LOSprobabilityDH = modelDH.scenarioLosProb(distance,1.5,8)
+LOSprobabilityHH = modelHH.scenarioLosProb(distance,1.5)
+
+plt.plot(distance, LOSprobabilitySL, color = 'tab:red', linestyle = 'dashed' , label = 'SL')
+plt.plot(distance, LOSprobabilityDL, color = 'tab:blue', linestyle = 'dashed' , label = 'DL')
+plt.plot(distance, LOSprobabilitySH, color = 'tab:orange', linestyle = 'dashed' , label = 'SH' )
+plt.plot(distance, LOSprobabilityDH, color = 'tab:green', linestyle = 'dashed' , label = 'DH' )
+plt.plot(distance, LOSprobabilityHH*np.ones_like(distance), color = 'tab:purple', linestyle = 'dashed' , label = 'HH' )
+
+plt.legend()
+plt.grid(axis='both', color='gray')
+plt.xlabel('Distance (m)')
+plt.ylabel('LOS Probability InF')
 plt.show()
 
 fig_ctr+=1
@@ -69,6 +100,30 @@ plt.semilogx(distance,pathlossRMaLOS, color='tab:orange', linestyle = 'dashed' ,
 plt.semilogx(distance,pathLossRMaNLOS, color='tab:orange', linestyle = 'solid' , label = 'RMa NLOS')
 plt.semilogx(distance,pathlossInHLOS, color='tab:green', linestyle = 'dashed' , label = 'InH LOS')
 plt.semilogx(distance,pathLossInHNLOS, color='tab:green', linestyle = 'solid' , label = 'InH NLOS')
+plt.legend()
+plt.grid(axis='both', color='gray')
+plt.xlabel("Distance (m)")
+plt.ylabel("Path Loss (dB)")
+plt.grid(axis='both', color='gray')
+
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+
+distance=np.logspace(0,2+np.log10(5),31)
+hut = 1.5
+hbs = 10
+d3D=np.sqrt(distance**2 + (hbs-hut)**2)
+pathlossInFLOS = modelHH.scenarioPlossInFLOS(d3D,distance)
+pathLossSLNLOS = modelSL.scenarioPlossInFSLNLOS(d3D,distance)
+pathLossDLNLOS = modelDL.scenarioPlossInFDLNLOS(d3D,distance)
+pathLossSHNLOS = modelSH.scenarioPlossInFSHNLOS(d3D,distance)
+pathlossDHNLOS = modelDH.scenarioPlossInFDHNLOS(d3D,distance)
+plt.semilogx(distance,pathlossInFLOS, color='tab:red', linestyle = 'dashed' , label = 'InF LOS all')
+plt.semilogx(distance,pathLossSLNLOS, color='tab:red', linestyle = 'solid' , label = 'INF-SL NLOS')
+plt.semilogx(distance,pathLossDLNLOS, color='tab:blue', linestyle = 'solid' , label = 'INF-DL NLOS')
+plt.semilogx(distance,pathLossSHNLOS, color='tab:orange', linestyle = 'solid' , label = 'INF-SH LOS')
+plt.semilogx(distance,pathlossDHNLOS, color='tab:green', linestyle = 'solid' , label = 'INF-DH NLOS')
 plt.legend()
 plt.grid(axis='both', color='gray')
 plt.xlabel("Distance (m)")

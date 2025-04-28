@@ -15,8 +15,7 @@ class ThreeGPPMultipathChannelModel:
         self.arrayHeight = arrayHeight
         self.maxM=maxM
         self.clight=3e8
-        self.wavelength = 3e8/(fc*1e9)
-        self.allParamTable = self.dfTS38900Table756(fc)        
+        self.wavelength = 3e8/(fc*1e9)    
         
         self.setScenario(fc,scenario,customParams)
         
@@ -28,15 +27,20 @@ class ThreeGPPMultipathChannelModel:
     def setScenario(self,fc,sce,customValues={}):        
         self.frecRefGHz = fc
         self.scenario = sce
-        defaults = self.defaultScenarioValues[sce]
-        for k,v in defaults.items():
+        for k,v in self.defaultScenarioValues.items():
             setattr(self,k,v)
+        if "InF-D" in sce: 
+            #the default table is tied to InF-Sx so we toggle the default in dense inf scenarios
+            self.factoryClutterSize = 2#m
+            self.factoryClutterDensity = 0.70#%
         for k,v in customValues.items():
             setattr(self,k,v)
         #special default rules when not custom
         if ("factoryClutterDensity" in customValues) and ("factoryClutterSize" not in customValues):
-                self.factoryClutterSize = 10 if self.factoryClutterDensity<=.4 else 21
+                self.factoryClutterSize = 10 if self.factoryClutterDensity<=.4 else 2
         
+        #table parameters might     depend on ScenarioValues
+        self.allParamTable = self.dfTS38900Table756(fc) 
         self.scenarioLosProb= self.getLOSprobFun(sce)
         self.funPathLossLOS, self.funPathLossNLOS = self.getScenarioPlossFuns(sce)
         self.scenarioParams = self.allParamTable.loc[sce,:]
@@ -137,15 +141,15 @@ class ThreeGPPMultipathChannelModel:
         elif scenario=="InH-Office-Mixed":
             return( self.funLOSPInHOfficeMixed )
         elif scenario=="InF-SL":
-            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = True) )    
+            return(  lambda d2D,hut,hbs=None: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = True) )    
         elif scenario=="InF-DL":
-            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = True) )
+            return(  lambda d2D,hut,hbs=None: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = True) )
         elif scenario=="InF-SH":
-            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = False) )
+            return(  lambda d2D,hut,hbs=None: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = False) )
         elif scenario=="InF-DH":
-            return(  lambda d2D,hut,hbs: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = False) )
+            return(  lambda d2D,hut,hbs=None: self.funLOSPInF(d2D,hut,hbs,belowClutterHeight = False) )
         elif scenario=="InF-HH":
-            return(  lambda d2D,hut,hbs: 1 )            
+            return(  lambda d2D,hut,hbs=None: 1 )            
     
     ###############################################################
     # Average Pathloss model part
@@ -212,6 +216,30 @@ class ThreeGPPMultipathChannelModel:
         PL2= self.scenarioPlossInHLOS(d3D,d2D,hbs,hut)
         ploss= np.maximum(PL1,PL2)
         return(ploss)  
+    def scenarioPlossInFLOS(self,d3D,d2D,hbs=None,hut=None):
+        ploss= 31.84 + 21.5*np.log10(d3D) + 19.0*np.log10(self.frecRefGHz)
+        return(ploss)
+    
+    def scenarioPlossInFSLNLOS(self,d3D,d2D,hbs=None,hut=None):
+        PL1= 33.0 + 25.5*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
+        PL2= self.scenarioPlossInFLOS(d3D,d2D,hbs,hut)
+        ploss= np.maximum(PL1,PL2)
+        return(ploss)
+    def scenarioPlossInFDLNLOS(self,d3D,d2D,hbs=None,hut=None):
+        PL1= 18.6 + 35.7*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
+        PL2= self.scenarioPlossInFLOS(d3D,d2D,hbs,hut)
+        ploss= np.maximum(PL1,PL2)
+        return(ploss)
+    def scenarioPlossInFSHNLOS(self,d3D,d2D,hbs=None,hut=None):
+        PL1= 32.4 + 23.0*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
+        PL2= self.scenarioPlossInFLOS(d3D,d2D,hbs,hut)
+        ploss= np.maximum(PL1,PL2)
+        return(ploss)
+    def scenarioPlossInFDHNLOS(self,d3D,d2D,hbs=None,hut=None):
+        PL1= 33.63 + 21.9*np.log10(d3D) + 20.0*np.log10(self.frecRefGHz)
+        PL2= self.scenarioPlossInFLOS(d3D,d2D,hbs,hut)
+        ploss= np.maximum(PL1,PL2)
+        return(ploss)
         
     def getScenarioPlossFuns(self,scenario=None):
         if scenario is None:
@@ -230,7 +258,7 @@ class ThreeGPPMultipathChannelModel:
         elif scenario=="InF-SL":
             return( self.scenarioPlossInFLOS , self.scenarioPlossInFSLNLOS )
         elif scenario=="InF-DL":
-            return( self.scenarioPlossInFLOS , self.scenarioPlossInDSLNLOS )
+            return( self.scenarioPlossInFLOS , self.scenarioPlossInFDLNLOS )
         elif scenario=="InF-SH":
             return( self.scenarioPlossInFLOS , self.scenarioPlossInFSHNLOS )
         elif scenario=="InF-DH":
@@ -238,44 +266,15 @@ class ThreeGPPMultipathChannelModel:
         elif scenario=="InF-HH":
             return( self.scenarioPlossInHLOS , None )
     defaultScenarioValues = {
-        "RMa":{
-            "avgStreetWidth" : 20,#m
-            "avgBuildingHeight" : 5#m
-            },
-        "UMi":{},
-        "UMa":{},
-        "InH-Office-Open":{},
-        "InH-Office-Mixed":{},
-        "InF-SL":{
-            "factoryVolume":1000,#m³
-            "factoryClutterDensity":.2,#%
-            "factoryClutterHeigh": 10,#m
-            "factoryClutterSize": 10
-            },        
-        "InF-DL":{
-            "factoryVolume":1000,#m³
-            "factoryClutterDensity":.7,#%
-            "factoryClutterHeigh": 10,#m
-            "factoryClutterSize": 2
-            },        
-        "InF-SH":{
-            "factoryVolume":1000,#m³
-            "factoryClutterDensity":.2,#%
-            "factoryClutterHeigh": 10,#m
-            "factoryClutterSize": 10
-            },        
-        "InF-DH":{
-            "factoryVolume":1000,#m³
-            "factoryClutterDensity":.7,#%
-            "factoryClutterHeigh": 10,#m
-            "factoryClutterSize": 2
-            },        
-        "InF-HH":{
-            "factoryVolume":1000,#m³
-            "factoryClutterDensity":.5,#%
-            "factoryClutterHeigh": 10,#m
-            "factoryClutterSize": 10
-            },
+        #for use in RMa, but variables must exist in all runs to avoid undefined behavior
+        "avgStreetWidth" : 20,#m
+        "avgBuildingHeight" : 5,#m        
+        #for use in InF, but variables must exist in all runs to avoid undefined behavior
+        "factoryVolume":10000,#m³
+        "factoryArea":2000,#m2
+        "factoryClutterDensity":.20,#%
+        "factoryClutterHeigh": 5,#m
+        "factoryClutterSize": 10# must replace with a 2 manually in dense inf cases
         }
     
     
@@ -319,6 +318,15 @@ class ThreeGPPMultipathChannelModel:
             ('InH-Office-Mixed','NLOS'),
             ('InH-Office-Open','LOS'),
             ('InH-Office-Open','NLOS'),
+            ('InF-SL','LOS'),
+            ('InF-SL','NLOS'),
+            ('InF-DL','LOS'),
+            ('InF-DL','NLOS'),
+            ('InF-SH','LOS'),
+            ('InF-SH','NLOS'),
+            ('InF-DH','LOS'),
+            ('InF-DH','NLOS'),
+            ('InF-HH','LOS'),
             #TBW INF
             ]
         dt = [
@@ -644,9 +652,222 @@ class ThreeGPPMultipathChannelModel:
                     4,
                     0,10,10
                 ],                     
-                # [#('Inf','LOS')
-                #
-                # ],                       
+                [#('InF-SL','LOS') #note: inf only difference is pathloss and SF
+                    np.log10(26*self.factoryVolume/self.factoryArea+14)-9.35, 0.15, #logDS mu sigma
+                    1.56, 0.25, #logASD mu sigma
+                    -0.18*np.log10(1+fc)+1.78, 0.12*np.log10(1+fc)+0.2,#logASA mu sigma
+                    -0.2*np.log10(1+fc)+1.5, 0.35,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    4.3, #SF
+                    7, 8, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,-0.7,-0.5,0,0,0],
+                        [0,-0.7,1,0,0,0,0],
+                        [0,-0.5,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    2.7, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    4, #cluster lognorm xi
+                    12, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                
+                [#('InF-SL','NLOS') #note: inf only difference is pathloss and SF
+                    np.log10(30*self.factoryVolume/self.factoryArea+32)-9.44, 0.19, #logDS mu sigma
+                    1.57, 0.2, #logASD mu sigma
+                    1.72,0.3,#logASA mu sigma
+                    -0.13*np.log10(1+fc)+1.45, 0.45,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    5.7, #SF
+                    0, 0, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,0,0,0,0,0],
+                        [0,0,1,0,0,0,0],
+                        [0,0,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    3, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    3, #cluster lognorm xi
+                    11, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                     
+                [#('InF-DL','LOS') #note: inf only difference is pathloss and SF
+                    np.log10(26*self.factoryVolume/self.factoryArea+14)-9.35, 0.15, #logDS mu sigma
+                    1.56, 0.25, #logASD mu sigma
+                    -0.18*np.log10(1+fc)+1.78, 0.12*np.log10(1+fc)+0.2,#logASA mu sigma
+                    -0.2*np.log10(1+fc)+1.5, 0.35,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    4.3, #SF
+                    7, 8, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,-0.7,-0.5,0,0,0],
+                        [0,-0.7,1,0,0,0,0],
+                        [0,-0.5,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    2.7, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    4, #cluster lognorm xi
+                    12, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                
+                [#('InF-DL','NLOS') #note: inf only difference is pathloss and SF
+                    np.log10(30*self.factoryVolume/self.factoryArea+32)-9.44, 0.19, #logDS mu sigma
+                    1.57, 0.2, #logASD mu sigma
+                    1.72,0.3,#logASA mu sigma
+                    -0.13*np.log10(1+fc)+1.45, 0.45,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    7.2, #SF
+                    0, 0, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,0,0,0,0,0],
+                        [0,0,1,0,0,0,0],
+                        [0,0,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    3, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    3, #cluster lognorm xi
+                    11, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                     
+                [#('InF-SH','LOS') #note: inf only difference is pathloss and SF
+                    np.log10(26*self.factoryVolume/self.factoryArea+14)-9.35, 0.15, #logDS mu sigma
+                    1.56, 0.25, #logASD mu sigma
+                    -0.18*np.log10(1+fc)+1.78, 0.12*np.log10(1+fc)+0.2,#logASA mu sigma
+                    -0.2*np.log10(1+fc)+1.5, 0.35,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    4.3, #SF
+                    7, 8, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,-0.7,-0.5,0,0,0],
+                        [0,-0.7,1,0,0,0,0],
+                        [0,-0.5,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    2.7, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    4, #cluster lognorm xi
+                    12, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                
+                [#('InF-SH','NLOS') #note: inf only difference is pathloss and SF
+                    np.log10(30*self.factoryVolume/self.factoryArea+32)-9.44, 0.19, #logDS mu sigma
+                    1.57, 0.2, #logASD mu sigma
+                    1.72,0.3,#logASA mu sigma
+                    -0.13*np.log10(1+fc)+1.45, 0.45,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    5.9, #SF
+                    0, 0, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,0,0,0,0,0],
+                        [0,0,1,0,0,0,0],
+                        [0,0,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    3, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    3, #cluster lognorm xi
+                    11, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                     
+                [#('InF-DH','LOS') #note: inf only difference is pathloss and SF
+                    np.log10(26*self.factoryVolume/self.factoryArea+14)-9.35, 0.15, #logDS mu sigma
+                    1.56, 0.25, #logASD mu sigma
+                    -0.18*np.log10(1+fc)+1.78, 0.12*np.log10(1+fc)+0.2,#logASA mu sigma
+                    -0.2*np.log10(1+fc)+1.5, 0.35,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    4.3, #SF
+                    7, 8, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,-0.7,-0.5,0,0,0],
+                        [0,-0.7,1,0,0,0,0],
+                        [0,-0.5,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    2.7, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    4, #cluster lognorm xi
+                    12, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                
+                [#('InF-DH','NLOS') #note: inf only difference is pathloss and SF
+                    np.log10(30*self.factoryVolume/self.factoryArea+32)-9.44, 0.19, #logDS mu sigma
+                    1.57, 0.2, #logASD mu sigma
+                    1.72,0.3,#logASA mu sigma
+                    -0.13*np.log10(1+fc)+1.45, 0.45,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    4.0, #SF
+                    0, 0, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,0,0,0,0,0],
+                        [0,0,1,0,0,0,0],
+                        [0,0,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    3, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    3, #cluster lognorm xi
+                    11, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                     
+                [#('InF-HH','LOS') #note: inf only difference is pathloss and SF
+                    np.log10(26*self.factoryVolume/self.factoryArea+14)-9.35, 0.15, #logDS mu sigma
+                    1.56, 0.25, #logASD mu sigma
+                    -0.18*np.log10(1+fc)+1.78, 0.12*np.log10(1+fc)+0.2,#logASA mu sigma
+                    -0.2*np.log10(1+fc)+1.5, 0.35,#logZSA mu sigma
+                    lambda d2D,hut,hbs: 1.35, 0.35, #logZSD mu sigma
+                    lambda d2D,hut: 0,
+                    4.3, #SF
+                    7, 8, #log Rice K mu sigma
+                    #sSF, sK, sDS, sASD, sASA, sZSD, sZSA
+                    np.array([[1,0,0,0,0,0,0],
+                        [0,1,-0.7,-0.5,0,0,0],
+                        [0,-0.7,1,0,0,0,0],
+                        [0,-0.5,0,1,0,0,0],
+                        [0,0,0,0,1,0,0],
+                        [0,0,0,0,0,1,0],
+                        [0,0,0,0,0,0,1]]),
+                    2.7, #delay scaling parameter rt
+                    25,20, #N,M
+                    3.91, 5, 8, 9, # cds casd casa czsa
+                    4, #cluster lognorm xi
+                    12, 6, # cross polarization mu sigma
+                    0,self.factoryClutterSize/2,10                
+                ],                
             ]
         
         df = pd.DataFrame(columns=cols,data=dt,index=pd.MultiIndex.from_tuples(inds))
@@ -802,9 +1023,11 @@ class ThreeGPPMultipathChannelModel:
         ZoA = Xzoa*tetaZoAprima + Yzoa + losZoA - (Xzoa[0]*tetaZoAprima[0] + Yzoa[0] if (los==1) else 0)
         ZoD = Xzod*tetaZoDprima + Yzod + losZoD + muZoD - (Xzod[0]*tetaZoDprima[0] + Yzod[0] + muZoD if (los==1) else 0)
         
-        # #wrap the laplacian to prevents "flip" to the AoAAoD when clusters are bit
-        # ZoA = np.mod(ZoA,180)
-        # ZoD = np.mod(ZoD,180)
+        mask = (ZoA>=180) & (ZoA<=360)
+        ZoA[mask] = 360 - ZoA[mask] 
+        mask = (ZoD>=180) & (ZoD<=360)
+        ZoD[mask] = 360 - ZoD[mask]
+        
         return( pd.DataFrame(columns=['TDoA','P','AoA','AoD','ZoA','ZoD'],
                              data=np.array([tau,powC,AoA,AoD,ZoA,ZoD]).T,
                              index=pd.Index(np.arange(nClusters),name='n')) )
@@ -850,12 +1073,11 @@ class ThreeGPPMultipathChannelModel:
                     AoD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(AoD_sp[n,self.tableSubclusterIndices[scl]])
                     ZoA_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZoA_sp[n,self.tableSubclusterIndices[scl]])
                     ZoD_sp[n,self.tableSubclusterIndices[scl]]=np.random.permutation(ZoD_sp[n,self.tableSubclusterIndices[scl]])        
-        # mask = (ZoA_sp>=180) & (ZoA_sp<=360)
-        # ZoA_sp[mask] = 360 - ZoA_sp                
+        mask = (ZoA_sp>=180) & (ZoA_sp<=360)
+        ZoA_sp[mask] = 360 - ZoA_sp [mask]    
+        mask = (ZoD_sp>=180) & (ZoD_sp<=360)
+        ZoD_sp[mask] = 360 - ZoD_sp [mask]                   
         
-        #wrap the laplacian to prevents "flip" to the AoAAoD when clusters are bit
-        # ZoA_sp = np.mod(ZoA_sp,180)
-        # ZoD_sp = np.mod(ZoD_sp,180)
         # Generate the cross polarization power ratios
         xpr_mu = param.xpr_mu
         xpr_sg = param.xpr_sg
@@ -933,9 +1155,12 @@ class ThreeGPPMultipathChannelModel:
        
         ZoA_sp = np.tile(ZoA[:,None],(1,M)) + czsa*alpha_ZoA
         ZoD_sp = np.tile(ZoD[:,None],(1,M)) + czsd*alpha_ZoD
-        #wrap the laplacian to prevents "flip" to the AoAAoD when clusters are bit
-        # ZoA_sp = np.mod(ZoA_sp,180)
-        # ZoD_sp = np.mod(ZoD_sp,180)
+        
+        mask = (ZoA_sp>=180) & (ZoA_sp<=360)
+        ZoA_sp[mask] = 360 - ZoA_sp[mask] 
+        mask = (ZoD_sp>=180) & (ZoD_sp<=360)
+        ZoD_sp[mask] = 360 - ZoD_sp[mask]                 
+        
         # Generate the cross polarization power ratios
         xpr_mu = param.xpr_mu
         xpr_sg = param.xpr_sg

@@ -69,8 +69,8 @@ parser.add_argument('--print', help='Save plot files in svg to results folder', 
 #2D simulation with Geometric ray tracing simple channel model
 # args = parser.parse_args("--z3D -N 100 -G 3GPP -E=NO,D:32:64:128:256:512:1024 --label 3GPP3D --show --print --cdf=no,Dx256 --pcl=D:75 --map=no,Dx256 --vso=no,Dx256 --rtm=no,Dx256".split(' '))
 
-# args = parser.parse_args("--noloc --nompg --z3D -N 1000 -G 3GPP:50:UMi:28.0,3GPP:50:InH-Office-Mixed:28.0,3GPP:50:UMa:3.5,3GPP:50:RMa:.7,Geo:20 -E=NO,D:64:128:256:512:1024 --label 3DlocGenComparison --show --print --cdf=no,Dx512 --pcl=D:75 --map=no,Dx512 --mapcap 100 --vso=no,Dx512 --rtm=no,Dx512".split(' '))
-args = parser.parse_args("--z3D -N 10 -G 3GPP:50:UMi:28.0,3GPP:50:InH-Office-Mixed:28.0,3GPP:50:UMa:3.5,3GPP:50:RMa:.7,Geo:20 -E=NO,D:64:128:256:512:1024 --label test --show --print --cdf=no,Dx512 --pcl=D:75 --map=no,Dx512 --mapcap 100 --vso=no,Dx512 --rtm=no,Dx512".split(' '))
+args = parser.parse_args("--noloc --nompg --z3D -N 1000 -G 3GPP:50:UMi:28.0,3GPP:50:InF-DH:28.0,3GPP:50:UMa:3.5,3GPP:50:RMa:.7,Geo:20 -E=NO,D:64:128:256:512:1024 --label 3DlocGenComparison --show --print --cdf=no,Dx512 --pcl=D:75 --map=no,Dx512 --mapcap 100 --vso=no,Dx512 --rtm=no,Dx512".split(' '))
+# args = parser.parse_args("--z3D -N 10 -G 3GPP:50:UMi:28.0,3GPP:50:InF-DH:28.0,3GPP:50:UMa:3.5,3GPP:50:RMa:.7,Geo:20 -E=NO,D:64:128:256:512:1024 --label test --show --print --cdf=no,Dx512 --pcl=D:75 --map=no,Dx512 --mapcap 100 --vso=no,Dx512 --rtm=no,Dx512".split(' '))
 
 # numero de simulacions
 Nsims=args.N if args.N else 100

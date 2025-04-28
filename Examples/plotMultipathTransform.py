@@ -15,7 +15,7 @@ fig_ctr = 0
 
 # Selección de escenario - UMi, UMa, RMa, InH-Office-Mixed, InH-Office-Open
 
-sce = "InH-Office-Mixed"
+sce = "InF-DL"
 transform = "DERandom" #type None for no transform
 delBacklobe = False
 bool3D=True
