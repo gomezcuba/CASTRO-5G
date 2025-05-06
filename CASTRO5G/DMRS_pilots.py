@@ -1,18 +1,22 @@
+#!/usr/bin/python
+
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import product
+
+#PARA EJECUTAR POR SI SOLO, DESCOMENTAR CODIGO COMENTADO
 
 class DMRSConfig:
     def __init__(self, NumLayers=1, PRBSet=None, MappingType='A', SymbolAllocation=(0, 14), 
                  DMRSConfigurationType=1, DMRSLength=1, DMRSAdditionalPosition=0,
                  DMRSTypeAPosition=2, DMRSPortSet=None, NIDNSCID=10, NSCID=0, 
-                 NSizeGrid=51, NSlot=0, SymbolsPerSlot=14):
+                 NSizeGrid=1):
         
         if DMRSLength == 2 and DMRSAdditionalPosition > 1:
             raise ValueError("DMRSAdditionalPosition must be 0 or 1 when DMRSLength = 2")
             
         self.NumLayers = NumLayers
-        self.PRBSet = PRBSet if PRBSet is not None else np.arange(51)
+        self.PRBSet = PRBSet if PRBSet is not None else np.arange(1)
         self.MappingType = MappingType
         self.SymbolAllocation = SymbolAllocation
         self.DMRS = None
@@ -26,9 +30,10 @@ class DMRSConfig:
         self.NSCID = NSCID
         
         self.NSizeGrid = NSizeGrid
-        self.NSlot = NSlot
-        self.SymbolsPerSlot = SymbolsPerSlot
+        self.NSlot = 0
+        self.SymbolsPerSlot = 14
         self.SubcarriersPerPRB = 12
+        self.NSymbols = self.NSizeGrid * self.SymbolsPerSlot
         self.NSubcarriers = self.NSizeGrid * self.SubcarriersPerPRB
     
     def get_pdsch_dmrs_symbol_indices(self):
@@ -440,8 +445,7 @@ class DMRSConfig:
         return sorted(table[self.DMRSAdditionalPosition])
 
     def generate_dmrs_grid(self, pilot):
-        grid = np.zeros((self.NSubcarriers, self.SymbolsPerSlot, self.NumLayers), dtype=complex)
-        signal = np.zeros((self.NSubcarriers, self.SymbolsPerSlot, self.NumLayers), dtype=complex)
+        grid = np.zeros((self.NSubcarriers, self.NSymbols, self.NumLayers), dtype=complex)
         
         match pilot:
             case "PDSCH":
@@ -450,6 +454,7 @@ class DMRSConfig:
                 dmrs_symbols = self.get_pusch_dmrs_symbol_indices()
             case _:
                 print("Invalid option. Use PDSCH or PUSCH")
+                return grid
     
         symbol_start, symbol_len = self.SymbolAllocation
         symbol_end = symbol_start + symbol_len
@@ -460,25 +465,24 @@ class DMRSConfig:
     
                 if not (symbol_start <= symbol < symbol_end):
                     continue
-    
-                for prb in self.PRBSet:
-                    for offset in sc_offsets:
+                
+                for prb, rep in product(self.PRBSet, np.arange(self.NSizeGrid)):
+                    c_init = ((2 ** 17) * (14 * self.NSlot + symbol + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
+                    c = generate_gold_sequence(c_init, len(sc_offsets) * 2)
+                    r = qpsk_modulate(c)
+                    
+                    for i, offset in enumerate(sc_offsets):
                         k = prb * self.SubcarriersPerPRB + offset
-                        c_init = ((2 ** 17) * (14 * self.NSlot + symbol + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
-                        c = generate_gold_sequence(c_init, len(sc_offsets) * 2)
-                        r = qpsk_modulate(c)
-                        
-                        for i, offset in enumerate(sc_offsets):
-                            k = prb * self.SubcarriersPerPRB + offset
-                            symbol_val = self.apply_cdm(r[i], port)
-                            grid[k, symbol, layer] = symbol_val
-                            signal[k, symbol, layer] = grid[k, symbol, layer]
+                        l = rep * self.SymbolsPerSlot + symbol
+                        symbol_val = self.apply_cdm(r[i], port)
+                        grid[k, l, layer] = symbol_val
 
-        for port_idx in range(self.NumLayers):
-            print(f"\n signal[:, :, {self.DMRSPortSet[port_idx]-1000}]")
-            print(signal[:, :, port_idx])
+        # for port_idx in range(self.NumLayers):
+        #     print(f"\n signal[:, :, {self.DMRSPortSet[port_idx]-1000}]")
+        #     print(grid[:, :, port_idx])
+        #     print('----------------------------------------------------------------')
                             
-        return grid, signal
+        return grid
 
     def get_dmrs_subcarrier_offsets(self, port):
         port_idx = port - 1000
@@ -525,51 +529,55 @@ class DMRSConfig:
                 r *= (-1)
         return r
     
-    def plot_dmrs(self, grid):
-        fig, axes = plt.subplots(1, self.NumLayers, figsize=(15, 5))
-        if self.NumLayers == 1:
-            axes = [axes]
+    # def plot_dmrs(self, grid):
+    #     fig, axes = plt.subplots(1, self.NumLayers, figsize=(15, 5))
+    #     if self.NumLayers == 1:
+    #         axes = [axes]
         
-        # Create a custom colormap where 0=white and non-zero=red
-        from matplotlib.colors import ListedColormap
-        cmap = ListedColormap(['white', 'red'])
+    #     # Create a custom colormap where 0=white and non-zero=red
+    #     from matplotlib.colors import ListedColormap
+    #     cmap = ListedColormap(['white', 'red'])
         
-        for i in range(self.NumLayers):
-            ax = axes[i]
-            # Create a binary mask for DMRS presence
-            dmrs_mask = (np.abs(grid[:, :, i]) > 0).astype(int)
+    #     for i in range(self.NumLayers):
+    #         ax = axes[i]
+    #         # Create a binary mask for DMRS presence
+    #         dmrs_mask = (np.abs(grid[:, :, i]) > 0).astype(int)
             
-            # Calculate correct y-axis limits and ticks
-            y_min, y_max = -0.5, self.NSubcarriers - 0.5
-            y_ticks = np.arange(0, self.NSubcarriers)  # Show all subcarriers
-            y_tick_labels = [str(tick) for tick in y_ticks]  # Only label PRB starts
+    #         # Calculate correct y-axis limits and ticks
+    #         y_min, y_max = -0.5, self.NSubcarriers - 0.5
+    #         y_ticks = np.arange(0, self.NSubcarriers)  # Show all subcarriers
+    #         y_tick_labels = [str(tick) for tick in y_ticks]  # Only label PRB starts
             
-            ax.imshow(dmrs_mask, aspect='auto', origin='upper', cmap=cmap,
-                          interpolation='none', vmin=0, vmax=1,
-                          extent=[-0.5, 13.5, y_max, y_min])
+    #         ax.imshow(dmrs_mask, aspect='auto', origin='upper', cmap=cmap,
+    #                       interpolation='none', vmin=0, vmax=1,
+    #                       extent=[-0.5, self.NSymbols - 0.5, y_max, y_min])
             
-            ax.set_title(f'DMRS Port {self.DMRSPortSet[i]} (Config Type {self.DMRSConfigurationType})')
-            ax.set_xlabel('OFDM Symbols')
-            ax.set_ylabel('Subcarriers')
-            ax.set_xticks(np.arange(self.SymbolsPerSlot))
-            ax.set_yticks(y_ticks)
-            ax.set_yticklabels(y_tick_labels)
-            ax.set_ylim(y_min, y_max)
+    #         ax.set_title(f'DMRS Port {self.DMRSPortSet[i]} (Config Type {self.DMRSConfigurationType})')
+    #         ax.set_xlabel('OFDM Symbols')
+    #         ax.set_ylabel('Subcarriers')
+    #         ax.set_xticks(np.arange(self.NSymbols))
+    #         ax.set_yticks(y_ticks)
+    #         ax.set_yticklabels(y_tick_labels)
+    #         ax.set_ylim(y_min, y_max)
             
-            # Mark PRB boundaries (thicker lines for PRB boundaries)
-            for sc in range(0, self.NSubcarriers, self.SubcarriersPerPRB):
-                ax.axhline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
+    #         # Mark k boundaries
+    #         for sc in range(0, self.NSubcarriers, self.SubcarriersPerPRB):
+    #             ax.axhline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
+                
+    #         # Mark l boundaries
+    #         for sc in range(0, self.NSymbols, self.SymbolsPerSlot):
+    #             ax.axvline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
             
-            # Optional: thinner lines for each subcarrier
-            for sc in range(1, self.NSubcarriers):
-                ax.axhline(sc - 0.5, color='lightgray', linestyle=':', linewidth=0.5)
+    #         # Optional: thinner lines for each subcarrier
+    #         for sc in range(1, self.NSubcarriers):
+    #             ax.axhline(sc - 0.5, color='lightgray', linestyle=':', linewidth=0.5)
             
-            # Mark symbol boundaries
-            for sym in range(self.SymbolsPerSlot + 1):
-                ax.axvline(sym - 0.5, color='gray', linestyle='--', linewidth=0.5)
+    #         # Mark symbol boundaries
+    #         for sym in range(self.NSymbols + 1):
+    #             ax.axvline(sym - 0.5, color='gray', linestyle='--', linewidth=0.5)
             
-        plt.tight_layout()
-        plt.show()
+    #     plt.tight_layout()
+    #     plt.show()
     
 def generate_gold_sequence(c_init, length):
     N_c = 1600
@@ -590,49 +598,48 @@ def generate_gold_sequence(c_init, length):
 def qpsk_modulate(bits):
     return (1 / np.sqrt(2)) * ((1 - 2 * bits[0::2]) + 1j * (1 - 2 * bits[1::2]))
 
-def configure_dmrs(pilot, num_layers, config_type=1, symbol_allocation=(0, 14), num_prbs=1, mapping_type='A',
-                     dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2):
+# def configure_dmrs(pilot, num_layers, config_type=1, symbol_allocation=(0, 14), num_prbs_k=1, num_prbs_l=1, mapping_type='A',
+#                      dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2):
     
-    dmrs = DMRSConfig(NumLayers=num_layers, 
-                        PRBSet=np.arange(num_prbs), 
-                        MappingType=mapping_type, 
-                        SymbolAllocation=symbol_allocation,
-                        DMRSConfigurationType=config_type,
-                        DMRSLength=dmrs_length,
-                        DMRSAdditionalPosition=dmrs_add_pos,
-                        DMRSTypeAPosition=dmrs_type_a_pos,
-                        DMRSPortSet=[1000 + i for i in range(num_layers)],
-                        NIDNSCID=10,
-                        NSCID=0,
-                        NSizeGrid=num_prbs)
+#     dmrs = DMRSConfig(NumLayers=num_layers, 
+#                         PRBSet=np.arange(num_prbs_k), 
+#                         MappingType=mapping_type, 
+#                         SymbolAllocation=symbol_allocation,
+#                         DMRSConfigurationType=config_type,
+#                         DMRSLength=dmrs_length,
+#                         DMRSAdditionalPosition=dmrs_add_pos,
+#                         DMRSTypeAPosition=dmrs_type_a_pos,
+#                         DMRSPortSet=[1000 + i for i in range(num_layers)],
+#                         NIDNSCID=10,
+#                         NSCID=0,
+#                         NSizeGrid=num_prbs_l)
     
-    dmrs.DMRS = dmrs
-    grid, pilots = dmrs.generate_dmrs_grid(pilot)
-    dmrs.plot_dmrs(grid)
+#     dmrs.DMRS = dmrs
+#     pilots = dmrs.generate_dmrs_grid(pilot)
+#     dmrs.plot_dmrs(pilots)
     
-    return pilots
+#     return pilots
 
+# if __name__ == "__main__":
+#     # Example
+#     dmrs_pilot="PDSCH"
+#     ports = 2
+#     configuration_type = 2
+#     symbol_allocation = (0, 14)
+#     num_prbs_k=4
+#     num_prbs_l=4
+#     mapping_type='A'
+#     pilot_length=2
+#     pilot_add_pos=1
+#     dmrs_type_a_pos=2
 
-
-if __name__ == "__main__":
-    # Example
-    dmrs_pilot="PDSCH"
-    ports = 4
-    configuration_type = 1
-    symbol_allocation = (0, 14)
-    num_prbs=1
-    mapping_type='A'
-    pilot_length=1
-    pilot_add_pos=3
-    dmrs_type_a_pos=2
-
-    Pilots = configure_dmrs(pilot=dmrs_pilot,
-                            num_layers=ports, 
-                            config_type=configuration_type, 
-                            symbol_allocation=symbol_allocation,
-                            num_prbs=num_prbs,
-                            mapping_type=mapping_type, 
-                            dmrs_length=pilot_length, 
-                            dmrs_add_pos=pilot_add_pos,
-                            dmrs_type_a_pos=dmrs_type_a_pos)
-    print('----------------------------------------------------------------')
+#     Pilots = configure_dmrs(pilot=dmrs_pilot,
+#                             num_layers=ports, 
+#                             config_type=configuration_type, 
+#                             symbol_allocation=symbol_allocation,
+#                             num_prbs_k=num_prbs_k,
+#                             num_prbs_l=num_prbs_l,
+#                             mapping_type=mapping_type, 
+#                             dmrs_length=pilot_length, 
+#                             dmrs_add_pos=pilot_add_pos,
+#                             dmrs_type_a_pos=dmrs_type_a_pos)

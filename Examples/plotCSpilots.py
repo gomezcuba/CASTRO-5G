@@ -3,7 +3,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import cm
 
 import time
 from tqdm import tqdm
@@ -16,8 +15,8 @@ from CASTRO5G import multipathChannel as mc
 plt.close('all')
 
 Nchan=10
-Nd=4
-Na=4
+Nd=2
+Na=2
 Ncp=16
 Nsym=5
 Nrft=1
@@ -32,8 +31,8 @@ dicMult=cs.CSMultiDictionary()
 
 # Lista de pilotos a comparar
 pilots_config = [
-    ("IDUV", "IDUV"),
-    ("MPSK", "MPSK")
+    ("MPSK", "MPSK"),
+    ("DMRS", "DMRS")
 ]
 M_PSK=2
 

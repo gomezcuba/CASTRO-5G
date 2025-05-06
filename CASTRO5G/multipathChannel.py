@@ -3,7 +3,7 @@ import pandas as pd
 
 import sys
 sys.path.append('../')
-from CASTRO5G import MultipathLocationEstimator
+from CASTRO5G import MultipathLocationEstimator, DMRS_pilots
 
 def AWGN(shape,sigma2=1):
     return ( np.random.normal(size=shape) + 1j*np.random.normal(size=shape) ) * np.sqrt( sigma2 / 2.0 )
@@ -171,7 +171,8 @@ class MIMOPilotChannel:
             "IDUV": self.getCodebookIDUV,
             "MPSK": self.getCodebookMPSK,
             "UPhase": self.getCodebookMPSK,
-            "Rectangular": self.getCodebookRectangular
+            "Rectangular": self.getCodebookRectangular,
+            "DMRS": self.getCodebookDMRS
             }
         return(cbFunDict[algorithm])
     def generatePilots(self,Np,Nr,Nt,Npr=None,rShape=None,tShape=None,algorithm=None):      
@@ -219,6 +220,32 @@ class MIMOPilotChannel:
         A_array_design = fULA(angles_design, Nant, .5)
         W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
         return(W_ls/np.linalg.norm(W_ls,axis=0))
+    def getCodebookDMRS(self, Nant, Ncol):
+        dmrs_pilots = np.zeros((Nant, Ncol), dtype=complex)
+        dmrs_config = {
+            "NumLayers": Nant,
+            "PRBSet": np.arange(1),
+            "MappingType": 'A',
+            "SymbolAllocation": (0, 14),
+            "DMRSConfigurationType": 1,
+            "DMRSLength": 1,
+            "DMRSAdditionalPosition": 0,
+            "DMRSTypeAPosition": 2,
+            "DMRSPortSet": [1000 + i for i in range(Nant)],
+            "NIDNSCID": 10,
+            "NSCID": 0,
+            "NSizeGrid": round(Ncol/14)
+        }
+        dmrs = DMRS_pilots.DMRSConfig(**dmrs_config)
+        grid = dmrs.generate_dmrs_grid("PDSCH")
+        for ant in range(Nant):
+            pilots = grid[:, :, ant].flatten()
+            nonzero_pilots = pilots[pilots != 0] 
+            if len(nonzero_pilots) == 0:
+                raise ValueError(f"No se encontraron pilotos para la capa {999+ant}")   
+            n_repeats = int(np.ceil(Ncol / len(nonzero_pilots)))
+            dmrs_pilots[ant] = np.tile(nonzero_pilots, n_repeats)[:Ncol]
+        return dmrs_pilots
     
     def applyPilotChannel(self,hk,wp,vp,zp=None):          
         yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=-1,keepdims=True) + ( 0 if zp is None else zp))        
