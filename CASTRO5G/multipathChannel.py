@@ -161,21 +161,11 @@ class ReflectedMultipathChannelModel:
         
 
 class MIMOPilotChannel:
-    def __init__(self,algorithm="MPSK",M=2):
+    def __init__(self,algorithm="MPSK",M=2,Nsym=5,Nd=2):
         self.defAlgorithm = algorithm
         self.M=M
-        self.dmrs_cache = {}
-        # Initialize default DMRS configuration
-        self.dmrs_config = {
-            "MappingType": 'A',
-            "SymbolAllocation": (0, 14),
-            "DMRSConfigurationType": 1,
-            "DMRSLength": 1,
-            "DMRSAdditionalPosition": 0,
-            "DMRSTypeAPosition": 2,
-            "NIDNSCID": 10,
-            "NSCID": 0
-        }
+        self.Nsym=Nsym
+        self.Nd=Nd
     def getCbFun(self,algorithm):
         cbFunDict = {
             "Eye": self.getCodebookEye,
@@ -199,7 +189,7 @@ class MIMOPilotChannel:
             vp=cbFun(Nt,Np).T.reshape(Np,Nt,1)
             if bCombinatorial:
                 wp=np.tile(wp,[Np,1,1,1]).reshape((Np*Npr,1,Nr))
-                vp=np.tile(vp[:,None,:,:],[1,Npr,1,1]).reshape((Np*Npr,Nt,1))
+                vp=np.tile(vp[:,None,:,:],[1,Npr,1,1]).reshape((Np*Npr,Nt,1)) 
             if rShape:
                 wp=wp.reshape(rShape)
             if tShape:
@@ -232,28 +222,35 @@ class MIMOPilotChannel:
         A_array_design = fULA(angles_design, Nant, .5)
         W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
         return(W_ls/np.linalg.norm(W_ls,axis=0))
-    
     def getCodebookDMRS(self, Nant, Ncol):
-        
-        dmrs_config = self.dmrs_config.copy()
-        dmrs_config.update({
+        dmrs_config = {
             "NumLayers": Nant,
-            "PRBSet": np.arange(1),
-            "NSizeGrid": 1,
-            "DMRSPortSet": [1000 + i for i in range(Nant)]
-        })
+            "PRBSet": int(Ncol/12),
+            "MappingType": 'A',
+            "SymbolAllocation": (0, 14),
+            "DMRSConfigurationType": 1,
+            "DMRSLength": 1,
+            "DMRSAdditionalPosition": 0,
+            "DMRSTypeAPosition": 2,
+            "DMRSPortSet": [1000 + i for i in range(Nant)],
+            "NIDNSCID": 10,
+            "NSCID": 0,
+            "NSizeSymbol": 1,
+            "Mu": 0,
+            "NSlot_list": [0]
+        }
+    
+        dmrs_pilots = np.zeros((Nant, Ncol), dtype=complex)
         
         dmrs = DMRS_pilots.DMRSConfig(**dmrs_config)
         grid = dmrs.generate_dmrs_grid("PDSCH")
-        dmrs_pilots = np.zeros((Nant, Ncol), dtype=complex)
+        
         for ant in range(Nant):
             pilots = grid[:, :, ant].flatten()
             nonzero_pilots = pilots[pilots != 0]
-            if len(nonzero_pilots) == 0:
-                raise ValueError(f"No se encontraron pilotos para la capa {999+ant}")
+            # Repeat until fill Ncol
             n_repeats = int(np.ceil(Ncol / len(nonzero_pilots)))
-            dmrs_pilots[ant] = np.tile(nonzero_pilots, n_repeats)[:Ncol]
-        
+            dmrs_pilots[ant, :] = np.tile(nonzero_pilots, n_repeats)[:Ncol]
         return dmrs_pilots
     
     def applyPilotChannel(self,hk,wp,vp,zp=None):          

@@ -2,25 +2,29 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 from itertools import product
 from numba import jit
 
-#PARA EJECUTAR POR SI SOLO, DESCOMENTAR CODIGO COMENTADO
-
 class DMRSConfig:
-    def __init__(self, NumLayers=1, PRBSet=None, MappingType='A', SymbolAllocation=(0, 14), 
+    def __init__(self, NumLayers=1, PRBSet=1, MappingType='A', SymbolAllocation=(0, 14), 
                  DMRSConfigurationType=1, DMRSLength=1, DMRSAdditionalPosition=0,
                  DMRSTypeAPosition=2, DMRSPortSet=None, NIDNSCID=10, NSCID=0, 
-                 NSizeGrid=1):
+                 NSizeSymbol=1, Mu=0, NSlot_list=[0]):
         
         if DMRSLength == 2 and DMRSAdditionalPosition > 1:
             raise ValueError("DMRSAdditionalPosition must be 0 or 1 when DMRSLength = 2")
+        
+        if not isinstance(NSlot_list, list):
+            raise ValueError("NSlot_list must be a list of slot indices")
+        
+        if len(NSlot_list) != NSizeSymbol:
+            raise ValueError(f"Length of NSlot_list ({len(NSlot_list)}) must equal NSizeSymbol ({NSizeSymbol})")
             
         self.NumLayers = NumLayers
-        self.PRBSet = PRBSet if PRBSet is not None else np.arange(1)
+        self.PRBSet = PRBSet
         self.MappingType = MappingType
         self.SymbolAllocation = SymbolAllocation
-        self.DMRS = None
         
         self.DMRSConfigurationType = DMRSConfigurationType
         self.DMRSLength = DMRSLength
@@ -30,12 +34,19 @@ class DMRSConfig:
         self.NIDNSCID = NIDNSCID
         self.NSCID = NSCID
         
-        self.NSizeGrid = NSizeGrid
-        self.NSlot = 0
+        self.NSizeSymbol = NSizeSymbol
         self.SymbolsPerSlot = 14
         self.SubcarriersPerPRB = 12
-        self.NSymbols = self.NSizeGrid * self.SymbolsPerSlot
-        self.NSubcarriers = self.NSizeGrid * self.SubcarriersPerPRB
+        self.NSymbols = self.NSizeSymbol * self.SymbolsPerSlot
+        self.NSubcarriers = self.PRBSet * self.SubcarriersPerPRB
+        
+        if not (Mu in (0,1,2,3,4)):
+            raise ValueError("Mu must be in range [0, 4]")
+        self.N_slot_frame = 10 * (2 ** Mu)
+        for nsf in NSlot_list:
+            if not (0 <= nsf < self.N_slot_frame):
+                raise ValueError(f"Each NSlot in NSlot_list must be in range [0, {self.N_slot_frame-1}] for mu={Mu}")
+        self.NSlot_list = NSlot_list
     
     def get_pdsch_dmrs_symbol_indices(self):
         start_symbol, duration = self.SymbolAllocation
@@ -446,7 +457,7 @@ class DMRSConfig:
         return sorted(table[self.DMRSAdditionalPosition])
 
     def generate_dmrs_grid(self, pilot):
-        grid = np.zeros((self.NSubcarriers, self.NSymbols, self.NumLayers), dtype=complex)
+        grid = np.zeros((self.NSymbols, self.NSubcarriers, self.NumLayers), dtype=complex)
         
         match pilot:
             case "PDSCH":
@@ -459,39 +470,32 @@ class DMRSConfig:
     
         symbol_start, symbol_len = self.SymbolAllocation
         symbol_end = symbol_start + symbol_len
-        
+    
         for layer, port in enumerate(self.DMRSPortSet):
             sc_offsets = self.get_dmrs_subcarrier_offsets(port)
-            valid_symbols = [s for s in dmrs_symbols if symbol_start <= s < symbol_end]
-            
-            # Precompute c_init for all symbols and PRBs
-            c_init = np.array([
-                ((2 ** 17) * (self.SymbolsPerSlot * self.NSlot + s + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
-                for s in valid_symbols for prb in self.PRBSet for rep in range(self.NSizeGrid)
-            ])
-            
-            # Generate all sequences at once
-            seq_length = len(sc_offsets) * 2
-            c = np.array([generate_gold_sequence_numba(c_i, seq_length) for c_i in c_init])
-            r = qpsk_modulate(c.flatten()).reshape(-1, len(sc_offsets))
-            
-            # Assign to grid
-            idx = 0
-            for s in valid_symbols:
-                for prb in self.PRBSet:
-                    for rep in range(self.NSizeGrid):
-                        for i, offset in enumerate(sc_offsets):
-                            k = prb * self.SubcarriersPerPRB + offset
-                            l = rep * self.SymbolsPerSlot + s
-                            grid[k, l, layer] = self.apply_cdm(r[idx, i], port)
-                        idx += 1
-        
+            for _, symbol in enumerate(dmrs_symbols):
+    
+                if not (symbol_start <= symbol < symbol_end):
+                    continue
+                
+                for prb, rep in product(np.arange(self.PRBSet), np.arange(self.NSizeSymbol)):
+                    c_init = ((2 ** 17) * (14 * self.NSlot_list[rep] + symbol + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
+                    c = generate_gold_sequence_numba(c_init, len(sc_offsets) * 2)
+                    r = qpsk_modulate(c)
+                    
+                    for i, offset in enumerate(sc_offsets):
+                        k = prb * self.SubcarriersPerPRB + offset
+                        l = rep * self.SymbolsPerSlot + symbol
+                        symbol_val = self.apply_cdm(r[i], port)
+                        grid[l, k, layer] = symbol_val
+
         # for port_idx in range(self.NumLayers):
         #     print(f"\n signal[:, :, {self.DMRSPortSet[port_idx]-1000}]")
-        #     print(grid[:, :, port_idx])
+        #     print(grid[:, :, port_idx].T)
         #     print('----------------------------------------------------------------')
-        
+                            
         return grid
+
     def get_dmrs_subcarrier_offsets(self, port):
         port_idx = port - 1000
         k_values = []
@@ -542,23 +546,27 @@ class DMRSConfig:
     #     if self.NumLayers == 1:
     #         axes = [axes]
         
-    #     # Create a custom colormap where 0=white and non-zero=red
-    #     from matplotlib.colors import ListedColormap
-    #     cmap = ListedColormap(['white', 'red'])
+    #     colors = ['blue', 'red', 'white', 'green', 'yellow']
+    #     cmap = ListedColormap(colors[:len(np.unique(grid))])
         
     #     for i in range(self.NumLayers):
     #         ax = axes[i]
-    #         # Create a binary mask for DMRS presence
-    #         dmrs_mask = (np.abs(grid[:, :, i]) > 0).astype(int)
+    
+    #         unique_vals, indices = np.unique(grid[:, :, i], return_inverse=True)
+    #         indices = indices.reshape(grid[:, :, i].shape).T
             
-    #         # Calculate correct y-axis limits and ticks
     #         y_min, y_max = -0.5, self.NSubcarriers - 0.5
-    #         y_ticks = np.arange(0, self.NSubcarriers)  # Show all subcarriers
-    #         y_tick_labels = [str(tick) for tick in y_ticks]  # Only label PRB starts
+    #         y_ticks = np.arange(0, self.NSubcarriers)
+    #         y_tick_labels = [str(tick) for tick in y_ticks]
             
-    #         ax.imshow(dmrs_mask, aspect='auto', origin='upper', cmap=cmap,
-    #                       interpolation='none', vmin=0, vmax=1,
-    #                       extent=[-0.5, self.NSymbols - 0.5, y_max, y_min])
+    #         x = np.arange(-0.5, self.NSymbols)
+    #         y = np.arange(-0.5, self.NSubcarriers)
+            
+    #         im = ax.pcolormesh(x, y, indices, cmap=cmap, vmin=0, vmax=len(unique_vals)-1,
+    #                           edgecolors='k', linewidths=0.5)
+            
+    #         cbar = plt.colorbar(im, ax=ax, ticks=np.arange(len(unique_vals)))
+    #         cbar.ax.set_yticklabels([f"{val:.2f}" for val in unique_vals])
             
     #         ax.set_title(f'DMRS Port {self.DMRSPortSet[i]} (Config Type {self.DMRSConfigurationType})')
     #         ax.set_xlabel('OFDM Symbols')
@@ -568,22 +576,18 @@ class DMRSConfig:
     #         ax.set_yticklabels(y_tick_labels)
     #         ax.set_ylim(y_min, y_max)
             
-    #         # Mark k boundaries
     #         for sc in range(0, self.NSubcarriers, self.SubcarriersPerPRB):
     #             ax.axhline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
                 
-    #         # Mark l boundaries
     #         for sc in range(0, self.NSymbols, self.SymbolsPerSlot):
     #             ax.axvline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
             
-    #         # Optional: thinner lines for each subcarrier
-    #         for sc in range(1, self.NSubcarriers):
+    #         for sc in range(self.NSubcarriers):
     #             ax.axhline(sc - 0.5, color='lightgray', linestyle=':', linewidth=0.5)
             
-    #         # Mark symbol boundaries
     #         for sym in range(self.NSymbols + 1):
     #             ax.axvline(sym - 0.5, color='gray', linestyle='--', linewidth=0.5)
-            
+        
     #     plt.tight_layout()
     #     plt.show()
    
@@ -608,10 +612,10 @@ def qpsk_modulate(bits):
     return (1 / np.sqrt(2)) * ((1 - 2 * bits[0::2]) + 1j * (1 - 2 * bits[1::2]))
 
 # def configure_dmrs(pilot, num_layers, config_type=1, symbol_allocation=(0, 14), num_prbs_k=1, num_prbs_l=1, mapping_type='A',
-#                      dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2):
+#                      dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2, mu=0, NSlot_list=[0]):
     
 #     dmrs = DMRSConfig(NumLayers=num_layers, 
-#                         PRBSet=np.arange(num_prbs_k), 
+#                         PRBSet=num_prbs_k, 
 #                         MappingType=mapping_type, 
 #                         SymbolAllocation=symbol_allocation,
 #                         DMRSConfigurationType=config_type,
@@ -621,9 +625,10 @@ def qpsk_modulate(bits):
 #                         DMRSPortSet=[1000 + i for i in range(num_layers)],
 #                         NIDNSCID=10,
 #                         NSCID=0,
-#                         NSizeGrid=num_prbs_l)
+#                         NSizeSymbol=num_prbs_l,
+#                         Mu=mu,
+#                         NSlot_list=NSlot_list)
     
-#     dmrs.DMRS = dmrs
 #     pilots = dmrs.generate_dmrs_grid(pilot)
 #     dmrs.plot_dmrs(pilots)
     
@@ -632,15 +637,16 @@ def qpsk_modulate(bits):
 # if __name__ == "__main__":
 #     # Example
 #     dmrs_pilot="PDSCH"
-#     ports = 4
+#     ports = 1
 #     configuration_type = 2
 #     symbol_allocation = (0, 14)
-#     num_prbs_k=1
-#     num_prbs_l=1
+#     num_prbs_k=2
+#     num_prbs_l=2
 #     mapping_type='A'
 #     pilot_length=2
 #     pilot_add_pos=1
 #     dmrs_type_a_pos=2
+#     mu=0
 
 #     Pilots = configure_dmrs(pilot=dmrs_pilot,
 #                             num_layers=ports, 
@@ -651,4 +657,6 @@ def qpsk_modulate(bits):
 #                             mapping_type=mapping_type, 
 #                             dmrs_length=pilot_length, 
 #                             dmrs_add_pos=pilot_add_pos,
-#                             dmrs_type_a_pos=dmrs_type_a_pos)
+#                             dmrs_type_a_pos=dmrs_type_a_pos,
+#                             mu=mu,
+#                             NSlot_list=np.arange(num_prbs_l).tolist())

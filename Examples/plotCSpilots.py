@@ -84,7 +84,7 @@ for ichan in range(Nchan):
 #-------------------------------------------------------------------------------
 pilot_patterns = {}
 for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot Types: ")):
-    pilgen = mc.MIMOPilotChannel(pilot_alg,M_PSK)
+    pilgen = mc.MIMOPilotChannel(pilot_alg,M_PSK, Nsym, Nd)
     # Generamos pilotos específicos para este tipo
     (wp, vp) = pilgen.generatePilots(Nsym*K*Nrft, Na, Nd, Npr=Nsym*K*Nrfr, 
                                     rShape=(Nsym, K, Nrfr, Na), tShape=(Nsym, K, Nd, Nrft))
