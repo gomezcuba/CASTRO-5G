@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import product
+from numba import jit
 
 #PARA EJECUTAR POR SI SOLO, DESCOMENTAR CODIGO COMENTADO
 
@@ -458,32 +459,39 @@ class DMRSConfig:
     
         symbol_start, symbol_len = self.SymbolAllocation
         symbol_end = symbol_start + symbol_len
-    
+        
         for layer, port in enumerate(self.DMRSPortSet):
             sc_offsets = self.get_dmrs_subcarrier_offsets(port)
-            for _, symbol in enumerate(dmrs_symbols):
-    
-                if not (symbol_start <= symbol < symbol_end):
-                    continue
-                
-                for prb, rep in product(self.PRBSet, np.arange(self.NSizeGrid)):
-                    c_init = ((2 ** 17) * (14 * self.NSlot + symbol + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
-                    c = generate_gold_sequence(c_init, len(sc_offsets) * 2)
-                    r = qpsk_modulate(c)
-                    
-                    for i, offset in enumerate(sc_offsets):
-                        k = prb * self.SubcarriersPerPRB + offset
-                        l = rep * self.SymbolsPerSlot + symbol
-                        symbol_val = self.apply_cdm(r[i], port)
-                        grid[k, l, layer] = symbol_val
-
+            valid_symbols = [s for s in dmrs_symbols if symbol_start <= s < symbol_end]
+            
+            # Precompute c_init for all symbols and PRBs
+            c_init = np.array([
+                ((2 ** 17) * (self.SymbolsPerSlot * self.NSlot + s + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
+                for s in valid_symbols for prb in self.PRBSet for rep in range(self.NSizeGrid)
+            ])
+            
+            # Generate all sequences at once
+            seq_length = len(sc_offsets) * 2
+            c = np.array([generate_gold_sequence_numba(c_i, seq_length) for c_i in c_init])
+            r = qpsk_modulate(c.flatten()).reshape(-1, len(sc_offsets))
+            
+            # Assign to grid
+            idx = 0
+            for s in valid_symbols:
+                for prb in self.PRBSet:
+                    for rep in range(self.NSizeGrid):
+                        for i, offset in enumerate(sc_offsets):
+                            k = prb * self.SubcarriersPerPRB + offset
+                            l = rep * self.SymbolsPerSlot + s
+                            grid[k, l, layer] = self.apply_cdm(r[idx, i], port)
+                        idx += 1
+        
         # for port_idx in range(self.NumLayers):
         #     print(f"\n signal[:, :, {self.DMRSPortSet[port_idx]-1000}]")
         #     print(grid[:, :, port_idx])
         #     print('----------------------------------------------------------------')
-                            
+        
         return grid
-
     def get_dmrs_subcarrier_offsets(self, port):
         port_idx = port - 1000
         k_values = []
@@ -578,13 +586,14 @@ class DMRSConfig:
             
     #     plt.tight_layout()
     #     plt.show()
-    
-def generate_gold_sequence(c_init, length):
+   
+@jit(nopython=True)
+def generate_gold_sequence_numba(c_init, length):
     N_c = 1600
-    x1 = np.zeros(N_c + length, dtype=int)
-    x2 = np.zeros(N_c + length, dtype=int)
+    x1 = np.zeros(N_c + length, dtype=np.int32)
+    x2 = np.zeros(N_c + length, dtype=np.int32)
 
-    x1[:31] = [1] + [0] * 30
+    x1[0] = 1
     for i in range(31):
         x2[i] = (c_init >> i) & 1
 
@@ -623,11 +632,11 @@ def qpsk_modulate(bits):
 # if __name__ == "__main__":
 #     # Example
 #     dmrs_pilot="PDSCH"
-#     ports = 2
+#     ports = 4
 #     configuration_type = 2
 #     symbol_allocation = (0, 14)
-#     num_prbs_k=4
-#     num_prbs_l=4
+#     num_prbs_k=1
+#     num_prbs_l=1
 #     mapping_type='A'
 #     pilot_length=2
 #     pilot_add_pos=1

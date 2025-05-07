@@ -161,9 +161,21 @@ class ReflectedMultipathChannelModel:
         
 
 class MIMOPilotChannel:
-    def __init__(self, defAlgorithm="Eye", M=4):
-        self.defAlgorithm=defAlgorithm
+    def __init__(self,algorithm="MPSK",M=2):
+        self.defAlgorithm = algorithm
         self.M=M
+        self.dmrs_cache = {}
+        # Initialize default DMRS configuration
+        self.dmrs_config = {
+            "MappingType": 'A',
+            "SymbolAllocation": (0, 14),
+            "DMRSConfigurationType": 1,
+            "DMRSLength": 1,
+            "DMRSAdditionalPosition": 0,
+            "DMRSTypeAPosition": 2,
+            "NIDNSCID": 10,
+            "NSCID": 0
+        }
     def getCbFun(self,algorithm):
         cbFunDict = {
             "Eye": self.getCodebookEye,
@@ -220,31 +232,28 @@ class MIMOPilotChannel:
         A_array_design = fULA(angles_design, Nant, .5)
         W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
         return(W_ls/np.linalg.norm(W_ls,axis=0))
+    
     def getCodebookDMRS(self, Nant, Ncol):
-        dmrs_pilots = np.zeros((Nant, Ncol), dtype=complex)
-        dmrs_config = {
+        
+        dmrs_config = self.dmrs_config.copy()
+        dmrs_config.update({
             "NumLayers": Nant,
             "PRBSet": np.arange(1),
-            "MappingType": 'A',
-            "SymbolAllocation": (0, 14),
-            "DMRSConfigurationType": 1,
-            "DMRSLength": 1,
-            "DMRSAdditionalPosition": 0,
-            "DMRSTypeAPosition": 2,
-            "DMRSPortSet": [1000 + i for i in range(Nant)],
-            "NIDNSCID": 10,
-            "NSCID": 0,
-            "NSizeGrid": round(Ncol/14)
-        }
+            "NSizeGrid": 1,
+            "DMRSPortSet": [1000 + i for i in range(Nant)]
+        })
+        
         dmrs = DMRS_pilots.DMRSConfig(**dmrs_config)
         grid = dmrs.generate_dmrs_grid("PDSCH")
+        dmrs_pilots = np.zeros((Nant, Ncol), dtype=complex)
         for ant in range(Nant):
             pilots = grid[:, :, ant].flatten()
-            nonzero_pilots = pilots[pilots != 0] 
+            nonzero_pilots = pilots[pilots != 0]
             if len(nonzero_pilots) == 0:
-                raise ValueError(f"No se encontraron pilotos para la capa {999+ant}")   
+                raise ValueError(f"No se encontraron pilotos para la capa {999+ant}")
             n_repeats = int(np.ceil(Ncol / len(nonzero_pilots)))
             dmrs_pilots[ant] = np.tile(nonzero_pilots, n_repeats)[:Ncol]
+        
         return dmrs_pilots
     
     def applyPilotChannel(self,hk,wp,vp,zp=None):          

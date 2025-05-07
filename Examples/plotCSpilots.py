@@ -14,7 +14,7 @@ from CASTRO5G import multipathChannel as mc
 
 plt.close('all')
 
-Nchan=10
+Nchan=2
 Nd=2
 Na=2
 Ncp=16
@@ -82,15 +82,18 @@ for ichan in range(Nchan):
     listPreparedChannels.append((pathsparse, hsparse, hk, zp))
 
 #-------------------------------------------------------------------------------
+pilot_patterns = {}
 for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot Types: ")):
     pilgen = mc.MIMOPilotChannel(pilot_alg,M_PSK)
+    # Generamos pilotos específicos para este tipo
+    (wp, vp) = pilgen.generatePilots(Nsym*K*Nrft, Na, Nd, Npr=Nsym*K*Nrfr, 
+                                    rShape=(Nsym, K, Nrfr, Na), tShape=(Nsym, K, Nd, Nrft))
+    pilot_patterns[pilot_name] = (wp, vp)
     
     for ichan in tqdm(range(Nchan), desc=f"Channels for {pilot_name}: ", leave=False):
         (pathsparse, hsparse, hk, zp) = listPreparedChannels[ichan]
         
-        # Generamos pilotos específicos para este tipo
-        (wp, vp) = pilgen.generatePilots(Nsym*K*Nrft, Na, Nd, Npr=Nsym*K*Nrfr, 
-                                        rShape=(Nsym, K, Nrfr, Na), tShape=(Nsym, K, Nd, Nrft))
+        wp, vp = pilot_patterns[pilot_name]
         
         # Preconfiguración del diccionario Y (dependiente de pilotos)
         t0 = time.time()
@@ -110,12 +113,14 @@ for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot
             sigma2 = 1.0 / SNRs[isnr]
             yp = yp_noiseless + zp_bb * np.sqrt(sigma2)
             hnoised = hsparse * np.sqrt(Ncp) + zh * np.sqrt(sigma2)
-            
+            # print("1")
             t0 = time.time()
             omprunner.setDictionary(dicMult)
-            hest, paths, _, _ = omprunner.OMP(yp, sigma2*K*Nsym*Nrfr, ichan, vp, wp, Xt, Xa, Xd, Xr, Ncp)
+            # In plotCSpilots.py, inside the loop for pilots
+            Xrefine = 1.0 if pilot_name == "DMRS" else Xr
+            hest, paths, _, _ = omprunner.OMP(yp, sigma2*K*Nsym*Nrfr, ichan, vp, wp, Xt, Xa, Xd, Xrefine, Ncp)
             runTime[ichan, isnr, ipilot] = time.time() - t0
-            
+            # print("2")
             pathResults[(ichan, isnr, ipilot)] = (hest, paths)
             Npaths[ichan, isnr, ipilot] = len(paths.TDoA) if paths is not None else 0
             MSE[ichan, isnr, ipilot] = np.mean(np.abs(hk - hest)**2) / np.mean(np.abs(hk)**2)
