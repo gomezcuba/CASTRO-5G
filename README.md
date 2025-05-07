@@ -17,6 +17,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTE.md) for details on our code of conduct,
 * Version [0.2.1](https://github.com/gomezcuba/CASTRO-5G/commit/d45090125a2df21bc949c83ae364385f04e4ea2a) - [uxxiat](https://github.com/uxxiat) finished her TFG, upgrading the threeGPPMultipathGenerator.py to simulate first-order reflections in ISAC scenarios
 * Version [0.2.2](https://github.com/gomezcuba/CASTRO-5G/commit/8f5939e8d6c8412e6e61ce10fa2d99a9db70e571) - [anavidgar](https://github.com/anavidgar) finished her TFG, upgrading the threeGPPMultipathGenerator.py to implement the 3GPP standard spatial consistency model and mobility support
 * Version [0.3.0](https://github.com/gomezcuba/CASTRO-5G/releases/tag/v0.3.0-alpha.isac) - [gomezcuba](https://github.com/gomezcuba) prepared the new functionalities for relase and refactored the codebase into several folders. Now the main functionalities of the CASTRO-5G repo form a common python package 
+* Version [0.4.0](https://github.com/gomezcuba/CASTRO-5G/releases/tag/v0.4.0-alpha.locinf) - [gomezcuba](https://github.com/gomezcuba) Implemented 3D location extension. Renamed CS tools module. Extensions to multipath DEC module. 3GPP channel model refactored, bug fixes and added support for InF scenario.
 
 ## Authors
 
@@ -27,11 +28,11 @@ Please read [CONTRIBUTING.md](CONTRIBUTE.md) for details on our code of conduct,
 * **Uxía Tarrío Pinazas (TFG)** - *3GPP Channel Generator extension for ray-tracing* - [uxxiat](https://github.com/uxxiat)
 * **Ana María Vidal García (TFG)** - *3GPP Channel Generator extension for spatial consistency* - [anavidgar](https://github.com/anavidgar)
 
-See also the list of [contributors](https://github.com/your/project/contributors) actively submitting to this project.
+See also the list of [contributors](https://github.com/gomezcuba/CASTRO-5G/graphs/contributors) actively submitting to this project.
 
 ## Getting Started
 
-To get a copy of the code up and running on a local folder follow the steps below. See the [Deployment](#deployment) section for notes on how to deploy the project on a live system.
+To get a copy of the code up and running on a local folder follow the steps below. See the [Deployment](# Deployment) section for notes on how to deploy the project on a live system.
 
 ### Prerequisites
 
@@ -41,7 +42,7 @@ Our project aims to maintain a reduced number of dependencies. On a standard pyt
 * [Scipy](https://scipy.org/)
 * [Matplotlib](https://matplotlib.org/)
 * [Pandas](https://pandas.pydata.org/)
-* [Progress](https://pypi.org/project/progress/)
+* [tqdm](https://pypi.org/project/tqdm/)
 
 ### Installing
 
@@ -51,26 +52,26 @@ You may simply download the code into a folder or clone the repo
 git clone https://github.com/gomezcuba/CASTRO-5G.git
 ```
 
-You can test the location module by running the *raygeometry.py* simulation
+You can test the location module by running the [testRayGeometry2D.py](./Drafts/testRayGeometry2D.py)  simulation
 
 ```
-python raygeometry.py
+python Drafts/raygeometry.py
 ```
 
 the expected result is that this script should run without warnings, print several debug lines, and generate several .eps results files in the working folder.
 
-You can test the channel generator by running the *plotAzimutDelay4D.py* script
+You can test the channel generator by running the [plotAzimutDelay4D.py](./Examples/plotAzimutDelay4D.py) script
 
 ```
-python plotAzimutDelay4D.py
+python Examples/plotAzimutDelay4D.py
 ```
 
 the expected result is that this script should run without warnings.
 
-You can test the link adaptation model by running the *IoTSpatialConsistencyExperiment.py* script
+You can test the link adaptation model by running the [spatialMultiuserLinksim.py](./Simulations/spatialMultiuserLinksim.py) script
 
 ```
-python IoTSpatialConsistencyExperiment.py
+python Simulations/spatialMultiuserLinksim.py
 ```
 
 the expected result is that this script should run without warnings, simulate a multi-user mmWave network, and display several plots with the time-varying throughput of the devices.
@@ -81,7 +82,7 @@ the expected result is that this script should run without warnings, simulate a 
 ### Folder structure
 
 
-* Drafts contains independen tests with the intent of rapid testing of mathematical expressions before they are embedded in the project
+* Drafts contains independent tests with the intent of rapid testing of mathematical expressions before they are embedded in the project
 
 * Examples contains python scripts that demonstrate the characteristics of the simulator
 
@@ -102,10 +103,10 @@ from CASTRO5G import *
 
 The aim the repo CASTRO-5G is the simulation of the interplays between location and communications in multipath channels. For this, there are four high level functionalities that must be implemented
 
-* Modeling the devide locations 
+* Modeling the device locations 
 * Generation of multipath channel parameters
-* Simulation of a Discrete Equivalent Channel
-* Estimation of the location
+* Simulation of a Discrete Equivalent Channel with pilots and CS channel estimation
+* Estimation of the location from multipath information / ISAC
 
 In the location estimation problem, the four functionalities are connected in an open loop (locations are inputs to the channel generator, and so on...). The Link Adaptation model takes the opposite approach: achievable rate vs outage is simultated in a multi-user mmwave network, where channel prediction based on the inter-user separation is exploited for channel estimation. Currently these two research experiments are conducted with a simplified multipath generator, whereas the 3GPP generator is under active development and will replace the placeholder in a future release.
 
@@ -123,17 +124,20 @@ y0_true=np.random.rand(1)*40-10
 Simulation should use a DEC according to the multipath data, possibly featuring a channel estimation. The current version of the code provides a draft implementation of the OMPBR Compressed Sensing algorithm for a single-user Hybrid BeamForming (HBF) MIMO OFDM channel. Auxiliar classes are provided for the generation of the DEC channel impulse response, the antenna array responses, and the generation of HBF MIMO pilots. Additional CS channel estimation algorithm and general code improvements are in active development.
 
 ```
-import multipathChannel
-ht=mpch.getDEC(Na,Nd,Nt,Ts)
-hk=np.fft.fft(ht.transpose([2,0,1]),Kfft,axis=0) %this reshape will be avoided in future updates
+from CASTRO5G import multipathChannel as mpch
+model=mpch.DiscreteMultipathChannelModel(dims=(Ncp,Na,Nd),fftaxes=())
+hsparse=model.getDEC(3)
+hk=np.fft.fft(hsparse,K,axis=0) #OFDM subcarriers
+hk=np.fft.fft(hk,Na,axis=1,norm="ortho") #ULA receiver
+hk=np.fft.fft(hk,Nd,axis=2,norm="ortho") #ULA transmitter
 ...
-import MIMOPilotChannel
-pilgen = pil.MIMOPilotChannel("UPhase")
-(txPilot,rxPilot)=pilgen.generatePilots(dimensions,)
+pilgen = mpch.MIMOPilotChannel("UPhase")
+(txPilot,rxPilot)=pilgen.generatePilots(...)
 yp=pilgen.applyPilotChannel(hk,txPilot,rxPilot,noise)
 ...
-import OMPCachedRunner
-omprunner = OMPCachedRunner.OMPCachedRunner()
+from CASTRO5G import compressedSensingTools as cs
+omprunner = cs.CSDictionaryRunner()
+dicMult = cs.CSMultiDictionary()
 estimation = omprunner.OMPBR(y,xi,cacheID,txPilot,rxPilot,delayOversampling,aodOversampling,aoaOversampling,brOversampling)
 ```
 
@@ -142,9 +146,9 @@ estimation = omprunner.OMPBR(y,xi,cacheID,txPilot,rxPilot,delayOversampling,aodO
 The location of the receiver, relative to the transmitter position, is computed from the multipath information (exact or estimated). It must be noted that the "proper" 3GPP channel model does not produce multipath results according to the assumptions of the location algorithm. An adaptation is in active development. The current release provides an implementation of the location algorithm we designed in the [WCNC paper](#Publications)
 
 ```
-import MultipathLocationEstimator
+from CASTRO5G import MultipathLocationEstimator
 loc=MultipathLocationEstimator.MultipathLocationEstimator()
-estimatedLocationData = loc.computeAllLocationsFromPaths(AoDs, AoAs, dels)
+estimatedLocationData = loc.computeAllLocationsFromPaths(paths_dataframe)
 ```
 
 ### 3GPP Multipath generation
@@ -152,7 +156,7 @@ estimatedLocationData = loc.computeAllLocationsFromPaths(AoDs, AoAs, dels)
 The current version of the code implements the 3GPP channel model for all scenarios without spatial consistency. Support for spatial consistency is currently under development. Extensions to generatre first-order reflections for location algorithms compatible with ray-tracing are under development.
 
 ```
-import threeGPPMultipathGenerator as mpg
+from CASTRO5G import threeGPPMultipathGenerator as mpg
 
 model = mpg.ThreeGPPMultipathChannelModel(scenario="UMi")
 plinfo,macro,clusters,subpaths = model.create_channel((0,0,10),(40,0,1.5))
@@ -174,20 +178,21 @@ clusters
 
 ### Location
 
-* Jupyter tutorials [1](Tutorial_1_MultipathLocationEstimator.ipynb) [2](Tutorial_2_MultipathLocationEstimator.ipynb)
-* Experimental files [1](raygeometry_flat.py) [2](raygeometry_2D.py) [3](raygeometry.py) [4](raygeosim.py) [5](plotPhi0Method.py)
-* [Complete system simulator](mpraylocsim.py)
+* Jupyter tutorials [1](./Tutorials/Tutorial_1_MultipathLocationEstimator.ipynb) [2](./Tutorials/Tutorial_2_MultipathLocationEstimator.ipynb)
+* Experimentation files [1](./Drafts/testRayGeometry1D.py) [2](./Drafts/testRayGeometry2D.py) [3](./Drafts/testRayGeometry3D.py)
+* Examples [1](./Examples/plotLocAlgorithms.py) [2](./Examples/plotLocOrientation2D.py) [3](./Examples/plotLocOrientation3D.py) [3](./Examples/plotPhi0Method.py)
+* [Complete system simulator](./Simulations/mpraylocsim.py)
 
 ### 3GPP channel generator
 
-* [Main channel generator library](threeGPPMultipathGenerator.py)
-* Propagation condition examples [1](los.py) [2](pruebasPathloss.py) [3](macro.py) 
-* Multipath channel impulse response examples [1](plotDelayChan.py) [2](plotArrayPolar.py) [3](plot2DUPAArray.py) [4](plot2MIMOArrays.py) [5](plotAoADelay.py) [6](plotAzimutDelay4D.py)
-* Statistical validation [1](histogram.py)
+* [Main channel generator library](./CASTRO5G/threeGPPMultipathGenerator.py)
+* Propagation macroscopic examples [1](./Examples/plotChanGenMacro.py) [2](./Examples/plotChanGenPDFs.py)
+* Multipath channel impulse response examples [1](./Examples/plotDelayChan.py) [2](./Examples/plotArrayPolar.py) [3](./Examples/plot2DUPAArray.py) [4](./Examples/plot2MIMOArrays.py) [5](./Examples/plotAoADelay.py) [6](./Examples/plotAzimutDelay4D.py)
+* Mobility model examples  [1](./Drafts/testDisplaceKnowResults.py) [2](./Drafts/testFitKnowResults.py) [3](./Examples/plotChanGenCorr1M.py) [4](./Examples/plotMultipathTransform.py) [5](./Examples/plotSpatialDisplacement.py)
 
 ### Link Adaptation
 
-* [Basic simulation script](IoTSpatialConsistencyExperiment.py)
+* [Basic simulation script](./Simulations/spatialMultiuserLinksim.py)
 
 ## Deployment
 
