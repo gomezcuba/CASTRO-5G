@@ -161,11 +161,10 @@ class ReflectedMultipathChannelModel:
         
 
 class MIMOPilotChannel:
-    def __init__(self,algorithm="MPSK",M=2,Nsym=5,Nd=2):
+    def __init__(self,algorithm="MPSK", algConfig = { "M":2 } ):
         self.defAlgorithm = algorithm
-        self.M=M
-        self.Nsym=Nsym
-        self.Nd=Nd
+        for name,value in algConfig.items():
+            setattr(self,name,value)
     def getCbFun(self,algorithm):
         cbFunDict = {
             "Eye": self.getCodebookEye,
@@ -180,7 +179,23 @@ class MIMOPilotChannel:
     def generatePilots(self,Np,Nr,Nt,Npr=None,rShape=None,tShape=None,algorithm=None):      
         if not algorithm:
             return self.generatePilots(Np,Nr,Nt,Npr,rShape,tShape,self.defAlgorithm)
+        elif algorithm == "DMRS":
+            #tratar Np, Npr, rShape y tShape de otra manera
+            #cambiar esta linea, generar con las funciones DMRS que has diseñado
+            vp = self.getCodebookDMRS(Nt,Np).reshape(tShape)                        
+            #vp[Nsim,K,Nrft]
+            # if tShape is None: error el modo DMRS requiere tShape
+            # Nsim,K,NRFT = tShape
+            # Nrft = no. ports de los DMRSs
+            # K = no. portadoras total (PRBset se saca de aqui dividiendo por 12)
+            # Generar Nslot = Nsim // (DMRSLength * NSizeSymbol)
+            # para facilitarnos la vida, en gold sequence el contador nsf lo hacemos 0 a Nslot-1. Esto substiye a la frame y a mu
+            
+            Nsim,K,Nr,Nrfr = rShape
+            wp = np.ones((Nsim,K))[:,:,None,None] * np.eye(Nr)
+            return((wp,vp))
         else:
+            #este fragmento genera codebooks en 1 dim y les aplica un reshape
             bCombinatorial = ( algorithm in ["Eye","Rectangular"] )
             if not Npr:
                 Npr=Np
@@ -224,20 +239,23 @@ class MIMOPilotChannel:
         return(W_ls/np.linalg.norm(W_ls,axis=0))
     def getCodebookDMRS(self, Nant, Ncol):
         dmrs_config = {
+    #estas 4 las tienes que sacar de Nsim, y tShape, y se pasan en cada llamada a getCodebookDMRS            
             "NumLayers": Nant,
-            "PRBSet": int(Ncol/12),
+            "PRBSet": int(K/12),
+            "DMRSPortSet": [1000 + i for i in range(Nant)],
+            "NSlot_list": [0]
+        
+    #estas otras se fijan al crear el pilotChannel, en __init__  en el diccionario algConfig     
             "MappingType": 'A',
             "SymbolAllocation": (0, 14),
             "DMRSConfigurationType": 1,
             "DMRSLength": 1,
             "DMRSAdditionalPosition": 0,
             "DMRSTypeAPosition": 2,
-            "DMRSPortSet": [1000 + i for i in range(Nant)],
             "NIDNSCID": 10,
             "NSCID": 0,
             "NSizeSymbol": 1,
             "Mu": 0,
-            "NSlot_list": [0]
         }
     
         dmrs_pilots = np.zeros((Nant, Ncol), dtype=complex)

@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from itertools import product
-from numba import jit
+# from numba import jit
 
 class DMRSConfig:
     def __init__(self, NumLayers=1, PRBSet=1, MappingType='A', SymbolAllocation=(0, 14), 
@@ -485,7 +485,7 @@ class DMRSConfig:
                     
                     for i, offset in enumerate(sc_offsets):
                         k = prb * self.SubcarriersPerPRB + offset
-                        l = rep * self.SymbolsPerSlot + symbol
+                        l = rep * self.SymbolsPerSlot + symbolMIMOPilotChannel
                         symbol_val = self.apply_cdm(r[i], port)
                         grid[l, k, layer] = symbol_val
 
@@ -541,57 +541,57 @@ class DMRSConfig:
                 r *= (-1)
         return r
     
-    # def plot_dmrs(self, grid):
-    #     fig, axes = plt.subplots(1, self.NumLayers, figsize=(15, 5))
-    #     if self.NumLayers == 1:
-    #         axes = [axes]
+    def plot_dmrs(self, grid):
+        fig, axes = plt.subplots(1, self.NumLayers, figsize=(15, 5))
+        if self.NumLayers == 1:
+            axes = [axes]
         
-    #     colors = ['blue', 'red', 'white', 'green', 'yellow']
-    #     cmap = ListedColormap(colors[:len(np.unique(grid))])
+        colors = ['blue', 'red', 'white', 'green', 'yellow']
+        cmap = ListedColormap(colors[:len(np.unique(grid))])
         
-    #     for i in range(self.NumLayers):
-    #         ax = axes[i]
+        for i in range(self.NumLayers):
+            ax = axes[i]
     
-    #         unique_vals, indices = np.unique(grid[:, :, i], return_inverse=True)
-    #         indices = indices.reshape(grid[:, :, i].shape).T
+            unique_vals, indices = np.unique(grid[:, :, i], return_inverse=True)
+            indices = indices.reshape(grid[:, :, i].shape).T
             
-    #         y_min, y_max = -0.5, self.NSubcarriers - 0.5
-    #         y_ticks = np.arange(0, self.NSubcarriers)
-    #         y_tick_labels = [str(tick) for tick in y_ticks]
+            y_min, y_max = -0.5, self.NSubcarriers - 0.5
+            y_ticks = np.arange(0, self.NSubcarriers)
+            y_tick_labels = [str(tick) for tick in y_ticks]
             
-    #         x = np.arange(-0.5, self.NSymbols)
-    #         y = np.arange(-0.5, self.NSubcarriers)
+            x = np.arange(-0.5, self.NSymbols)
+            y = np.arange(-0.5, self.NSubcarriers)
             
-    #         im = ax.pcolormesh(x, y, indices, cmap=cmap, vmin=0, vmax=len(unique_vals)-1,
-    #                           edgecolors='k', linewidths=0.5)
+            im = ax.pcolormesh(x, y, indices, cmap=cmap, vmin=0, vmax=len(unique_vals)-1,
+                              edgecolors='k', linewidths=0.5)
             
-    #         cbar = plt.colorbar(im, ax=ax, ticks=np.arange(len(unique_vals)))
-    #         cbar.ax.set_yticklabels([f"{val:.2f}" for val in unique_vals])
+            cbar = plt.colorbar(im, ax=ax, ticks=np.arange(len(unique_vals)))
+            cbar.ax.set_yticklabels([f"{val:.2f}" for val in unique_vals])
             
-    #         ax.set_title(f'DMRS Port {self.DMRSPortSet[i]} (Config Type {self.DMRSConfigurationType})')
-    #         ax.set_xlabel('OFDM Symbols')
-    #         ax.set_ylabel('Subcarriers')
-    #         ax.set_xticks(np.arange(self.NSymbols))
-    #         ax.set_yticks(y_ticks)
-    #         ax.set_yticklabels(y_tick_labels)
-    #         ax.set_ylim(y_min, y_max)
+            ax.set_title(f'DMRS Port {self.DMRSPortSet[i]} (Config Type {self.DMRSConfigurationType})')
+            ax.set_xlabel('OFDM Symbols')
+            ax.set_ylabel('Subcarriers')
+            ax.set_xticks(np.arange(self.NSymbols))
+            ax.set_yticks(y_ticks)
+            ax.set_yticklabels(y_tick_labels)
+            ax.set_ylim(y_min, y_max)
             
-    #         for sc in range(0, self.NSubcarriers, self.SubcarriersPerPRB):
-    #             ax.axhline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
+            for sc in range(0, self.NSubcarriers, self.SubcarriersPerPRB):
+                ax.axhline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
                 
-    #         for sc in range(0, self.NSymbols, self.SymbolsPerSlot):
-    #             ax.axvline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
+            for sc in range(0, self.NSymbols, self.SymbolsPerSlot):
+                ax.axvline(sc - 0.5, color='gray', linestyle='-', linewidth=1.5)
             
-    #         for sc in range(self.NSubcarriers):
-    #             ax.axhline(sc - 0.5, color='lightgray', linestyle=':', linewidth=0.5)
+            for sc in range(self.NSubcarriers):
+                ax.axhline(sc - 0.5, color='lightgray', linestyle=':', linewidth=0.5)
             
-    #         for sym in range(self.NSymbols + 1):
-    #             ax.axvline(sym - 0.5, color='gray', linestyle='--', linewidth=0.5)
+            for sym in range(self.NSymbols + 1):
+                ax.axvline(sym - 0.5, color='gray', linestyle='--', linewidth=0.5)
         
-    #     plt.tight_layout()
-    #     plt.show()
+        plt.tight_layout()
+        plt.show()
    
-@jit(nopython=True)
+# @jit(nopython=True)
 def generate_gold_sequence_numba(c_init, length):
     N_c = 1600
     x1 = np.zeros(N_c + length, dtype=np.int32)
@@ -611,52 +611,52 @@ def generate_gold_sequence_numba(c_init, length):
 def qpsk_modulate(bits):
     return (1 / np.sqrt(2)) * ((1 - 2 * bits[0::2]) + 1j * (1 - 2 * bits[1::2]))
 
-# def configure_dmrs(pilot, num_layers, config_type=1, symbol_allocation=(0, 14), num_prbs_k=1, num_prbs_l=1, mapping_type='A',
-#                      dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2, mu=0, NSlot_list=[0]):
+def configure_dmrs(pilot, num_layers, config_type=1, symbol_allocation=(0, 14), num_prbs_k=1, num_prbs_l=1, mapping_type='A',
+                      dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2, mu=0, NSlot_list=[0]):
     
-#     dmrs = DMRSConfig(NumLayers=num_layers, 
-#                         PRBSet=num_prbs_k, 
-#                         MappingType=mapping_type, 
-#                         SymbolAllocation=symbol_allocation,
-#                         DMRSConfigurationType=config_type,
-#                         DMRSLength=dmrs_length,
-#                         DMRSAdditionalPosition=dmrs_add_pos,
-#                         DMRSTypeAPosition=dmrs_type_a_pos,
-#                         DMRSPortSet=[1000 + i for i in range(num_layers)],
-#                         NIDNSCID=10,
-#                         NSCID=0,
-#                         NSizeSymbol=num_prbs_l,
-#                         Mu=mu,
-#                         NSlot_list=NSlot_list)
+    dmrs = DMRSConfig(NumLayers=num_layers, 
+                        PRBSet=num_prbs_k, 
+                        MappingType=mapping_type, 
+                        SymbolAllocation=symbol_allocation,
+                        DMRSConfigurationType=config_type,
+                        DMRSLength=dmrs_length,
+                        DMRSAdditionalPosition=dmrs_add_pos,
+                        DMRSTypeAPosition=dmrs_type_a_pos,
+                        DMRSPortSet=[1000 + i for i in range(num_layers)],
+                        NIDNSCID=10,
+                        NSCID=0,
+                        NSizeSymbol=num_prbs_l,
+                        Mu=mu,
+                        NSlot_list=NSlot_list)
     
-#     pilots = dmrs.generate_dmrs_grid(pilot)
-#     dmrs.plot_dmrs(pilots)
+    pilots = dmrs.generate_dmrs_grid(pilot)
+    dmrs.plot_dmrs(pilots)
     
-#     return pilots
+    return pilots
 
-# if __name__ == "__main__":
-#     # Example
-#     dmrs_pilot="PDSCH"
-#     ports = 1
-#     configuration_type = 2
-#     symbol_allocation = (0, 14)
-#     num_prbs_k=2
-#     num_prbs_l=2
-#     mapping_type='A'
-#     pilot_length=2
-#     pilot_add_pos=1
-#     dmrs_type_a_pos=2
-#     mu=0
+if __name__ == "__main__":
+    # Example
+    dmrs_pilot="PDSCH"
+    ports = 1
+    configuration_type = 2
+    symbol_allocation = (0, 14)
+    num_prbs_k=2
+    num_prbs_l=2
+    mapping_type='A'
+    pilot_length=2
+    pilot_add_pos=1
+    dmrs_type_a_pos=2
+    mu=0
 
-#     Pilots = configure_dmrs(pilot=dmrs_pilot,
-#                             num_layers=ports, 
-#                             config_type=configuration_type, 
-#                             symbol_allocation=symbol_allocation,
-#                             num_prbs_k=num_prbs_k,
-#                             num_prbs_l=num_prbs_l,
-#                             mapping_type=mapping_type, 
-#                             dmrs_length=pilot_length, 
-#                             dmrs_add_pos=pilot_add_pos,
-#                             dmrs_type_a_pos=dmrs_type_a_pos,
-#                             mu=mu,
-#                             NSlot_list=np.arange(num_prbs_l).tolist())
+    Pilots = configure_dmrs(pilot=dmrs_pilot,
+                            num_layers=ports, 
+                            config_type=configuration_type, 
+                            symbol_allocation=symbol_allocation,
+                            num_prbs_k=num_prbs_k,
+                            num_prbs_l=num_prbs_l,
+                            mapping_type=mapping_type, 
+                            dmrs_length=pilot_length, 
+                            dmrs_add_pos=pilot_add_pos,
+                            dmrs_type_a_pos=dmrs_type_a_pos,
+                            mu=mu,
+                            NSlot_list=np.arange(num_prbs_l).tolist())
