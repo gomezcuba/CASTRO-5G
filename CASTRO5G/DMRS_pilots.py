@@ -4,13 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from itertools import product
-# from numba import jit
 
 class DMRSConfig:
     def __init__(self, NumLayers=1, PRBSet=1, MappingType='A', SymbolAllocation=(0, 14), 
                  DMRSConfigurationType=1, DMRSLength=1, DMRSAdditionalPosition=0,
                  DMRSTypeAPosition=2, DMRSPortSet=None, NIDNSCID=10, NSCID=0, 
-                 NSizeSymbol=1, Mu=0, NSlot_list=[0]):
+                 NSizeSymbol=1, NSlot_list=[0]):
         
         if DMRSLength == 2 and DMRSAdditionalPosition > 1:
             raise ValueError("DMRSAdditionalPosition must be 0 or 1 when DMRSLength = 2")
@@ -40,12 +39,6 @@ class DMRSConfig:
         self.NSymbols = self.NSizeSymbol * self.SymbolsPerSlot
         self.NSubcarriers = self.PRBSet * self.SubcarriersPerPRB
         
-        if not (Mu in (0,1,2,3,4)):
-            raise ValueError("Mu must be in range [0, 4]")
-        self.N_slot_frame = 10 * (2 ** Mu)
-        for nsf in NSlot_list:
-            if not (0 <= nsf < self.N_slot_frame):
-                raise ValueError(f"Each NSlot in NSlot_list must be in range [0, {self.N_slot_frame-1}] for mu={Mu}")
         self.NSlot_list = NSlot_list
     
     def get_pdsch_dmrs_symbol_indices(self):
@@ -480,12 +473,12 @@ class DMRSConfig:
                 
                 for prb, rep in product(np.arange(self.PRBSet), np.arange(self.NSizeSymbol)):
                     c_init = ((2 ** 17) * (14 * self.NSlot_list[rep] + symbol + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
-                    c = generate_gold_sequence_numba(c_init, len(sc_offsets) * 2)
-                    r = qpsk_modulate(c)
+                    c = self.generate_gold_sequence(c_init, len(sc_offsets) * 2)
+                    r = self.qpsk_modulate(c)
                     
                     for i, offset in enumerate(sc_offsets):
                         k = prb * self.SubcarriersPerPRB + offset
-                        l = rep * self.SymbolsPerSlot + symbolMIMOPilotChannel
+                        l = rep * self.SymbolsPerSlot + symbol
                         symbol_val = self.apply_cdm(r[i], port)
                         grid[l, k, layer] = symbol_val
 
@@ -494,7 +487,7 @@ class DMRSConfig:
         #     print(grid[:, :, port_idx].T)
         #     print('----------------------------------------------------------------')
                             
-        return grid
+        return grid, dmrs_symbols
 
     def get_dmrs_subcarrier_offsets(self, port):
         port_idx = port - 1000
@@ -540,7 +533,26 @@ class DMRSConfig:
             if (port_idx % 2 == 1 and port_idx <= 5) or (port_idx % 2 == 0 and port_idx > 5):
                 r *= (-1)
         return r
+   
+    def generate_gold_sequence(self, c_init, length):
+        N_c = 1600
+        x1 = np.zeros(N_c + length, dtype=np.int32)
+        x2 = np.zeros(N_c + length, dtype=np.int32)
     
+        x1[0] = 1
+        for i in range(31):
+            x2[i] = (c_init >> i) & 1
+    
+        for n in range(31, N_c + length):
+            x1[n] = (x1[n - 3] + x1[n - 31]) % 2
+            x2[n] = (x2[n - 3] + x2[n - 2] + x2[n - 1] + x2[n - 31]) % 2
+    
+        c = (x1[N_c:] + x2[N_c:]) % 2
+        return c
+    
+    def qpsk_modulate(self, bits):
+        return (1 / np.sqrt(2)) * ((1 - 2 * bits[0::2]) + 1j * (1 - 2 * bits[1::2]))
+
     def plot_dmrs(self, grid):
         fig, axes = plt.subplots(1, self.NumLayers, figsize=(15, 5))
         if self.NumLayers == 1:
@@ -590,29 +602,9 @@ class DMRSConfig:
         
         plt.tight_layout()
         plt.show()
-   
-# @jit(nopython=True)
-def generate_gold_sequence_numba(c_init, length):
-    N_c = 1600
-    x1 = np.zeros(N_c + length, dtype=np.int32)
-    x2 = np.zeros(N_c + length, dtype=np.int32)
-
-    x1[0] = 1
-    for i in range(31):
-        x2[i] = (c_init >> i) & 1
-
-    for n in range(31, N_c + length):
-        x1[n] = (x1[n - 3] + x1[n - 31]) % 2
-        x2[n] = (x2[n - 3] + x2[n - 2] + x2[n - 1] + x2[n - 31]) % 2
-
-    c = (x1[N_c:] + x2[N_c:]) % 2
-    return c
-
-def qpsk_modulate(bits):
-    return (1 / np.sqrt(2)) * ((1 - 2 * bits[0::2]) + 1j * (1 - 2 * bits[1::2]))
-
+    
 def configure_dmrs(pilot, num_layers, config_type=1, symbol_allocation=(0, 14), num_prbs_k=1, num_prbs_l=1, mapping_type='A',
-                      dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2, mu=0, NSlot_list=[0]):
+                      dmrs_length=1, dmrs_add_pos=0, dmrs_type_a_pos=2, NSlot_list=[0]):
     
     dmrs = DMRSConfig(NumLayers=num_layers, 
                         PRBSet=num_prbs_k, 
@@ -626,10 +618,9 @@ def configure_dmrs(pilot, num_layers, config_type=1, symbol_allocation=(0, 14), 
                         NIDNSCID=10,
                         NSCID=0,
                         NSizeSymbol=num_prbs_l,
-                        Mu=mu,
                         NSlot_list=NSlot_list)
     
-    pilots = dmrs.generate_dmrs_grid(pilot)
+    pilots, _ = dmrs.generate_dmrs_grid(pilot)
     dmrs.plot_dmrs(pilots)
     
     return pilots
@@ -646,7 +637,6 @@ if __name__ == "__main__":
     pilot_length=2
     pilot_add_pos=1
     dmrs_type_a_pos=2
-    mu=0
 
     Pilots = configure_dmrs(pilot=dmrs_pilot,
                             num_layers=ports, 
@@ -658,5 +648,4 @@ if __name__ == "__main__":
                             dmrs_length=pilot_length, 
                             dmrs_add_pos=pilot_add_pos,
                             dmrs_type_a_pos=dmrs_type_a_pos,
-                            mu=mu,
                             NSlot_list=np.arange(num_prbs_l).tolist())
