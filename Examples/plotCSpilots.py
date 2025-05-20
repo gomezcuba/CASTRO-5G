@@ -33,9 +33,20 @@ dicMult=cs.CSMultiDictionary()
 pilots_config = [
     ("MPSK", "MPSK"),
     ("DMRS", "DMRS")
-    # ("DMRS", "DMRS")
 ]
-M_PSK=2
+
+algConfig={
+    "M":2,
+    "MappingType": 'A',
+    "SymbolAllocation": (0, 14),
+    "DMRSConfigurationType": 1,
+    "DMRSLength": 1,
+    "DMRSAdditionalPosition": 0,
+    "DMRSTypeAPosition": 2,
+    "NIDNSCID": 10,
+    "NSCID": 0,
+    "NSizeSymbol": 1
+    }
 
 Npilots = len(pilots_config)
 Nsnr = len(SNRs)
@@ -85,8 +96,7 @@ for ichan in range(Nchan):
 #-------------------------------------------------------------------------------
 pilot_patterns = {}
 for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot Types: ")):
-    pilgen = mc.MIMOPilotChannel(pilot_alg,M_PSK, Nsym, Nd)
-    # Generamos pilotos específicos para este tipo
+    pilgen = mc.MIMOPilotChannel(pilot_alg,algConfig)
     
     (wp, vp) = pilgen.generatePilots(Nsym*K*Nrft, Na, Nd, Npr=Nsym*K*Nrfr, 
                                     rShape=(Nsym, K, Nrfr, Na), tShape=(Nsym, K, Nd, Nrft))
