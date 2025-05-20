@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
+from itertools import product
 
 import sys
 sys.path.append('../')
-from CASTRO5G import MultipathLocationEstimator, DMRS_pilots
+from CASTRO5G import MultipathLocationEstimator
 
 def AWGN(shape,sigma2=1):
     return ( np.random.normal(size=shape) + 1j*np.random.normal(size=shape) ) * np.sqrt( sigma2 / 2.0 )
@@ -181,18 +182,24 @@ class MIMOPilotChannel:
             return self.generatePilots(Np,Nr,Nt,Npr,rShape,tShape,self.defAlgorithm)
         elif algorithm == "DMRS":
             #tratar Np, Npr, rShape y tShape de otra manera
-            #cambiar esta linea, generar con las funciones DMRS que has diseñado
-            vp = self.getCodebookDMRS(Nt,Np).reshape(tShape)                        
+            
             #vp[Nsim,K,Nrft]
-            # if tShape is None: error el modo DMRS requiere tShape
-            # Nsim,K,NRFT = tShape
+            if tShape is None: 
+                raise ValueError("El modo DMRS requiere tShape")
+                
+            Nsym,K,Nd,Nrft = tShape
             # Nrft = no. ports de los DMRSs
             # K = no. portadoras total (PRBset se saca de aqui dividiendo por 12)
-            # Generar Nslot = Nsim // (DMRSLength * NSizeSymbol)
+            # Generar:
+            Nslot = Nsym // (self.DMRSLength * self.NSizeSymbol)
             # para facilitarnos la vida, en gold sequence el contador nsf lo hacemos 0 a Nslot-1. Esto substiye a la frame y a mu
+            vp = self.getCodebookDMRS(Nd,K,Nslot).reshape(tShape)
             
-            Nsim,K,Nr,Nrfr = rShape
-            wp = np.ones((Nsim,K))[:,:,None,None] * np.eye(Nr)
+            if rShape is None: 
+                raise ValueError("El modo DMRS requiere rShape")
+                
+            Nsym,K,Nrfr,Na = rShape
+            wp = np.ones((Nsym,K))[:,:,None,None] * np.eye(Nr)
             return((wp,vp))
         else:
             #este fragmento genera codebooks en 1 dim y les aplica un reshape
@@ -237,39 +244,551 @@ class MIMOPilotChannel:
         A_array_design = fULA(angles_design, Nant, .5)
         W_ls,_,_,_=np.linalg.lstsq(A_array_design.conj(),desired_G,rcond=None)
         return(W_ls/np.linalg.norm(W_ls,axis=0))
-    def getCodebookDMRS(self, Nant, Ncol):
-        dmrs_config = {
-    #estas 4 las tienes que sacar de Nsim, y tShape, y se pasan en cada llamada a getCodebookDMRS            
-            "NumLayers": Nant,
-            "PRBSet": int(K/12),
-            "DMRSPortSet": [1000 + i for i in range(Nant)],
-            "NSlot_list": [0]
+    def getCodebookDMRS(self, Nant, K, Nslot):
+
+    #estas 4 las tienes que sacar de Nsim, K y tShape, y se pasan en cada llamada a getCodebookDMRS            
+        self.NumLayers = Nant
+        self.PRBSet = K//12
+        self.DMRSPortSet = [1000 + i for i in range(Nant)]
+        self.NSlot_list = list(range(Nslot))
+        self.NSizeSymbol = Nslot 
         
-    #estas otras se fijan al crear el pilotChannel, en __init__  en el diccionario algConfig     
-            "MappingType": 'A',
-            "SymbolAllocation": (0, 14),
-            "DMRSConfigurationType": 1,
-            "DMRSLength": 1,
-            "DMRSAdditionalPosition": 0,
-            "DMRSTypeAPosition": 2,
-            "NIDNSCID": 10,
-            "NSCID": 0,
-            "NSizeSymbol": 1,
-            "Mu": 0,
-        }
+        self.SymbolsPerSlot = 14
+        self.SubcarriersPerPRB = 12
+        self.NSymbols = self.NSizeSymbol * self.SymbolsPerSlot
+        self.NSubcarriers = self.PRBSet * self.SubcarriersPerPRB
     
-        dmrs_pilots = np.zeros((Nant, Ncol), dtype=complex)
+        dmrs_pilots = np.zeros((Nslot, K, Nant), dtype=complex)
         
-        dmrs = DMRS_pilots.DMRSConfig(**dmrs_config)
-        grid = dmrs.generate_dmrs_grid("PDSCH")
+        grid, dmrs_symbols = self.generate_dmrs_grid("PDSCH")
         
-        for ant in range(Nant):
-            pilots = grid[:, :, ant].flatten()
-            nonzero_pilots = pilots[pilots != 0]
-            # Repeat until fill Ncol
-            n_repeats = int(np.ceil(Ncol / len(nonzero_pilots)))
-            dmrs_pilots[ant, :] = np.tile(nonzero_pilots, n_repeats)[:Ncol]
+        for slot in range(Nslot):
+            for ant in range(Nant):
+                # Calculate symbol indices for this slot
+                slot_symbols = [s + slot * self.SymbolsPerSlot for s in dmrs_symbols if s + slot * self.SymbolsPerSlot < grid.shape[0]]
+                if not slot_symbols:
+                    continue
+                # Extract pilots for this antenna and slot
+                pilots = grid[slot_symbols, :, ant].flatten()  # Flatten across symbols
+                nonzero_pilots = pilots[pilots != 0]
+                if len(nonzero_pilots) == 0:
+                    continue
+                # Tile to fill K subcarriers
+                n_repeats = int(np.ceil(K / len(nonzero_pilots)))
+                dmrs_pilots[slot, :, ant] = np.tile(nonzero_pilots, n_repeats)[:K]
         return dmrs_pilots
+    
+    def get_pdsch_dmrs_symbol_indices(self):
+        start_symbol, duration = self.SymbolAllocation
+        
+        if self.MappingType == 'A':
+            if duration <= 7:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition],
+                        2: [self.DMRSTypeAPosition],
+                        3: [self.DMRSTypeAPosition],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                                    
+            if duration in (8, 9):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 7],
+                        2: [self.DMRSTypeAPosition, 7],
+                        3: [self.DMRSTypeAPosition, 7],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                            
+            if duration in (10, 11):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 9],
+                        2: [self.DMRSTypeAPosition, 6, 9],
+                        3: [self.DMRSTypeAPosition, 6, 9],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1, 8, 9],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                                    
+            if duration == 12:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 9],
+                        2: [self.DMRSTypeAPosition, 6, 9],
+                        3: [self.DMRSTypeAPosition, 5, 8, 11],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1, 8, 9],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                                    
+            if duration in (13, 14):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 11],
+                        2: [self.DMRSTypeAPosition, 7, 11],
+                        3: [self.DMRSTypeAPosition, 5, 8, 11],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1, 10, 11],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                    
+        elif self.MappingType == 'B':
+            if duration <= 4:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol],
+                        2: [start_symbol],
+                        3: [start_symbol],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [],
+                        1: [],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+    
+            if duration in (5, 6, 7):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 4],
+                        2: [start_symbol, 4],
+                        3: [start_symbol, 4],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+                    
+            if duration == 8:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 6],
+                        2: [start_symbol, 3, 6],
+                        3: [start_symbol, 3, 6],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1, 5, 6],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+                    
+            if duration == 9:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 7],
+                        2: [start_symbol, 4, 7],
+                        3: [start_symbol, 4, 7],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1, 5, 6],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+                    
+            if duration == 10:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 7],
+                        2: [start_symbol, 4, 7],
+                        3: [start_symbol, 4, 7],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1, 7, 8],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+    
+            if duration == 11:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 8],
+                        2: [start_symbol, 4, 8],
+                        3: [start_symbol, 3, 6, 9],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1, 7, 8],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+    
+            if duration in (12, 13):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 9],
+                        2: [start_symbol, 5, 9],
+                        3: [start_symbol, 3, 6, 9],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1, 8, 9],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+                
+            if duration == 14:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [],
+                        1: [],
+                        2: [],
+                        3: [],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [],
+                        1: [],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+        else:
+            raise ValueError("Unsupported Mapping type (A or B)")
+    
+        if self.DMRSAdditionalPosition not in table:
+            raise ValueError("Unsupported additional position. Use (0,1,2,3) for DMRSLength=1, (0,1) for DMRSLength=2")
+
+        return sorted(table[self.DMRSAdditionalPosition])
+
+    def get_pusch_dmrs_symbol_indices(self):
+        start_symbol, duration = self.SymbolAllocation
+        
+        if self.MappingType == 'A':
+            if duration < 4:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition],
+                        2: [self.DMRSTypeAPosition],
+                        3: [self.DMRSTypeAPosition],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                    
+            if duration in (4, 5, 6, 7):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition],
+                        2: [self.DMRSTypeAPosition],
+                        3: [self.DMRSTypeAPosition],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                                    
+            if duration in (8, 9):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 7],
+                        2: [self.DMRSTypeAPosition, 7],
+                        3: [self.DMRSTypeAPosition, 7],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                            
+            if duration in (10, 11):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 9],
+                        2: [self.DMRSTypeAPosition, 6, 9],
+                        3: [self.DMRSTypeAPosition, 6, 9],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1, 8, 9],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                                    
+            if duration == 12:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 9],
+                        2: [self.DMRSTypeAPosition, 6, 9],
+                        3: [self.DMRSTypeAPosition, 5, 8, 11],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1, 8, 9],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                                    
+            if duration in (13, 14):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [self.DMRSTypeAPosition],
+                        1: [self.DMRSTypeAPosition, 11],
+                        2: [self.DMRSTypeAPosition, 7, 11],
+                        3: [self.DMRSTypeAPosition, 5, 8, 11],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1],
+                        1: [self.DMRSTypeAPosition, self.DMRSTypeAPosition+1, 10, 11],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type A")
+                    
+        elif self.MappingType == 'B':
+            if duration <= 4:
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol],
+                        2: [start_symbol],
+                        3: [start_symbol],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [],
+                        1: [],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+    
+            if duration in (5, 6, 7):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 4],
+                        2: [start_symbol, 4],
+                        3: [start_symbol, 4],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+                    
+            if duration in (8, 9):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 6],
+                        2: [start_symbol, 3, 6],
+                        3: [start_symbol, 3, 6],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1, 5, 6],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+                    
+            if duration in (10, 11):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 8],
+                        2: [start_symbol, 4, 8],
+                        3: [start_symbol, 3, 6, 9],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, start_symbol+1, 7, 8],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+                    
+            if duration in (12, 13, 14):
+                if self.DMRSLength == 1:
+                    table = {
+                        0: [start_symbol],
+                        1: [start_symbol, 10],
+                        2: [start_symbol, 5, 10],
+                        3: [start_symbol, 3, 6, 9],
+                    }
+                elif self.DMRSLength == 2:
+                    table = {
+                        0: [start_symbol, start_symbol+1],
+                        1: [start_symbol, start_symbol+1, 9, 10],
+                    }
+                else:
+                    raise ValueError("Unsupported DMRS length for mapping type B")
+        else:
+            raise ValueError("Unsupported Mapping type (A or B)")
+    
+        if self.DMRSAdditionalPosition not in table:
+            raise ValueError("Unsupported additional position. Use (0,1,2,3) for DMRSLength=1, (0,1) for DMRSLength=2")
+    
+        return sorted(table[self.DMRSAdditionalPosition])
+
+    def generate_dmrs_grid(self, pilot):
+        grid = np.zeros((self.NSymbols, self.NSubcarriers, self.NumLayers), dtype=complex)
+        
+        match pilot:
+            case "PDSCH":
+                dmrs_symbols = self.get_pdsch_dmrs_symbol_indices()
+            case "PUSCH":
+                dmrs_symbols = self.get_pusch_dmrs_symbol_indices()
+            case _:
+                print("Invalid option. Use PDSCH or PUSCH")
+                return grid
+    
+        symbol_start, symbol_len = self.SymbolAllocation
+        symbol_end = symbol_start + symbol_len
+    
+        for layer, port in enumerate(self.DMRSPortSet):
+            sc_offsets = self.get_dmrs_subcarrier_offsets(port)
+            for _, symbol in enumerate(dmrs_symbols):
+    
+                if not (symbol_start <= symbol < symbol_end):
+                    continue
+                
+                for prb, rep in product(np.arange(self.PRBSet), np.arange(self.NSizeSymbol)):
+                    c_init = ((2 ** 17) * (14 * self.NSlot_list[rep] + symbol + 1) * (2 * self.NIDNSCID + 1) + 2 * self.NIDNSCID + self.NSCID) % (2 ** 31)
+                    c = self.generate_gold_sequence(c_init, len(sc_offsets) * 2)
+                    r = self.qpsk_modulate(c)
+                    
+                    for i, offset in enumerate(sc_offsets):
+                        k = prb * self.SubcarriersPerPRB + offset
+                        l = rep * self.SymbolsPerSlot + symbol
+                        symbol_val = self.apply_cdm(r[i], port)
+                        grid[l, k, layer] = symbol_val
+
+        # for port_idx in range(self.NumLayers):
+        #     print(f"\n signal[:, :, {self.DMRSPortSet[port_idx]-1000}]")
+        #     print(grid[:, :, port_idx].T)
+        #     print('----------------------------------------------------------------')
+                            
+        return grid, dmrs_symbols
+
+    def get_dmrs_subcarrier_offsets(self, port):
+        port_idx = port - 1000
+        k_values = []
+        if self.DMRSConfigurationType == 1:
+            if (port_idx % 4) in [0, 1]:
+                delta = 0
+                for n, k_p in product((0, 1, 2), (0, 1)):
+                    k=4*n+2*k_p+delta
+                    k_values.append(k)
+                return np.array(k_values)
+            else:
+                delta = 1
+                for n, k_p in product((0, 1, 2), (0, 1)):
+                    k=4*n+2*k_p+delta
+                    k_values.append(k)
+                return np.array(k_values)
+            
+        elif self.DMRSConfigurationType == 2:
+            if (port_idx % 6) in [0, 1]:
+                delta = 0
+                for n, k_p in product((0, 1), (0, 1)):
+                    k=6*n+k_p+delta
+                    k_values.append(k)
+                return np.array(k_values)
+            elif (port_idx % 6) in [2, 3]:
+                delta = 2
+                for n, k_p in product((0, 1), (0, 1)):
+                    k=6*n+k_p+delta
+                    k_values.append(k)
+                return np.array(k_values)
+            else:
+                return np.array([0, 1, 6, 7])
+            
+        raise ValueError("Unsupported DMRS configuration. Use 1 or 2")
+    
+    def apply_cdm(self, r, port):
+        port_idx = port - 1000
+        if self.DMRSConfigurationType == 1:
+            if (port_idx % 2 == 1 and port_idx <= 3) or (port_idx % 2 == 0 and port_idx > 3):
+                r *= (-1)
+        elif self.DMRSConfigurationType == 2:
+            if (port_idx % 2 == 1 and port_idx <= 5) or (port_idx % 2 == 0 and port_idx > 5):
+                r *= (-1)
+        return r
+   
+    def generate_gold_sequence(self, c_init, length):
+        N_c = 1600
+        x1 = np.zeros(N_c + length, dtype=np.int32)
+        x2 = np.zeros(N_c + length, dtype=np.int32)
+    
+        x1[0] = 1
+        for i in range(31):
+            x2[i] = (c_init >> i) & 1
+    
+        for n in range(31, N_c + length):
+            x1[n] = (x1[n - 3] + x1[n - 31]) % 2
+            x2[n] = (x2[n - 3] + x2[n - 2] + x2[n - 1] + x2[n - 31]) % 2
+    
+        c = (x1[N_c:] + x2[N_c:]) % 2
+        return c
+    
+    def qpsk_modulate(self, bits):
+        return (1 / np.sqrt(2)) * ((1 - 2 * bits[0::2]) + 1j * (1 - 2 * bits[1::2]))
     
     def applyPilotChannel(self,hk,wp,vp,zp=None):          
         yp=np.matmul( wp,  np.sum( np.matmul( hk[...,:,:,:] ,vp) ,axis=-1,keepdims=True) + ( 0 if zp is None else zp))        
