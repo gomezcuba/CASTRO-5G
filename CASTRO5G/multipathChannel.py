@@ -191,7 +191,7 @@ class MIMOPilotChannel:
             # Nrft = no. ports de los DMRSs
             # K = no. portadoras total (PRBset se saca de aqui dividiendo por 12)
             # Generar:
-            Nslot = Nsym // (self.DMRSLength * self.NSizeSymbol)
+            Nslot = Nsym // self.DMRSLength
             # para facilitarnos la vida, en gold sequence el contador nsf lo hacemos 0 a Nslot-1. Esto substiye a la frame y a mu
             vp = self.getCodebookDMRS(Nd,K,Nslot).reshape(tShape)
             
