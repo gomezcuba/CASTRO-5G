@@ -5,8 +5,8 @@ matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
-plt.close('all')
 
+plt.close('all')
 from CASTRO5G import multipathChannel as mc
 
 fig_ctr=0
@@ -84,6 +84,35 @@ plt.savefig('beamDiagHBFSectorall-%d-%d.svg'%(Nant,Nsectors))
 # plt.imshow(desired_G)
 
 
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+
+N=8
+O=4
+h_array = mc.fULA(angles,N,.5)
+V_fft = np.fft.fftshift(mc.fULA(np.arange(-1,1,2/(N*O)),N),axes=0)
+G_fft= h_array.conj() @ V_fft.T
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft)**2),mindBpolar),':',color=(.5,.5,.5),label='')
+for k in range(4):
+    plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,k])**2),mindBpolar),'--',label=f'N={N} O={O} $\\lambda/2$ $i_1={k}$')
+plt.legend()
+plt.savefig('beamDiagDFTlambdahalf.png')
+
+
+fig_ctr+=1
+fig = plt.figure(fig_ctr)
+
+N=8
+O=4
+h_array = mc.fULA(angles,N,.5/O)
+V_fft = np.fft.fftshift(mc.fULA(np.arange(-1,1,2/(N*O)),N),axes=0)
+G_fft= h_array.conj() @ V_fft.T
+plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft)**2),mindBpolar),':',color=(.5,.5,.5),label='')
+for k in range(4):
+    plt.polar(angles,np.maximum(10*np.log10(np.abs(G_fft[:,k])**2),mindBpolar),'--',label=f'N={N} O={O} $\\lambda/2O$ $i_1={k}$')
+plt.legend()
+plt.savefig('beamDiagDFTlambdaO.png')
 
 #PMI 5GNR TS 38.214 chapter 5.2.2.2 test
 i11=0
@@ -177,7 +206,7 @@ def cb3GPPtypeImode1(PMI,N1,N2,NL,mode=1):
         if NAP<16:            
             vl=[i11,i11+k1,i11  ,i11+k1]
             vm=[i12,i12+k2,i12  ,i12+k2]
-            vn=[i2 ,i2    ,i2+2 , i2+2 ]        
+            vn=[i2 ,i2    ,i2+2 , i2+2 ]
         #TODO else:
     elif NL == 5:
         vl=[i11,i11  ,i11+4,i11+4,i11+DXO]
@@ -197,3 +226,20 @@ def cb3GPPtypeImode1(PMI,N1,N2,NL,mode=1):
         vn=[i2  ,i2+2,i2   ,i2+2 ,0      ,2      ,0      ,2      ]
         
     return( Wlms(vl,vm,vn,N1,N2)/np.sqrt(NL*NAP) )
+
+def wCDM(n):
+    from scipy.linalg import hadamard
+    # nf = 2 if n>1 else 1
+    # nt = n//2 if n>2 else 1
+    # wf = hadamard(nf)
+    # wt = hadamard(nt)
+    # w = np.kron(wt,wf)    
+    # return(w)
+    return(hadamard(n))
+
+def allvlm(N1,N2,O1,O2):
+    oversampledDFTCodebook = lambda N,O: np.fft.fft(np.eye(N*O))[0:N,:]
+    u=oversampledDFTCodebook(N1,O1)
+    v=oversampledDFTCodebook(N2,O2)
+    return( np.kron(v,u) )
+    
