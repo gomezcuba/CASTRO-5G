@@ -192,7 +192,7 @@ class MIMOPilotChannel:
             # K = no. portadoras total (PRBset se saca de aqui dividiendo por 12)
             # Generar:
             Nslot = Nsym // self.DMRSLength
-            # para facilitarnos la vida, en gold sequence el contador nsf lo hacemos 0 a Nslot-1. Esto substiye a la frame y a mu
+            K*= self.DMRSLength
             vp = self.getCodebookDMRS(Nd,K,Nslot).reshape(tShape)
             
             if rShape is None: 
@@ -248,7 +248,7 @@ class MIMOPilotChannel:
 
     #estas 4 las tienes que sacar de Nsim, K y tShape, y se pasan en cada llamada a getCodebookDMRS            
         self.NumLayers = Nant
-        self.PRBSet = K//12
+        self.PRBSet = int(np.ceil(K/12))
         self.DMRSPortSet = [1000 + i for i in range(Nant)]
         self.NSlot_list = list(range(Nslot))
         self.NSizeSymbol = Nslot 
@@ -260,7 +260,8 @@ class MIMOPilotChannel:
     
         dmrs_pilots = np.zeros((Nslot, K, Nant), dtype=complex)
         
-        grid, dmrs_symbols = self.generate_dmrs_grid("PDSCH")
+        grid, dmrs_symbols = self.generate_dmrs_grid(self.PilotType)
+        print(self.PilotType)
         
         for slot in range(Nslot):
             for ant in range(Nant):

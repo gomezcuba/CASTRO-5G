@@ -5,14 +5,14 @@ Created on Tue May 13 10:23:33 2025
 
 @author: fgomez
 """
-
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from tqdm import tqdm
 import sys
 sys.path.append('../')
 from CASTRO5G import multipathChannel as mc
-plt.close('all')
+# plt.close('all')
 
 Nd=2
 Na=2
@@ -28,10 +28,11 @@ pilots_config = [
 
 algConfig={
     "M":2,
+    "PilotType": 'PDSCH',
     "MappingType": 'A',
     "SymbolAllocation": (0, 14),
     "DMRSConfigurationType": 1,
-    "DMRSLength": 1,
+    "DMRSLength": 2,
     "DMRSAdditionalPosition": 0,
     "DMRSTypeAPosition": 2,
     "NIDNSCID": 10,
@@ -46,6 +47,8 @@ for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot
     # print("vp=",vp)
     print("wp_shape=",wp.shape)
     print("vp_shape=",vp.shape)
+    
+    
     fig = plt.figure(1)
     Nport = vp.shape[2]
     Nlength = algConfig["DMRSLength"]
