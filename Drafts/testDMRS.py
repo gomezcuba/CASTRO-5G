@@ -48,11 +48,14 @@ for ipilot, (pilot_name, pilot_alg) in enumerate(tqdm(pilots_config, desc="Pilot
     print("vp_shape=",vp.shape)
     fig = plt.figure(1)
     Nport = vp.shape[2]
+    Nlength = algConfig["DMRSLength"]
+    Nslot = Nsym//Nlength
     for cp in range(Nport):
-        ax = fig.add_subplot(Nport,1,cp+1)
-        # ax = plt.figure(cp)
-        unique_vals,inds = np.unique(vp[:,:,cp,0],return_inverse=True)        
-        im=ax.pcolor(inds.reshape(Nsym,K).T,cmap=cm.jet)
-        # im=plt.pcolor(inds.reshape(5,64).T,cmap=cm.jet)
-        cbar = plt.colorbar(im, ax=ax, ticks=np.arange(len(unique_vals)))
-        cbar.ax.set_yticklabels([f"{val:.2f}" for val in unique_vals])
+        for cl in range(Nslot):
+            ax = fig.add_subplot(Nport,Nslot,cp*Nslot+cl+1)
+            # ax = plt.figure(cp)
+            unique_vals,inds = np.unique(vp[cl*Nlength:(cl+1)*Nlength,:,cp,0],return_inverse=True)        
+            im=ax.pcolor(inds.reshape(Nlength,K).T,cmap=cm.jet)
+            # im=plt.pcolor(inds.reshape(5,64).T,cmap=cm.jet)
+            cbar = plt.colorbar(im, ax=ax, ticks=np.arange(len(unique_vals)))
+            cbar.ax.set_yticklabels([f"{val:.2f}" for val in unique_vals])
